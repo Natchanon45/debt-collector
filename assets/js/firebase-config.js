@@ -8,6 +8,6 @@ export const firebaseConfig = {
   measurementId: "G-FEZV3HQPPZ"
 };
 
-// หลัง deploy Cloud Function แล้ว ให้นำ URL มาใส่ตรงนี้
-// ตัวอย่าง: https://asia-southeast1-project-987b9bba-eddc-4459-bdb.cloudfunctions.net/ocrThaiIdCardV2
 export const OCR_FUNCTION_URL = "https://ocrthaiidcardv2-45hiykrzuq-as.a.run.app";
+export const TELEGRAM_TEST_FUNCTION_URL = "";
+export const VAPID_PUBLIC_KEY = "";

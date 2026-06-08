@@ -1,12 +1,15 @@
-Debt Collector Sprint 1-4 Polish
+Debt Collector Phase 3 PWA
 
-เพิ่ม:
-- Format ตัวเลขแบบ 1,000.00 ในช่องจำนวนเงิน
-- แก้ไขข้อมูลส่วนตัวลูกหนี้
-- Dropzone-style document upload
-- Theme Light/Dark/Auto ยังอยู่
-- Firebase config ยังอยู่
+Includes OCR Enhanced, Auto Create Debtor, Dashboard, Follow-up CRM, Email/Telegram reminder starter, Dropzone Upload, Offline Cache, Auto Update, Push Notification skeleton.
 
-OCR:
-พร้อมทำเฟสถัดไป โดยต้องต่อ Firebase Storage + Cloud Function/Google Vision หรือ OCR API
-# debt-collector
+Deploy:
+npm --prefix functions install
+firebase deploy --only functions --project project-987b9bba-eddc-4459-bdb
+firebase deploy --only hosting --project project-987b9bba-eddc-4459-bdb
+
+
+UI Update:
+- Bottom navigation with 4 main menus
+- Extra menus moved to Settings
+- Login user shown in header/settings
+- Logout button visible in header and settings
