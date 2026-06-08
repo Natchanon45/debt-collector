@@ -1,0 +1,86 @@
+<!doctype html><html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Debt Collector Sprint</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;800;900&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="manifest" href="manifest.json"><link rel="stylesheet" href="assets/css/style.css"></head><body>
+<header class="app-header"><div><h1>Debt Collector</h1><p>Payment • Follow-up • Documents</p></div><button id="themeBtn" type="button" aria-label="เปลี่ยนโหมด" title="โหมดอัตโนมัติ"><i id="themeIcon" class="bi bi-sun-fill"></i></button></header>
+<main class="page">
+<section id="authView" class="view active"><div class="card hero"><h2>เข้าสู่ระบบ</h2><p>Firebase-ready + Demo Mode</p><label>อีเมลสำหรับเข้าสู่ระบบ</label><input id="email" class="input" type="email" placeholder="เช่น user@example.com"><label>รหัสผ่าน</label><input id="password" class="input" type="password" placeholder="อย่างน้อย 6 ตัวอักษร"><button id="loginBtn" class="primary">เข้าสู่ระบบ</button><button id="registerBtn" class="secondary">สมัครสมาชิก</button><button id="demoBtn" class="ghost">ทดลองใช้งาน Demo</button></div></section>
+<section id="appView" class="view">
+<div class="summary"><div><span>ยอดถึงกำหนด</span><strong id="dueTotal">0.00</strong></div><div class="grid"><div><span>ลูกหนี้</span><b id="debtorCount">0</b></div><div><span>ยอดคงเหลือ</span><b id="openDebtTotal">0.00</b></div><div><span>ขั้นต่ำต้องทวง</span><b id="minCollectTotal">0.00</b></div><div><span>ติดตามวันนี้</span><b id="followupTodayCount">0</b></div></div></div>
+<nav class="tabs"><button class="tab active" data-tab="dashboard">หน้าหลัก</button><button class="tab" data-tab="debtors">ลูกหนี้</button><button class="tab" data-tab="payments">ชำระ</button><button class="tab" data-tab="followups">ติดตาม</button><button class="tab" data-tab="ocr">OCR</button><button class="tab" data-tab="docs">เอกสาร</button><button class="tab" data-tab="backup">สำรอง</button></nav>
+<section id="tab-dashboard" class="panel active"><div class="card"><h3>รายการที่ควรทวงก่อน</h3><div id="priorityList" class="list"></div></div><div class="card"><h3>ต้องติดตามวันนี้</h3><div id="todayFollowupList" class="list"></div></div></section>
+
+<section id="tab-debtors" class="panel">
+<div class="card"><h3>เพิ่มลูกหนี้</h3>
+<label>ชื่อ-นามสกุลลูกหนี้</label><input id="debtorName" class="input" placeholder="เช่น นายสมชาย ใจดี">
+<label>เบอร์โทรศัพท์</label><input id="debtorPhone" class="input" inputmode="tel" placeholder="เช่น 0812345678">
+<label>เลขบัตรประชาชน</label><input id="debtorIdCard" class="input" inputmode="numeric" placeholder="กรอก 13 หลัก ระบบจะแสดงแบบซ่อนบางส่วน">
+<label>ที่อยู่ / หมายเหตุลูกหนี้</label><textarea id="debtorAddress" class="input" placeholder="เช่น ที่อยู่ตามบัตร หรือรายละเอียดเพิ่มเติม"></textarea>
+<button id="addDebtorBtn" class="primary">เพิ่มลูกหนี้</button></div>
+<div class="card"><h3>รายชื่อลูกหนี้</h3><div id="debtorList" class="list"></div></div>
+<div id="debtFormCard" class="card hidden"><h3>เพิ่มก้อนหนี้ให้ <span id="selectedDebtorName"></span></h3><input id="selectedDebtorId" type="hidden">
+<label>ชื่อก้อนหนี้</label><input id="debtTitle" class="input" placeholder="เช่น เงินยืมรอบแรก / ค่าสินค้า / งวดสินค้า">
+<label>ยอดหนี้ตั้งต้น</label><input id="debtPrincipal" class="input money-input" inputmode="decimal" placeholder="เช่น 50000">
+<label>ยอดขั้นต่ำที่ต้องทวง</label><input id="debtMinCollect" class="input money-input" inputmode="decimal" placeholder="เช่น 5000 ถ้าไม่กรอกจะเท่ากับยอดหนี้">
+<label>วันครบกำหนดชำระ</label><input id="debtDueDate" class="input" type="date">
+<button id="addDebtBtn" class="primary">เพิ่มก้อนหนี้</button></div>
+<div id="editDebtorCard" class="card hidden"><h3>แก้ไขข้อมูลลูกหนี้</h3><input id="editDebtorId" type="hidden">
+<label>ชื่อ-นามสกุลลูกหนี้</label><input id="editDebtorName" class="input" placeholder="เช่น นายสมชาย ใจดี">
+<label>เบอร์โทรศัพท์</label><input id="editDebtorPhone" class="input" inputmode="tel" placeholder="เช่น 0812345678">
+<label>เลขบัตรประชาชน</label><input id="editDebtorIdCard" class="input" inputmode="numeric" placeholder="กรอก 13 หลัก ระบบจะแสดงแบบซ่อนบางส่วน">
+<label>ที่อยู่ / หมายเหตุลูกหนี้</label><textarea id="editDebtorAddress" class="input" placeholder="ที่อยู่หรือรายละเอียดเพิ่มเติม"></textarea>
+<button id="saveEditDebtorBtn" class="primary">บันทึกการแก้ไข</button>
+<button id="cancelEditDebtorBtn" class="secondary">ยกเลิก</button></div></section>
+
+<section id="tab-payments" class="panel">
+<div class="card"><h3>บันทึกการชำระ</h3>
+<label>เลือกก้อนหนี้ที่ลูกหนี้ชำระ</label><select id="paymentDebtId" class="input"></select>
+<label>วันที่รับชำระ</label><input id="paymentDate" class="input" type="date">
+<label>จำนวนเงินที่ชำระ</label><input id="paymentAmount" class="input money-input" inputmode="decimal" placeholder="เช่น 5000">
+<label>หมายเหตุการชำระ</label><input id="paymentNote" class="input" placeholder="เช่น โอนผ่าน SCB / เงินสด / จ่ายบางส่วน">
+<button id="addPaymentBtn" class="primary">บันทึกการชำระ</button></div>
+<div class="card"><h3>ประวัติการชำระ</h3><div id="paymentList" class="list"></div></div></section>
+
+<section id="tab-followups" class="panel">
+<div class="card"><h3>บันทึกการติดตาม</h3>
+<label>เลือกลูกหนี้ที่ติดตาม</label><select id="followupDebtorId" class="input"></select>
+<label>เลือกก้อนหนี้ที่เกี่ยวข้อง</label><select id="followupDebtId" class="input"></select>
+<label>วันที่ติดต่อ / ติดตาม</label><input id="followupDate" class="input" type="date">
+<label>ช่องทางการติดตาม</label><select id="followupChannel" class="input"><option>โทรศัพท์</option><option>LINE</option><option>SMS</option><option>พบตัว</option><option>อื่น ๆ</option></select>
+<label>ผลการติดตาม</label><textarea id="followupResult" class="input" placeholder="เช่น โทรแล้วไม่รับสาย / รับสายและนัดจ่าย / ส่ง LINE แล้ว / ขอเลื่อนชำระ"></textarea>
+<label>วันที่นัดติดตามครั้งถัดไป</label><input id="nextFollowupDate" class="input" type="date">
+<button id="addFollowupBtn" class="primary">บันทึกการติดตาม</button></div>
+<div class="card"><h3>ประวัติการติดตาม</h3><div id="followupList" class="list"></div></div></section>
+
+
+<section id="tab-ocr" class="panel">
+<div class="card"><h3>สแกนบัตรประชาชน OCR</h3>
+<p class="note">ถ่ายรูปบัตรประชาชนด้วยกล้องมือถือ แล้วระบบจะอ่าน ชื่อ เลขบัตร และที่อยู่ให้เบื้องต้น กรุณาตรวจสอบก่อนนำไปบันทึกจริง</p>
+<label>ถ่ายรูป / เลือกรูปบัตรประชาชน</label>
+<label id="ocrDropzone" class="dropzone"><i class="bi bi-camera"></i><strong>แตะเพื่อเปิดกล้องหรือเลือกรูป</strong><span id="ocrFileName">แนะนำถ่ายให้ชัด เต็มบัตร แสงเพียงพอ</span><input id="ocrFile" type="file" accept="image/*" capture="environment"></label>
+<img id="ocrPreview" class="ocr-preview hidden" alt="OCR Preview">
+<button id="runOcrBtn" class="primary">อ่านข้อมูลจากบัตรประชาชน</button>
+</div>
+<div class="card"><h3>ผลลัพธ์ OCR</h3>
+<label>ชื่อ-นามสกุลที่อ่านได้</label><input id="ocrName" class="input" placeholder="รอผล OCR">
+<label>เลขบัตรประชาชนที่อ่านได้</label><input id="ocrIdCard" class="input" placeholder="รอผล OCR">
+<label>ที่อยู่ที่อ่านได้</label><textarea id="ocrAddress" class="input" placeholder="รอผล OCR"></textarea>
+<button id="useOcrToDebtorBtn" class="primary">นำข้อมูลไปกรอกฟอร์มลูกหนี้</button>
+</div>
+</section>
+
+<section id="tab-docs" class="panel">
+<div class="card"><h3>เอกสารแนบ</h3><p class="note">Demo เก็บชื่อไฟล์ ส่วน Firebase mode เป็น metadata พร้อมต่อ Storage ภายหลัง</p>
+<label>เลือกลูกหนี้เจ้าของเอกสาร</label><select id="documentDebtorId" class="input"></select>
+<label>ประเภทเอกสาร</label><select id="documentType" class="input"><option>บัตรประชาชน</option><option>สัญญา</option><option>สลิป</option><option>อื่น ๆ</option></select>
+<label>เลือกไฟล์เอกสาร</label><label id="dropzone" class="dropzone"><i class="bi bi-cloud-arrow-up"></i><strong>แตะเพื่อเลือกไฟล์ หรือ ลากไฟล์มาวาง</strong><span id="dropzoneText">รองรับรูปภาพ / PDF / เอกสารทั่วไป</span><input id="documentFile" type="file"></label>
+<button id="addDocumentBtn" class="primary">บันทึกเอกสาร</button></div>
+<div class="card"><h3>รายการเอกสาร</h3><div id="documentList" class="list"></div></div></section>
+
+<section id="tab-backup" class="panel"><div class="card"><h3>สำรองข้อมูล</h3>
+<p class="note">Export/Import สำหรับสำรองข้อมูล Demo หรือย้ายข้อมูลเบื้องต้น</p>
+<button id="exportJsonBtn" class="secondary">Export JSON</button><button id="exportTxtBtn" class="secondary">Export TXT</button><label class="file">Import JSON/TXT<input id="importFile" type="file" accept=".json,.txt"></label><button id="logoutBtn" class="danger">ออกจากระบบ</button></div></section>
+</section></main><div id="toast" class="toast"></div>
+<script type="module" src="assets/js/firebase-config.js"></script><script type="module" src="assets/js/app.js"></script></body></html>
