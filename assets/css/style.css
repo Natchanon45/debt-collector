@@ -19,3 +19,16 @@ body{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
 .settings-menu-btn{border:1px solid var(--border);border-radius:20px;background:var(--card2);color:var(--text);min-height:86px;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;font-weight:900}
 .settings-menu-btn i{font-size:26px;color:var(--green)}
 @media (min-width:720px){.settings-grid{grid-template-columns:repeat(4,1fr)}}
+
+.user-menu-wrap{position:relative}
+.user-icon{box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.user-dropdown{position:absolute;right:0;top:50px;width:240px;list-style:none;margin:0;padding:8px;background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:0 16px 38px rgba(0,0,0,.22);color:var(--text);z-index:120}
+.user-dropdown li{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;font-weight:900;cursor:pointer}
+.user-dropdown li i{color:var(--green);font-size:18px}
+.user-dropdown .user-name{cursor:default;color:var(--muted);border-bottom:1px solid var(--border);border-radius:14px 14px 8px 8px;word-break:break-all}
+.user-dropdown .user-name span{display:block;overflow:hidden;text-overflow:ellipsis}
+.user-dropdown li:not(.user-name):hover{background:var(--card2)}
+#dropdownLogoutBtn{color:var(--danger)}
+#dropdownLogoutBtn i{color:var(--danger)}
+.item-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.mini-danger{background:rgba(239,68,68,.1)!important;color:var(--danger)!important}

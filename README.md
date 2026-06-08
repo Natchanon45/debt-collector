@@ -13,3 +13,10 @@ UI Update:
 - Extra menus moved to Settings
 - Login user shown in header/settings
 - Logout button visible in header and settings
+
+
+V2 fixes:
+- OCR district/province improved; Bangkok maps to province
+- Top user icon dropdown with login name and logout
+- Removed extra logout buttons
+- Delete debtor only when not referenced by debts/followups/documents
