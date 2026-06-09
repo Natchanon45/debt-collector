@@ -35,26 +35,26 @@
         <div><span>ติดตามวันนี้</span><b id="followupTodayCount">0</b></div>
       </div>
     </section>
-    <div class="card"><h3>Aging Report</h3><div class="aging-grid"><div><span>0-30 วัน</span><b id="aging030">0.00</b></div><div><span>31-60 วัน</span><b id="aging3160">0.00</b></div><div><span>61-90 วัน</span><b id="aging6190">0.00</b></div><div><span>90+ วัน</span><b id="aging90">0.00</b></div></div></div>
-    <div class="card"><h3>รายการที่ควรทวงก่อน</h3><div id="priorityList" class="list"></div></div>
-    <div class="card"><h3>ต้องติดตามวันนี้</h3><div id="todayFollowupList" class="list"></div></div>
+    <div class="card"><h3><i class="bi bi-bar-chart"></i> Aging Report</h3><div class="aging-grid"><div><span>0-30 วัน</span><b id="aging030">0.00</b></div><div><span>31-60 วัน</span><b id="aging3160">0.00</b></div><div><span>61-90 วัน</span><b id="aging6190">0.00</b></div><div><span>90+ วัน</span><b id="aging90">0.00</b></div></div></div>
+    <div class="card"><h3><i class="bi bi-exclamation-circle"></i> รายการที่ควรทวงก่อน</h3><div id="priorityList" class="list"></div></div>
+    <div class="card"><h3><i class="bi bi-calendar-check"></i> ต้องติดตามวันนี้</h3><div id="todayFollowupList" class="list"></div></div>
   </section>
 
   <section id="tab-customers" class="panel">
     <div class="card section-home" id="customerHome">
-      <div class="card-head-row"><h3>ลูกหนี้</h3><button id="showAddCustomerBtn" class="round-action"><i class="bi bi-person-plus"></i> เพิ่มลูกหนี้</button></div>
+      <div class="card-head-row"><h3><i class="bi bi-people"></i> ลูกหนี้ทั้งหมด</h3><button id="showAddCustomerBtn" class="round-action"><i class="bi bi-person-plus"></i> เพิ่มลูกหนี้</button></div>
       <div id="debtorList" class="list"></div>
     </div>
 
     <div id="customerFormArea" class="hidden">
       <div class="card">
-        <div class="card-head-row"><h3>เพิ่มลูกหนี้ใหม่</h3><button id="closeCustomerFormBtn" class="mini mini-danger">ปิด</button></div>
+        <div class="card-head-row"><h3><i class="bi bi-person-plus"></i> เพิ่มลูกหนี้ใหม่</h3><button id="closeCustomerFormBtn" class="mini mini-danger">ปิด</button></div>
         <div class="form-switch-row"><button id="manualCustomerBtn" class="segment active">กรอกเอง</button><button id="ocrCustomerBtn" class="segment">OCR บัตร</button></div>
       </div>
 
       <div id="ocrCustomerBox" class="hidden">
         <div class="card">
-          <h3>สแกนบัตรประชาชน OCR</h3>
+          <h3><i class="bi bi-camera"></i> สแกนบัตรประชาชน OCR</h3>
           <p class="note">ถ่ายรูปบัตรให้ชัด เต็มบัตร แสงเพียงพอ แล้วตรวจสอบผลก่อนบันทึก</p>
           <label>ถ่ายรูป / เลือกรูปบัตรประชาชน</label>
           <label id="ocrDropzone" class="dropzone"><i class="bi bi-camera"></i><strong>แตะเพื่อเปิดกล้องหรือเลือกรูป</strong><span id="ocrFileName">รองรับรูปภาพจากกล้องมือถือ</span><input id="ocrFile" type="file" accept="image/*" capture="environment"></label>
@@ -62,11 +62,11 @@
           <button id="runOcrBtn" class="primary">อ่านข้อมูลจากบัตรประชาชน</button>
         </div>
         <div class="card">
-          <h3>ผลลัพธ์ OCR</h3>
+          <h3><i class="bi bi-card-text"></i> ผลลัพธ์ OCR</h3>
           <label>คำนำหน้า</label><input id="ocrPrefix" class="input">
           <label>ชื่อ</label><input id="ocrFirstName" class="input">
           <label>นามสกุล</label><input id="ocrLastName" class="input">
-          <label>เลขบัตรประชาชน</label><input id="ocrIdCard" class="input"><small id="ocrIdMasked" class="masked-text"></small>
+          <label>เลขบัตรประชาชน</label><input id="ocrIdCard" class="input" type="tel" inputmode="numeric" autocomplete="off" maxlength="13"><small id="ocrIdMasked" class="masked-text"></small>
           <label>ที่อยู่</label><textarea id="ocrAddress" class="input"></textarea>
           <label>เขต/อำเภอ</label><input id="ocrDistrict" class="input">
           <label>จังหวัด</label><input id="ocrProvince" class="input">
@@ -76,11 +76,11 @@
       </div>
 
       <div id="manualCustomerBox" class="card">
-        <h3>ข้อมูลลูกหนี้</h3>
+        <h3><i class="bi bi-person"></i> ข้อมูลลูกหนี้</h3>
         <label>ชื่อ-นามสกุล</label><input id="debtorName" class="input">
-        <label>เบอร์โทร</label><input id="debtorPhone" class="input" type="number" inputmode="decimal" autocomplete="off">
+        <label>เบอร์โทร</label><input id="debtorPhone" class="input" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10">
         <label>LINE ID</label><input id="debtorLineId" class="input">
-        <label>เลขบัตรประชาชน</label><input id="debtorIdCard" class="input" type="number" inputmode="decimal" autocomplete="off">
+        <label>เลขบัตรประชาชน</label><input id="debtorIdCard" class="input" type="tel" inputmode="numeric" autocomplete="off" maxlength="13">
         <label>ที่อยู่</label><textarea id="debtorAddress" class="input"></textarea>
         <label>เขต/อำเภอ</label><input id="debtorDistrict" class="input">
         <label>จังหวัด</label><input id="debtorProvince" class="input">
@@ -89,11 +89,11 @@
     </div>
 
     <div id="editDebtorCard" class="card hidden">
-      <h3>แก้ไขข้อมูลลูกหนี้</h3><input id="editDebtorId" type="hidden">
+      <h3><i class="bi bi-pencil-square"></i> แก้ไขข้อมูลลูกหนี้</h3><input id="editDebtorId" type="hidden">
       <label>ชื่อ-นามสกุล</label><input id="editDebtorName" class="input">
-      <label>เบอร์โทร</label><input id="editDebtorPhone" class="input" type="number" inputmode="decimal" autocomplete="off">
+      <label>เบอร์โทร</label><input id="editDebtorPhone" class="input" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10">
       <label>LINE ID</label><input id="editDebtorLineId" class="input">
-      <label>เลขบัตรประชาชน</label><input id="editDebtorIdCard" class="input" type="number" inputmode="decimal" autocomplete="off">
+      <label>เลขบัตรประชาชน</label><input id="editDebtorIdCard" class="input" type="tel" inputmode="numeric" autocomplete="off" maxlength="13">
       <label>ที่อยู่</label><textarea id="editDebtorAddress" class="input"></textarea>
       <label>เขต/อำเภอ</label><input id="editDebtorDistrict" class="input">
       <label>จังหวัด</label><input id="editDebtorProvince" class="input">
@@ -102,7 +102,7 @@
     </div>
 
     <div class="card">
-      <h3>เอกสารของลูกหนี้</h3><p class="note">ไฟล์จะถูกเก็บจริงใน Firebase Storage และแสดง Preview/Download ได้</p>
+      <h3><i class="bi bi-folder"></i> เอกสารของลูกหนี้</h3><p class="note">ไฟล์จะถูกเก็บจริงใน Firebase Storage และแสดง Preview/Download ได้</p>
       <label>ลูกหนี้</label><select id="documentDebtorId" class="input"></select>
       <label>ประเภทเอกสาร</label><select id="documentType" class="input"><option>บัตรประชาชน</option><option>สัญญา</option><option>สลิป</option><option>อื่น ๆ</option></select>
       <label>เลือกไฟล์</label><label id="dropzone" class="dropzone"><i class="bi bi-cloud-arrow-up"></i><strong>ลากไฟล์มาวาง หรือ แตะเพื่อเลือกหลายไฟล์</strong><span id="dropzoneText">รองรับรูปภาพ / PDF / เอกสารทั่วไป</span><input id="documentFile" type="file" multiple></label>
@@ -113,14 +113,14 @@
 
   <section id="tab-transactions" class="panel">
     <div class="card">
-      <h3>ธุรกรรม</h3>
+      <h3><i class="bi bi-cash-coin"></i> ธุรกรรม</h3>
       <div class="form-switch-row"><button class="segment active" data-tx="debt">เพิ่มหนี้</button><button class="segment" data-tx="payment">ชำระ</button><button class="segment" data-tx="followup">ติดตาม</button></div>
     </div>
 
     <div id="txDebtBox" class="card tx-box active">
-      <h3>เพิ่มก้อนหนี้</h3>
+      <h3><i class="bi bi-plus-circle"></i> เพิ่มหนี้</h3>
       <label>ลูกหนี้</label><select id="transactionDebtorId" class="input"></select>
-      <label>ชื่อก้อนหนี้</label><input id="debtTitle" class="input">
+      <label>ชื่อหนี้</label><input id="debtTitle" class="input">
       <label>ยอดหนี้ตั้งต้น</label><input id="debtPrincipal" class="input money-input" inputmode="decimal" autocomplete="off">
       <label>ยอดขั้นต่ำที่ต้องทวง</label><input id="debtMinCollect" class="input money-input" inputmode="decimal" autocomplete="off">
       <label>วันครบกำหนด</label><input id="debtDueDate" class="input" type="date">
@@ -128,17 +128,17 @@
     </div>
 
     <div id="txPaymentBox" class="card tx-box">
-      <h3>บันทึกการชำระ</h3>
-      <label>เลือกก้อนหนี้</label><select id="paymentDebtId" class="input"></select>
+      <h3><i class="bi bi-receipt"></i> บันทึกการชำระ</h3>
+      <label>เลือกหนี้</label><select id="paymentDebtId" class="input"></select>
       <label>วันที่ชำระ</label><input id="paymentDate" class="input" type="date">
       <label>จำนวนเงิน</label><input id="paymentAmount" class="input money-input" inputmode="decimal" autocomplete="off">
-      <label>หมายเหตุ</label><textarea id="paymentNote" class="input"></textarea>
+      <label>หมายเหตุ</label><input id="paymentNote" class="input">
       <button id="addPaymentBtn" class="primary">บันทึกการชำระ</button>
       <hr class="soft-sep"><div id="paymentList" class="list"></div>
     </div>
 
     <div id="txFollowupBox" class="card tx-box">
-      <h3>Follow-up CRM</h3>
+      <h3><i class="bi bi-telephone"></i> การติดตาม CRM</h3>
       <label>ลูกหนี้</label><select id="followupDebtorId" class="input"></select>
       <label>ก้อนหนี้</label><select id="followupDebtId" class="input"></select>
       <label>วันที่ติดต่อ</label><input id="followupDate" class="input" type="date">
@@ -152,16 +152,16 @@
   </section>
 
   <section id="tab-settings" class="panel">
-    <div class="profile-card card"><div class="profile-avatar"><i class="bi bi-person"></i></div><div><h3>บัญชีผู้ใช้</h3><p id="settingsUserText">ยังไม่ได้ตั้งชื่อผู้ใช้งาน</p></div></div>
-    <div id="userProfileCard" class="card"><h3>ตั้งค่าผู้ใช้งาน</h3><p class="note">ชื่อหรือนามแฝงจะใช้แสดงแทนอีเมลในระบบ</p><label>ชื่อหรือนามแฝง</label><input id="profileAlias" class="input"><label>เบอร์โทร (ไม่บังคับ)</label><input id="profilePhone" class="input"><label>LINE ID (ไม่บังคับ)</label><input id="profileLineId" class="input"><label>Telegram ID (ไม่บังคับ)</label><input id="profileTelegramId" class="input"><button id="saveProfileBtn" class="primary">บันทึกข้อมูลผู้ใช้งาน</button></div>
-    <div class="card"><h3>Email + Telegram Reminder</h3><p class="note">ตั้งค่า Token ใน Cloud Functions แล้วใช้ Scheduled Function ส่งแจ้งเตือนทุกเช้า</p><label>Email ผู้รับแจ้งเตือน</label><input id="notifyEmail" class="input"><label>Telegram Chat ID</label><input id="telegramChatId" class="input"><button id="saveReminderSettingsBtn" class="primary">บันทึกการตั้งค่าแจ้งเตือน</button><button id="testTelegramBtn" class="secondary">ทดสอบ Telegram</button></div>
-    <div class="card"><h3>PWA Production</h3><button id="enablePushBtn" class="primary">เปิด Push Notification</button><button id="installBtn" class="secondary hidden">ติดตั้งแอพ</button><button id="clearCacheBtn" class="danger">ล้าง Offline Cache</button><p class="note">Offline Cache, Auto Update และ Push Notification ถูกเตรียมไว้แล้วสำหรับใช้งานผ่าน Browser</p></div>
-    <div class="card"><h3>สำรองข้อมูล</h3><button id="exportJsonBtn" class="secondary">Export JSON</button><button id="exportTxtBtn" class="secondary">Export TXT</button><label class="file">Import JSON/TXT<input id="importFile" type="file" accept=".json,.txt"></label><button id="logoutBtn" class="danger hidden"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</button></div>
+    <div class="profile-card card"><div class="profile-avatar"><i class="bi bi-person"></i></div><div><h3><i class="bi bi-person-circle"></i> บัญชีผู้ใช้</h3><p id="settingsUserText">ยังไม่ได้ตั้งชื่อผู้ใช้งาน</p></div></div>
+    <div id="userProfileCard" class="card"><h3><i class="bi bi-sliders"></i> ตั้งค่าผู้ใช้งาน</h3><p class="note">ชื่อหรือนามแฝงจะใช้แสดงแทนอีเมลในระบบ</p><label>ชื่อหรือนามแฝง</label><input id="profileAlias" class="input"><label>เบอร์โทร (ไม่บังคับ)</label><input id="profilePhone" class="input" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10"><label>LINE ID (ไม่บังคับ)</label><input id="profileLineId" class="input"><label>Telegram ID (ไม่บังคับ)</label><input id="profileTelegramId" class="input"><button id="saveProfileBtn" class="primary">บันทึกข้อมูลผู้ใช้งาน</button></div>
+    <div class="card"><h3><i class="bi bi-bell"></i> Email + Telegram Reminder</h3><p class="note">ตั้งค่า Token ใน Cloud Functions แล้วใช้ Scheduled Function ส่งแจ้งเตือนทุกเช้า</p><label>Email ผู้รับแจ้งเตือน</label><input id="notifyEmail" class="input"><label>Telegram Chat ID</label><input id="telegramChatId" class="input"><button id="saveReminderSettingsBtn" class="primary">บันทึกการตั้งค่าแจ้งเตือน</button><button id="testTelegramBtn" class="secondary">ทดสอบ Telegram</button></div>
+    <div class="card"><h3><i class="bi bi-phone"></i> PWA Production</h3><button id="enablePushBtn" class="primary">เปิด Push Notification</button><button id="installBtn" class="secondary hidden">ติดตั้งแอพ</button><button id="clearCacheBtn" class="danger">ล้าง Offline Cache</button><p class="note">Offline Cache, Auto Update และ Push Notification ถูกเตรียมไว้แล้วสำหรับใช้งานผ่าน Browser</p></div>
+    <div class="card"><h3><i class="bi bi-cloud-arrow-down"></i> สำรองข้อมูล</h3><button id="exportJsonBtn" class="secondary">Export JSON</button><button id="exportTxtBtn" class="secondary">Export TXT</button><label class="file">Import JSON/TXT<input id="importFile" type="file" accept=".json,.txt"></label><button id="logoutBtn" class="danger hidden"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</button></div>
   </section>
 
   <nav class="bottom-nav">
     <button class="bottom-tab active" data-tab="dashboard"><i class="bi bi-house"></i><span>หน้าหลัก</span></button>
-    <button class="bottom-tab" data-tab="customers"><i class="bi bi-people"></i><span>ลูกหนี้</span></button>
+    <button class="bottom-tab" data-tab="customers"><i class="bi bi-people"></i><span>ลูกหนี้ทั้งหมด</span></button>
     <button class="bottom-tab" data-tab="transactions"><i class="bi bi-cash-coin"></i><span>ธุรกรรม</span></button>
     <button class="bottom-tab" data-tab="settings"><i class="bi bi-gear"></i><span>ตั้งค่า</span></button>
   </nav>

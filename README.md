@@ -60,3 +60,6 @@ firebase deploy --only storage --project project-987b9bba-eddc-4459-bdb
 
 
 Decimal hotfix: money fields accept only digits and one decimal point, limited to 2 decimals, with comma formatting on blur.
+
+
+UI hotfix: non-fill icons, numeric phone/ID inputs, larger buttons, mobile select padding, input overflow fix, wording ลูกหนี้ทั้งหมด, heading icons.
