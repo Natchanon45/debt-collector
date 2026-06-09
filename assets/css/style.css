@@ -303,6 +303,8 @@ textarea.input {
 
 .mini {
     border: 0;
+    width: auto;
+    height: auto;
     border-radius: 50%;
     padding: 7px 10px;
     background: rgba(22, 163, 74, .12);
@@ -980,5 +982,105 @@ h3 .bi {
 
     .card {
         padding: 15px
+    }
+}
+
+
+/* =========================================================
+   Mobile Form Hotfix: select height + date/month overflow
+   เพิ่มไว้ท้าย style.css
+   ========================================================= */
+
+/* แก้ select เตี้ย/ฟิตตัวหนังสือเกินไป */
+select.input {
+    min-height: 60px !important;
+    height: 60px !important;
+    line-height: 1.45 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    padding-left: 14px !important;
+    padding-right: 46px !important;
+    display: block !important;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+/* ให้ option อ่านง่ายขึ้นบน browser ที่รองรับ */
+select.input option {
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* แก้ input date/month/time ล้นฟอร์ม โดยเฉพาะ iOS */
+input.input[type="date"],
+input.input[type="month"],
+input.input[type="time"],
+input.input[type="datetime-local"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    line-height: 56px !important;
+    padding: 0 12px !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    overflow: hidden !important;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* แก้ส่วน text ภายใน date/month ของ Safari/iOS */
+input.input[type="date"]::-webkit-date-and-time-value,
+input.input[type="month"]::-webkit-date-and-time-value,
+input.input[type="time"]::-webkit-date-and-time-value,
+input.input[type="datetime-local"]::-webkit-date-and-time-value {
+    text-align: left;
+    min-height: 56px;
+    line-height: 56px;
+}
+
+/* แก้ icon calendar ไม่ให้ดันช่องล้น */
+input.input[type="date"]::-webkit-calendar-picker-indicator,
+input.input[type="month"]::-webkit-calendar-picker-indicator,
+input.input[type="time"]::-webkit-calendar-picker-indicator,
+input.input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    margin: 0;
+    padding: 0;
+    max-width: 24px;
+}
+
+/* กัน input/select ทุกชนิดล้น card */
+.card input,
+.card select,
+.card textarea {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* มือถือจอเล็ก เพิ่มความสูง select/date อีกนิด */
+@media (max-width: 420px) {
+    select.input {
+        height: 62px !important;
+        min-height: 62px !important;
+        font-size: 16px !important;
+    }
+
+    input.input[type="date"],
+    input.input[type="month"],
+    input.input[type="time"],
+    input.input[type="datetime-local"] {
+        height: 58px !important;
+        min-height: 58px !important;
+        line-height: 58px !important;
+        font-size: 16px !important;
+    }
+
+    input.input[type="date"]::-webkit-date-and-time-value,
+    input.input[type="month"]::-webkit-date-and-time-value,
+    input.input[type="time"]::-webkit-date-and-time-value,
+    input.input[type="datetime-local"]::-webkit-date-and-time-value {
+        min-height: 58px;
+        line-height: 58px;
     }
 }
