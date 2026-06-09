@@ -889,3 +889,8 @@ body {
     font-weight: 900;
     font-size: 13px
 }
+
+.money-input {
+    font-variant-numeric: tabular-nums;
+    text-align: right
+}

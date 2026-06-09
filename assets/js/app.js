@@ -1,10 +1,9 @@
 import { firebaseConfig, OCR_FUNCTION_URL, TELEGRAM_TEST_FUNCTION_URL, VAPID_PUBLIC_KEY } from './firebase-config.js';
 const $ = id => document.getElementById(id);
 let firebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId), auth, db, storage, currentUser = null, demoMode = !firebaseReady, deferredPrompt = null, newWorker = null, latestData = null, pendingOcrDebtor = null;
-const LS = 'debt_collector_phase3_v2',
-    blank = { debtors: [], debts: [], payments: [], followups: [], documents: [], settings: {} };
+const LS = 'debt_collector_phase3_v3', blank = { debtors: [], debts: [], payments: [], followups: [], documents: [], settings: {} };
 const uid = () => String(Date.now()) + Math.random().toString(16).slice(2), today = () => new Date().toISOString().slice(0, 10);
-const num = v => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0 }, money = n => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const num = v => { const n = Number(String(v ?? '').replace(/,/g, '').replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0 }, money = n => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const maskId = id => { const s = String(id || '').replace(/\D/g, ''); return s.length >= 13 ? `${s.slice(0, 1)}-${s.slice(1, 5)}-xxxxx-${s.slice(10, 12)}-${s.slice(12, 13)}` : s.replace(/.(?=.{4})/g, 'x') };
 const normalizeIdCard = id => String(id || '').replace(/\D/g, '');
 function isDuplicateIdCard(id, ignoreId = '') { const v = normalizeIdCard(id); if (!v) return false; return (latestData?.debtors || []).some(d => d.id !== ignoreId && normalizeIdCard(d.idCard) === v) };
@@ -35,6 +34,7 @@ function canDeleteDebtor(id, d = latestData) {
     if (!d) return false;
     return !d.debts.some(x => x.debtorId === id) && !d.followups.some(x => x.debtorId === id) && !d.documents.some(x => x.debtorId === id);
 }
+
 function safeFileName(name) { return String(name || 'file').replace(/[^\w.\-\u0E00-\u0E7F]+/g, '_').slice(0, 120) }
 function fileIcon(mime, name = '') { if (String(mime).startsWith('image/')) return 'bi-file-earmark-image'; if (String(mime).includes('pdf') || String(name).toLowerCase().endsWith('.pdf')) return 'bi-file-earmark-pdf'; return 'bi-file-earmark' }
 async function uploadDocumentFiles(debtorId, type, files) {
@@ -149,7 +149,38 @@ $('runOcrBtn').onclick = async () => { const file = $('ocrFile').files[0]; if (!
 $('confirmCreateDebtorBtn').onclick = async () => { if (!pendingOcrDebtor) pendingOcrDebtor = ocrDebtorObject(); if (!pendingOcrDebtor.name) return toast('ไม่มีชื่อลูกหนี้'); if (isDuplicateIdCard(pendingOcrDebtor.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', pendingOcrDebtor); $('confirmModal').classList.add('hidden'); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() };
 $('cancelCreateDebtorBtn').onclick = () => $('confirmModal').classList.add('hidden'); $('autoCreateDebtorBtn').onclick = async () => { const row = ocrDebtorObject(); if (!row.name) return toast('ไม่มีข้อมูล OCR'); if (isDuplicateIdCard(row.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', row); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() }; $('useOcrToDebtorBtn').onclick = () => { const row = ocrDebtorObject(); $('debtorName').value = row.name; $('debtorIdCard').value = row.idCard; $('debtorAddress').value = row.address; $('debtorDistrict').value = row.district; $('debtorProvince').value = row.province; showCustomerForm('manual'); switchTab('customers'); toast('นำข้อมูล OCR ไปกรอกฟอร์มแล้ว') };
 function bindDropzones() { [['dropzone', 'documentFile', 'dropzoneText'], ['ocrDropzone', 'ocrFile', 'ocrFileName']].forEach(([dzId, fileId, textId]) => { const dz = $(dzId), file = $(fileId), text = $(textId); if (!dz || !file) return; const show = () => { if (file.files[0]) { if (text) text.textContent = file.files[0].name; if (fileId === 'ocrFile') { $('ocrPreview').src = URL.createObjectURL(file.files[0]); $('ocrPreview').classList.remove('hidden') } } }; file.addEventListener('change', show);['dragenter', 'dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('dragover') }));['dragleave', 'drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('dragover') })); dz.addEventListener('drop', e => { if (e.dataTransfer.files.length) { file.files = e.dataTransfer.files; show() } }) }) }
-function bindMoneyInputs() { document.querySelectorAll('.money-input').forEach(input => { input.addEventListener('focus', () => { input.value = String(num(input.value) || ''); input.select() }); input.addEventListener('blur', () => { const n = num(input.value); input.value = n ? money(n) : '' }) }) }
+function sanitizeDecimalInput(value) {
+    let v = String(value || '').replace(/,/g, '').replace(/[^\d.]/g, '');
+    const firstDot = v.indexOf('.');
+    if (firstDot !== -1) {
+        v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, '');
+    }
+    const parts = v.split('.');
+    if (parts[1] !== undefined) parts[1] = parts[1].slice(0, 2);
+    return parts.join('.');
+}
+function bindMoneyInputs() {
+    document.querySelectorAll('.money-input').forEach(input => {
+        input.setAttribute('inputmode', 'decimal');
+        input.setAttribute('autocomplete', 'off');
+        input.addEventListener('input', () => {
+            const before = input.value;
+            const pos = input.selectionStart;
+            input.value = sanitizeDecimalInput(input.value);
+            const diff = before.length - input.value.length;
+            const next = Math.max(0, (pos || input.value.length) - diff);
+            try { input.setSelectionRange(next, next) } catch (e) { }
+        });
+        input.addEventListener('focus', () => {
+            input.value = String(input.value || '').replace(/,/g, '');
+            input.select();
+        });
+        input.addEventListener('blur', () => {
+            const n = num(input.value);
+            input.value = input.value === '' ? '' : money(n);
+        });
+    });
+}
 bindDropzones(); bindMoneyInputs();
 function showCustomerForm(mode = 'manual') {
     $('customerFormArea').classList.remove('hidden');
