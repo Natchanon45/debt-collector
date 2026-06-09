@@ -1093,10 +1093,10 @@ input.input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 }
 
 .icon-action{
-    width:24px;
-    height:24px;
-    min-width:24px;
-    min-height:24px;
+    width:36px;
+    height:36px;
+    min-width:36px;
+    min-height:36px;
     padding:0 !important;
     border-radius:50%;
     display:grid;
