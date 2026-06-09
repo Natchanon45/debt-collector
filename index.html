@@ -2,7 +2,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#16a34a"><title>Debt Collector</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="assets/icons/icon-192.png"><link rel="apple-touch-icon" href="assets/icons/icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;800;900&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"><link rel="stylesheet" href="assets/css/style.css"></head><body>
 <header class="app-header"><div><h1>Debt Collector</h1><p id="loginUserText">ระบบติดตามทวงหนี้</p></div><div class="header-actions">
       <button id="themeBtn" class="icon-btn" title="เปลี่ยนโหมด"><i id="themeIcon" class="bi bi-circle-half"></i></button>
@@ -151,9 +151,46 @@
     </div>
   </section>
 
+
+  <section id="tab-contracts" class="panel">
+    <div class="card">
+      <div class="card-head-row"><h3><i class="bi bi-file-earmark-text"></i> สัญญากู้ยืมเงิน</h3><button id="newContractBtn" class="round-action"><i class="bi bi-plus-circle"></i> สร้างสัญญา</button></div>
+      <p class="note">สร้าง PDF สัญญากู้ยืม พร้อมลายเซ็นผู้ให้กู้ ผู้กู้ และพยาน แล้วบันทึกเป็นเอกสารของลูกหนี้อัตโนมัติ</p>
+      <div id="contractList" class="list"></div>
+    </div>
+
+    <div id="contractFormCard" class="card hidden">
+      <div class="card-head-row"><h3><i class="bi bi-pen"></i> แบบฟอร์มสัญญากู้ยืม</h3><button id="closeContractFormBtn" class="mini mini-danger">ปิด</button></div>
+      <label>ลูกหนี้ / ผู้กู้</label><select id="contractDebtorId" class="input"></select>
+      <label>ชื่อผู้ให้กู้</label><input id="contractLenderName" class="input" placeholder="เช่น นายณัฐชนน ศรีเปล่ง">
+      <label>เลขบัตรประชาชนผู้ให้กู้</label><input id="contractLenderIdCard" class="input" type="tel" inputmode="numeric" maxlength="13">
+      <label>ที่อยู่ผู้ให้กู้</label><textarea id="contractLenderAddress" class="input"></textarea>
+      <label>จำนวนเงินกู้</label><input id="contractAmount" class="input money-input" inputmode="decimal" autocomplete="off">
+      <label>วันที่ทำสัญญา</label><input id="contractDate" class="input" type="date">
+      <label>วันครบกำหนดชำระ</label><input id="contractDueDate" class="input" type="date">
+      <label>อัตราดอกเบี้ยต่อปี (%)</label><input id="contractInterestRate" class="input money-input" inputmode="decimal" autocomplete="off" placeholder="ไม่เกินอัตราที่กฎหมายกำหนด">
+      <label>สถานที่ทำสัญญา</label><input id="contractPlace" class="input" placeholder="เช่น กรุงเทพมหานคร">
+      <label>หลักทรัพย์ค้ำประกัน</label><textarea id="contractCollateral" class="input" placeholder="เช่น โฉนดบ้านและที่ดิน / ทองคำ / รถยนต์ / วัตถุมีค่า ฯลฯ"></textarea>
+      <label>ชื่อพยาน 1</label><input id="contractWitness1Name" class="input">
+      <label>ชื่อพยาน 2 (ถ้ามี)</label><input id="contractWitness2Name" class="input">
+      <label>ชื่อผู้เขียนและพยาน</label><input id="contractWriterName" class="input" placeholder="ถ้าไม่กรอก ระบบใช้ชื่อผู้ให้กู้">
+
+      <div class="signature-grid">
+        <div class="signature-box"><b>ผู้ให้กู้</b><canvas id="sigLender" class="sig-pad"></canvas><button class="mini" data-clear-sig="sigLender">ล้าง</button></div>
+        <div class="signature-box"><b>ผู้กู้</b><canvas id="sigBorrower" class="sig-pad"></canvas><button class="mini" data-clear-sig="sigBorrower">ล้าง</button></div>
+        <div class="signature-box"><b>พยาน 1</b><canvas id="sigWitness1" class="sig-pad"></canvas><button class="mini" data-clear-sig="sigWitness1">ล้าง</button></div>
+        <div class="signature-box"><b>พยาน 2</b><canvas id="sigWitness2" class="sig-pad"></canvas><button class="mini" data-clear-sig="sigWitness2">ล้าง</button></div>
+        <div class="signature-box"><b>ผู้เขียนและพยาน</b><canvas id="sigWriter" class="sig-pad"></canvas><button class="mini" data-clear-sig="sigWriter">ล้าง</button></div>
+      </div>
+      <button id="generateContractBtn" class="primary"><i class="bi bi-filetype-pdf"></i> สร้าง PDF และบันทึก</button>
+      <p class="note">หมายเหตุ: แบบฟอร์มนี้เป็นแม่แบบทั่วไป ควรตรวจทานข้อมูลและเงื่อนไขให้ถูกต้องก่อนนำไปใช้จริง</p>
+    </div>
+    <div id="contractPdfSource" class="contract-pdf-source"></div>
+  </section>
+
   <section id="tab-settings" class="panel">
-    <div class="profile-card card"><div class="profile-avatar"><i class="bi bi-person"></i></div><div><h3><i class="bi bi-person-circle"></i> บัญชีผู้ใช้</h3><p id="settingsUserText">ยังไม่ได้ตั้งชื่อผู้ใช้งาน</p></div></div>
-    <div id="userProfileCard" class="card"><h3><i class="bi bi-sliders"></i> ตั้งค่าผู้ใช้งาน</h3><p class="note">ชื่อหรือนามแฝงจะใช้แสดงแทนอีเมลในระบบ</p><label>ชื่อหรือนามแฝง</label><input id="profileAlias" class="input"><label>เบอร์โทร (ไม่บังคับ)</label><input id="profilePhone" class="input" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10"><label>LINE ID (ไม่บังคับ)</label><input id="profileLineId" class="input"><label>Telegram ID (ไม่บังคับ)</label><input id="profileTelegramId" class="input"><button id="saveProfileBtn" class="primary">บันทึกข้อมูลผู้ใช้งาน</button></div>
+    <div class="profile-card card"><div class="profile-avatar"><i class="bi bi-person"></i></div><div><h3>บัญชีผู้ใช้</h3><p id="settingsUserText">ยังไม่ได้ตั้งชื่อผู้ใช้งาน</p></div></div>
+    <div id="userProfileCard" class="card"><h3><i class="bi bi-sliders"></i> ตั้งค่าผู้ใช้งาน</h3><p class="note">ชื่อผู้ให้กู้และที่อยู่จะถูกบันทึกลงฐานข้อมูลเพื่อดึงไปใช้ในสัญญาอัตโนมัติ</p><label>ชื่อหรือนามแฝง</label><input id="profileAlias" class="input"><label>ชื่อผู้ให้กู้ (ใช้ชื่อจริง ไม่ใช้นามแฝง)</label><input id="profileLenderName" class="input"><label>เบอร์โทร (ไม่บังคับ)</label><input id="profilePhone" class="input" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10"><label>LINE ID (ไม่บังคับ)</label><input id="profileLineId" class="input"><label>Telegram ID (ไม่บังคับ)</label><input id="profileTelegramId" class="input"><hr class="soft-sep"><p class="note">ข้อมูลผู้ให้กู้ส่วนนี้จะถูกดึงไปใช้ในสัญญาอัตโนมัติ</p><label>เลขบัตรประชาชนผู้ให้กู้</label><input id="profileLenderIdCard" class="input" type="tel" inputmode="numeric" maxlength="13"><label>ที่อยู่ผู้ให้กู้</label><textarea id="profileLenderAddress" class="input"></textarea><button id="saveProfileBtn" class="primary">บันทึกข้อมูลผู้ใช้งาน</button></div>
     <div class="card"><h3><i class="bi bi-bell"></i> Email + Telegram Reminder</h3><p class="note">ตั้งค่า Token ใน Cloud Functions แล้วใช้ Scheduled Function ส่งแจ้งเตือนทุกเช้า</p><label>Email ผู้รับแจ้งเตือน</label><input id="notifyEmail" class="input"><label>Telegram Chat ID</label><input id="telegramChatId" class="input"><button id="saveReminderSettingsBtn" class="primary">บันทึกการตั้งค่าแจ้งเตือน</button><button id="testTelegramBtn" class="secondary">ทดสอบ Telegram</button></div>
     <div class="card"><h3><i class="bi bi-phone"></i> PWA Production</h3><button id="enablePushBtn" class="primary">เปิด Push Notification</button><button id="installBtn" class="secondary hidden">ติดตั้งแอพ</button><button id="clearCacheBtn" class="danger">ล้าง Offline Cache</button><p class="note">Offline Cache, Auto Update และ Push Notification ถูกเตรียมไว้แล้วสำหรับใช้งานผ่าน Browser</p></div>
     <div class="card"><h3><i class="bi bi-cloud-arrow-down"></i> สำรองข้อมูล</h3><button id="exportJsonBtn" class="secondary">Export JSON</button><button id="exportTxtBtn" class="secondary">Export TXT</button><label class="file">Import JSON/TXT<input id="importFile" type="file" accept=".json,.txt"></label><button id="logoutBtn" class="danger hidden"><i class="bi bi-box-arrow-right"></i> ออกจากระบบ</button></div>
@@ -163,6 +200,7 @@
     <button class="bottom-tab active" data-tab="dashboard"><i class="bi bi-house"></i><span>หน้าหลัก</span></button>
     <button class="bottom-tab" data-tab="customers"><i class="bi bi-people"></i><span>ลูกหนี้ทั้งหมด</span></button>
     <button class="bottom-tab" data-tab="transactions"><i class="bi bi-cash-coin"></i><span>ธุรกรรม</span></button>
+    <button class="bottom-tab" data-tab="contracts"><i class="bi bi-file-earmark-text"></i><span>สัญญา</span></button>
     <button class="bottom-tab" data-tab="settings"><i class="bi bi-gear"></i><span>ตั้งค่า</span></button>
   </nav>
-</section></main><div id="documentPreviewModal" class="modal hidden"><div class="modal-box preview-box"><div class="card-head-row"><h3 id="previewTitle">ดูเอกสาร</h3><button id="closePreviewBtn" class="mini mini-danger">ปิด</button></div><div id="previewBody" class="preview-body"></div><a id="previewDownloadBtn" class="secondary" target="_blank" rel="noopener">ดาวน์โหลด / เปิดไฟล์</a></div></div><div id="confirmModal" class="modal hidden"><div class="modal-box"><h3>พบข้อมูลลูกหนี้</h3><p id="confirmText"></p><button id="confirmCreateDebtorBtn" class="primary">เพิ่มลูกหนี้</button><button id="cancelCreateDebtorBtn" class="secondary">ยกเลิก</button></div></div><div id="toast" class="toast"></div><script type="module" src="assets/js/firebase-config.js"></script><script type="module" src="assets/js/app.js"></script></body></html>
+</section></main><div id="documentPreviewModal" class="modal hidden"><div class="modal-box preview-box"><div class="card-head-row"><h3 id="previewTitle">ดูเอกสาร</h3><button id="closePreviewBtn" class="mini mini-danger">ปิด</button></div><div id="previewBody" class="preview-body"></div><a id="previewDownloadBtn" class="secondary" target="_blank" rel="noopener">ดาวน์โหลด / เปิดไฟล์</a></div></div><div id="confirmModal" class="modal hidden"><div class="modal-box"><h3>พบข้อมูลลูกหนี้</h3><p id="confirmText"></p><button id="confirmCreateDebtorBtn" class="primary">เพิ่มลูกหนี้</button><button id="cancelCreateDebtorBtn" class="secondary">ยกเลิก</button></div></div><div id="toast" class="toast"></div><script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script><script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script><script type="module" src="assets/js/firebase-config.js"></script><script type="module" src="assets/js/app.js"></script></body></html>
