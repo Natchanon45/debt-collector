@@ -718,7 +718,6 @@ body {
     background: rgba(255, 255, 255, .22);
     color: white; 
 }
-
 #loginUserText {
     opacity: .92
 }
@@ -1083,4 +1082,34 @@ input.input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         min-height: 58px;
         line-height: 58px;
     }
+}
+
+.item-actions{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:center;
+    justify-content:center;
+}
+
+.icon-action{
+    width:24px;
+    height:24px;
+    min-width:24px;
+    min-height:24px;
+    padding:0 !important;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    font-size:18px;
+}
+
+.icon-action i{
+    font-size:14px;
+    line-height:1;
+}
+
+.mini-danger{
+    background:rgba(239,68,68,.12)!important;
+    color:var(--danger)!important;
 }
