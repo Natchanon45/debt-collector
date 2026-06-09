@@ -35,7 +35,6 @@ function canDeleteDebtor(id, d = latestData) {
     if (!d) return false;
     return !d.debts.some(x => x.debtorId === id) && !d.followups.some(x => x.debtorId === id) && !d.documents.some(x => x.debtorId === id);
 }
-
 function safeFileName(name) { return String(name || 'file').replace(/[^\w.\-\u0E00-\u0E7F]+/g, '_').slice(0, 120) }
 function fileIcon(mime, name = '') { if (String(mime).startsWith('image/')) return 'bi-file-earmark-image'; if (String(mime).includes('pdf') || String(name).toLowerCase().endsWith('.pdf')) return 'bi-file-earmark-pdf'; return 'bi-file-earmark' }
 async function uploadDocumentFiles(debtorId, type, files) {
