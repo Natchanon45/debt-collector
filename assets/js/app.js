@@ -1,6 +1,6 @@
 import { firebaseConfig, OCR_FUNCTION_URL, TELEGRAM_TEST_FUNCTION_URL, VAPID_PUBLIC_KEY } from './firebase-config.js';
 const APP_INFO = {
-    version: '7.5.0',
+    version: '7.6.0',
     authorized: 'นายณัฐชนน ศรีเปล่ง',
     year: new Date().getFullYear()
 };
@@ -85,18 +85,33 @@ async function deleteDocument(docId, opts = {}) {
     render();
 }
 window.deleteDocument = deleteDocument;
-window.previewDocument = (id) => {
+async function freshStorageUrl(storagePath) {
+    if (demoMode || !storagePath) return '';
+    try {
+        const { ref, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js');
+        return await getDownloadURL(ref(storage, storagePath));
+    } catch (e) {
+        console.warn('Cannot refresh Storage URL', e);
+        return '';
+    }
+}
+function showPreviewModal(title, url, mime = '', fileName = '') {
+    $('previewTitle').textContent = title || fileName || 'ดูเอกสาร';
+    const safeUrl = String(url || '');
+    if (mime.startsWith('image/')) $('previewBody').innerHTML = `<img src="${safeUrl}" alt="${escapeHtml(fileName || '')}">`;
+    else if (mime.includes('pdf') || String(fileName || '').toLowerCase().endsWith('.pdf')) $('previewBody').innerHTML = `<iframe src="${safeUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" title="PDF Preview"></iframe>`;
+    else $('previewBody').innerHTML = `<div class="empty"><i class="bi ${fileIcon(mime, fileName)}"></i><br>ไม่รองรับ Preview ไฟล์ชนิดนี้<br>กดดาวน์โหลด/เปิดไฟล์</div>`;
+    $('previewDownloadBtn').href = safeUrl;
+    if (fileName) $('previewDownloadBtn').download = fileName;
+    $('documentPreviewModal').classList.remove('hidden');
+    document.body.classList.add('modal-open');
+}
+window.previewDocument = async (id) => {
     const doc = (latestData?.documents || []).find(x => x.id === id);
     if (!doc) return toast('ไม่พบเอกสาร');
-    const url = doc.downloadURL;
-    if (!url) return toast('ไฟล์นี้ยังไม่มี URL สำหรับเปิดดู');
-    $('previewTitle').textContent = doc.fileName || 'ดูเอกสาร';
-    const mime = doc.mimeType || '';
-    if (mime.startsWith('image/')) $('previewBody').innerHTML = `<img src="${url}" alt="${doc.fileName || ''}">`;
-    else if (mime.includes('pdf') || String(doc.fileName || '').toLowerCase().endsWith('.pdf')) $('previewBody').innerHTML = `<iframe src="${url}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" title="PDF Preview"></iframe>`;
-    else $('previewBody').innerHTML = `<div class="empty"><i class="bi ${fileIcon(mime, doc.fileName)}"></i><br>ไม่รองรับ Preview ไฟล์ชนิดนี้<br>กดดาวน์โหลด/เปิดไฟล์</div>`;
-    $('previewDownloadBtn').href = url;
-    $('documentPreviewModal').classList.remove('hidden'); document.body.classList.add('modal-open');
+    const url = await freshStorageUrl(doc.storagePath) || doc.downloadURL;
+    if (!url) return toast('ไฟล์นี้ยังไม่มี URL สำหรับเปิดดู หรือไฟล์ถูกลบจาก Storage แล้ว');
+    showPreviewModal(doc.fileName || 'ดูเอกสาร', url, doc.mimeType || '', doc.fileName || '');
 };
 
 function calc(d) { const paid = {}; d.payments.forEach(p => paid[p.debtId] = (paid[p.debtId] || 0) + num(p.amount)); const debtors = Object.fromEntries(d.debtors.map(x => [x.id, x])); const debts = d.debts.map(x => { const p = paid[x.id] || 0, remaining = Math.max(0, num(x.principal) - p), days = Math.max(0, Math.floor((new Date(today()) - new Date(x.dueDate || today())) / 86400000)); return { ...x, paid: p, remaining, isDue: remaining > 0 && String(x.dueDate || '') <= today(), isDueToday: remaining > 0 && String(x.dueDate || '') === today(), daysOverdue: days, debtor: debtors[x.debtorId] } }); return { debtors, debts, debtsById: Object.fromEntries(debts.map(x => [x.id, x])) } }
@@ -974,7 +989,7 @@ async function renderContractImageCanvas(row, debtor){
     // Borrower section
     drawContractText(ctx, borrowerName, 435, 268, { maxWidth:520, size:FS, minSize:28, align:'center' });
     drawContractText(ctx, borrowerAge || '-', 1000, 268, { maxWidth:55, size:FS_SMALL, minSize:28, align:'center' });
-    drawContractText(ctx, houseNo, 1150, 268, { maxWidth:120, size:FS_SMALL, minSize:26, align:'center' });
+    drawContractText(ctx, houseNo, 1175, 268, { maxWidth:105, size:FS_SMALL, minSize:26, align:'center' });
     drawContractText(ctx, subDistrict || '-', 225, 320, { maxWidth:200, size:FS_SMALL, minSize:26, align:'center' });
     drawContractText(ctx, district || '-', 485, 320, { maxWidth:260, size:FS_SMALL, minSize:26, align:'center' });
     drawContractText(ctx, province || '-', 810, 320, { maxWidth:340, size:FS_SMALL, minSize:26, align:'center' });
@@ -1011,9 +1026,9 @@ async function renderContractImageCanvas(row, debtor){
     // This avoids tiny text under the signature line and keeps every signer readable.
     drawContractText(ctx, `(${borrowerName})`, 700, 1494, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
     drawContractText(ctx, `(${lenderName})`, 650, 1545, { maxWidth:330, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${row.witness1Name || '-'})`, 700, 1700, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${row.witness2Name || '-'})`, 700, 1752, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${row.writerName || lenderName})`, 700, 1803, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${row.witness1Name || '-'})`, 760, 1700, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${row.witness2Name || '-'})`, 760, 1752, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${row.writerName || lenderName})`, 760, 1803, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
     return canvas;
 }
 
@@ -1050,13 +1065,9 @@ window.openContractPdf = async id => {
     const row = (latestData?.contracts || []).find(x => x.id === id);
     if (!row) return toast('ไม่พบสัญญา');
     const doc = (latestData?.documents || []).find(x => x.id === row.documentId);
-    if (doc?.id && doc?.downloadURL) return previewDocument(doc.id);
-    if (row.downloadURL) {
-        $('previewTitle').textContent = row.fileName || 'สัญญากู้ยืมเงิน.pdf';
-        $('previewBody').innerHTML = `<iframe src="${row.downloadURL}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" title="PDF Preview"></iframe>`;
-        $('previewDownloadBtn').href = row.downloadURL;
-        $('documentPreviewModal').classList.remove('hidden');
-        document.body.classList.add('modal-open');
+    const freshUrl = doc ? (await freshStorageUrl(doc.storagePath) || doc.downloadURL) : (await freshStorageUrl(row.storagePath) || '');
+    if (freshUrl) {
+        showPreviewModal(row.fileName || doc?.fileName || 'สัญญากู้ยืมเงิน.pdf', freshUrl, 'application/pdf', row.fileName || doc?.fileName || 'loan-contract.pdf');
         return;
     }
     try {
@@ -1067,12 +1078,7 @@ window.openContractPdf = async id => {
         const pdf = new jsPDF('p', 'mm', 'a4');
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
         const blobUrl = URL.createObjectURL(pdf.output('blob'));
-        $('previewTitle').textContent = row.fileName || 'สัญญากู้ยืมเงิน.pdf';
-        $('previewBody').innerHTML = `<iframe src="${blobUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" title="PDF Preview"></iframe>`;
-        $('previewDownloadBtn').href = blobUrl;
-        $('previewDownloadBtn').download = row.fileName || 'loan-contract.pdf';
-        $('documentPreviewModal').classList.remove('hidden');
-        document.body.classList.add('modal-open');
+        showPreviewModal(row.fileName || 'สัญญากู้ยืมเงิน.pdf', blobUrl, 'application/pdf', row.fileName || 'loan-contract.pdf');
     } catch (e) {
         console.error(e);
         toast('เปิดสัญญาไม่สำเร็จ: ' + e.message);
