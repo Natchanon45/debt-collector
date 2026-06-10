@@ -1,4 +1,4 @@
-const APP_VERSION='7.7.0';
+const APP_VERSION='7.7.1';
 const CACHE_NAME='debt-collector-v'+APP_VERSION;
 const ASSETS=['./','./index.html','./manifest.json','./assets/css/style.css','./assets/js/app.js','./assets/js/firebase-config.js','./assets/icons/icon-192.png','./assets/icons/icon-512.png','./assets/img/loan-contract-template-a4.png'];
 

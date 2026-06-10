@@ -1,6 +1,6 @@
 import { firebaseConfig, OCR_FUNCTION_URL, TELEGRAM_TEST_FUNCTION_URL, VAPID_PUBLIC_KEY } from './firebase-config.js';
 const APP_INFO = {
-    version: '7.7.0',
+    version: '7.7.1',
     authorized: 'นายณัฐชนน ศรีเปล่ง',
     year: new Date().getFullYear()
 };
@@ -932,8 +932,27 @@ function loadContractTemplateImage(){
     return contractTemplateImagePromise;
 }
 function contractCanvasPoint(x, y){ return { x: x * (2480/1447), y: y * (3508/2048) }; }
+const CONTRACT_CANVAS_FONT_FAMILY = '"Sarabun", "TH Sarabun New", "Noto Sans Thai", Tahoma, sans-serif';
+let contractFontReadyPromise = null;
+async function ensureContractCanvasFont(){
+    if (contractFontReadyPromise) return contractFontReadyPromise;
+    contractFontReadyPromise = (async () => {
+        try {
+            if (document.fonts?.load) {
+                await Promise.all([
+                    document.fonts.load('400 42px Sarabun'),
+                    document.fonts.load('600 42px Sarabun')
+                ]);
+                await document.fonts.ready;
+            }
+        } catch (e) {
+            console.warn('Contract font load warning', e);
+        }
+    })();
+    return contractFontReadyPromise;
+}
 function setupContractCanvasFont(ctx, size=40, bold=false){
-    ctx.font = `${bold ? '700 ' : '400 '}${size}px "TH Sarabun New", "Sarabun", "Noto Sans Thai", Tahoma, sans-serif`;
+    ctx.font = `${bold ? '600 ' : '400 '}${size}px ${CONTRACT_CANVAS_FONT_FAMILY}`;
     ctx.textBaseline = 'alphabetic';
 }
 function drawContractText(ctx, text, x, y, opt={}){
@@ -1053,6 +1072,7 @@ function drawContractSignature(ctx, dataUrl, x, y, w, h){
     });
 }
 async function renderContractImageCanvas(row, debtor){
+    await ensureContractCanvasFont();
     const template = await loadContractTemplateImage();
     const canvas = document.createElement('canvas');
     canvas.width = 2480; canvas.height = 3508;
