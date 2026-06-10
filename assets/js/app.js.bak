@@ -1,6 +1,6 @@
 import { firebaseConfig, OCR_FUNCTION_URL, TELEGRAM_TEST_FUNCTION_URL, VAPID_PUBLIC_KEY } from './firebase-config.js';
 const APP_INFO = {
-    version: '7.7.0',
+    version: '7.6.1',
     authorized: 'นายณัฐชนน ศรีเปล่ง',
     year: new Date().getFullYear()
 };
@@ -39,9 +39,8 @@ function setUserDisplay(text) {
     if ($('userMenuWrap')) $('userMenuWrap').classList.toggle('hidden', !currentUser && !demoMode);
 }
 function local() { return JSON.parse(localStorage.getItem(LS) || JSON.stringify(blank)) } function setLocal(d) { localStorage.setItem(LS, JSON.stringify({ ...blank, ...d })) }
-function isoDate(d){ if (!(d instanceof Date) || Number.isNaN(d.getTime())) return today(); return d.toISOString().slice(0,10); }
 async function getData() { if (demoMode) return local(); const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const names = ['debtors', 'debts', 'payments', 'followups', 'documents', 'contracts', 'settings']; const result = {}; for (const n of names) { const snap = await getDocs(collection(db, `users/${currentUser.uid}/${n}`)); result[n] = snap.docs.map(d => ({ id: d.id, ...d.data() })) } result.settings = (result.settings || []).reduce((acc, x) => ({ ...acc, ...x, profile: { ...(acc.profile || {}), ...(x.profile || {}) } }), {}); return { ...blank, ...result } }
-async function add(type, row) { if (demoMode) { const d = local(); const id = uid(); d[type].push({ id, ...row }); setLocal(d); return id } const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const ref = await addDoc(collection(db, `users/${currentUser.uid}/${type}`), { ...row, createdAt: serverTimestamp() }); return ref.id }
+async function add(type, row) { if (demoMode) { const d = local(); d[type].push({ id: uid(), ...row }); setLocal(d); return } const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); await addDoc(collection(db, `users/${currentUser.uid}/${type}`), { ...row, createdAt: serverTimestamp() }) }
 async function updateRow(type, id, row) { if (demoMode) { const d = local(); d[type] = d[type].map(x => x.id === id ? { ...x, ...row } : x); setLocal(d); return } const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); await updateDoc(doc(db, `users/${currentUser.uid}/${type}/${id}`), row) }
 async function deleteRow(type, id) {
     if (demoMode) { const d = local(); d[type] = d[type].filter(x => x.id !== id); setLocal(d); return }
@@ -526,32 +525,11 @@ function restoreContractSignatures(signatures={}) {
 }
 function debtorForContract(id) { return (latestData?.debtors || []).find(x => x.id === id) || {}; }
 
-function normalizeSignerName(v){ return String(v || '').trim(); }
-function contractRequiredSignatureKeys(row={}){
-    const keys = ['borrower','lender'];
-    if (normalizeSignerName(row.witness1Name)) keys.push('witness1');
-    if (normalizeSignerName(row.witness2Name)) keys.push('witness2');
-    keys.push('writer');
-    return keys;
-}
-function contractSignedCount(row={}){
-    const sigs = row.signatures || {};
-    const required = contractRequiredSignatureKeys(row);
-    const fromSigs = required.filter(k => Boolean(sigs[k])).length;
-    if (!Object.keys(sigs).length && Number(row.signatureCount || 0) > 0) {
-        return Math.min(Number(row.signatureCount || 0), required.length);
-    }
-    return fromSigs;
-}
-function contractRequiredSignatureCount(row={}){ return contractRequiredSignatureKeys(row).length; }
-function isContractFullySigned(row={}){ return contractSignedCount(row) >= contractRequiredSignatureCount(row); }
-function isContractLocked(row={}){ return row.status === 'locked' || row.locked === true || isContractFullySigned(row); }
-
 function readContractFormRow(includeSignatures=false){
     const debtor = debtorForContract($('contractDebtorId')?.value || '');
     const p = currentProfile();
     const signatures = includeSignatures ? collectContractSignatures() : {};
-    const row = {
+    return {
         contractNo: editingContractNo || nextContractNo(),
         sourceContractId: editingContractId || '',
         debtorId: $('contractDebtorId')?.value || '',
@@ -569,13 +547,10 @@ function readContractFormRow(includeSignatures=false){
         witness2Name: (($('contractWitness2Name')?.value || '').trim()),
         writerName: (($('contractWriterName')?.value || '').trim() || (($('contractLenderName')?.value || '').trim())),
         templateType: $('contractTemplateType')?.value || 'loan_new_law',
-        signatures
+        signatures,
+        signatureCount: Object.keys(signatures).length,
+        status: Object.keys(signatures).length >= 5 ? 'completed' : (Object.keys(signatures).length ? 'partial' : 'draft')
     };
-    row.requiredSignatureCount = contractRequiredSignatureCount(row);
-    row.signatureCount = contractSignedCount(row);
-    row.status = isContractFullySigned(row) ? 'locked' : (row.signatureCount ? 'partial' : 'draft');
-    row.locked = isContractFullySigned(row);
-    return row;
 }
 function updateContractSmartUi(){
     const debtor = debtorForContract($('contractDebtorId')?.value || '');
@@ -638,10 +613,9 @@ function renderContractList(d, c) {
     if (!$('contractList')) return;
     const list = (d.contracts || []).sort((a,b)=>String(b.createdDate||'').localeCompare(String(a.createdDate||'')));
     $('contractList').innerHTML = list.length ? list.map(x => {
-        const signed = contractSignedCount(x), required = contractRequiredSignatureCount(x), complete = isContractLocked(x);
-        const debtStatus = x.autoDebtCreated ? ' · สร้างก้อนหนี้แล้ว' : '';
-        const status = complete ? `${signed}/${required} : ลงลายเซ็นครบแล้ว / ล็อกสัญญาแล้ว${debtStatus}` : `${signed}/${required} : ยังแก้ไขได้อยู่`;
-        const canDelete = signed === 0 && !complete;
+        const signed = Number(x.signatureCount || 0), complete = signed >= 5;
+        const status = complete ? '5/5 : ลงลายเซ็นครบแล้ว' : `${signed}/5 : ยังแก้ไขได้อยู่`;
+        const canDelete = signed === 0;
         return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${c.debtors[x.debtorId]?.name || x.borrowerName || '-'} · ${money(x.amount)}</div><div class="item-sub">${status} · วันที่ ${thaiDate(x.contractDate || x.createdDate)} · ครบกำหนด ${thaiDate(x.dueDate)} · ${x.fileName || ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิด PDF" aria-label="เปิด PDF" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
     }).join('') : '<div class="empty">ยังไม่มีสัญญากู้ยืม</div>';
 }
@@ -780,80 +754,6 @@ function syncSavedContractLocal(existing, contractId, documentId, docPayload, co
     setLocal(d);
 }
 
-
-function addMonthsSafe(dateStr, months){
-    const base = new Date((dateStr || today()) + 'T00:00:00');
-    if (Number.isNaN(base.getTime())) return today();
-    const d = new Date(base);
-    const day = d.getDate();
-    d.setMonth(d.getMonth() + months);
-    if (d.getDate() < day) d.setDate(0);
-    return isoDate(d);
-}
-function countContractMonths(startDate, dueDate){
-    const s = new Date((startDate || today()) + 'T00:00:00');
-    const e = new Date((dueDate || startDate || today()) + 'T00:00:00');
-    if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e <= s) return 1;
-    let months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
-    if (e.getDate() > s.getDate()) months += 1;
-    return Math.max(1, months);
-}
-function roundMoney(v){ return Math.round((Number(v || 0) + Number.EPSILON) * 100) / 100; }
-function buildContractDebtInstallments(contract){
-    const principal = roundMoney(num(contract.amount));
-    const annualRate = Number(String(contract.interestRate || 0).replace(/[^0-9.]/g,'')) || 0;
-    const months = countContractMonths(contract.contractDate, contract.dueDate);
-    const monthlyRate = annualRate / 100 / 12;
-    const rows = [];
-    let remaining = principal;
-    let principalAssigned = 0;
-    for (let i = 1; i <= months; i++) {
-        const principalPart = i === months ? roundMoney(principal - principalAssigned) : roundMoney(principal / months);
-        const interestAmount = roundMoney(remaining * monthlyRate);
-        const totalDue = roundMoney(principalPart + interestAmount);
-        const dueDate = i === months && contract.dueDate ? contract.dueDate : addMonthsSafe(contract.contractDate, i);
-        rows.push({
-            debtorId: contract.debtorId,
-            title: `สัญญา ${contract.contractNo || ''} งวดที่ ${i}/${months}`.trim(),
-            principal: totalDue,
-            minCollectAmount: totalDue,
-            dueDate,
-            status: 'open',
-            source: 'contract_auto',
-            contractId: contract.id || '',
-            contractNo: contract.contractNo || '',
-            installmentNo: i,
-            installmentCount: months,
-            principalPortion: principalPart,
-            interestAmount,
-            interestRate: annualRate,
-            contractDate: contract.contractDate || today(),
-            originalPrincipal: principal,
-            autoGenerated: true
-        });
-        principalAssigned = roundMoney(principalAssigned + principalPart);
-        remaining = roundMoney(Math.max(0, remaining - principalPart));
-    }
-    return rows;
-}
-async function ensureAutoDebtForLockedContract(contract){
-    if (!contract || !contract.id || !isContractLocked(contract)) return false;
-    const existing = (latestData?.debts || []).some(d => d.source === 'contract_auto' && (d.contractId === contract.id || (contract.contractNo && d.contractNo === contract.contractNo)));
-    if (contract.autoDebtCreated || existing) return false;
-    const installments = buildContractDebtInstallments(contract);
-    for (const row of installments) await add('debts', row);
-    const totalDebtAmount = roundMoney(installments.reduce((s,x)=>s + num(x.principal), 0));
-    await updateRow('contracts', contract.id, {
-        status: 'locked', locked: true, autoDebtCreated: true,
-        debtGeneratedDate: today(), installmentCount: installments.length, totalDebtAmount
-    });
-    if (latestData?.contracts) {
-        latestData.contracts = latestData.contracts.map(x => x.id === contract.id ? { ...x, status:'locked', locked:true, autoDebtCreated:true, debtGeneratedDate:today(), installmentCount:installments.length, totalDebtAmount } : x);
-    }
-    toast(`ลงลายเซ็นครบแล้ว ระบบล็อกสัญญาและสร้างก้อนหนี้ ${installments.length} งวดแล้ว`);
-    return true;
-}
-
 async function saveContractPdf(row, blob) {
     const debtorId = row.debtorId;
     const existing = (latestData?.contracts || []).find(x =>
@@ -869,24 +769,18 @@ async function saveContractPdf(row, blob) {
         if (existing?.documentId) {
             await updateRow('documents', existing.documentId, docPayload);
             await updateRow('contracts', existing.id, { ...contractPayload, documentId: existing.documentId, downloadURL: existing.downloadURL || '' });
-            latestData = local();
-            return { id: existing.id, ...contractPayload, documentId: existing.documentId, downloadURL: existing.downloadURL || '' };
         } else if (existing?.id) {
             const d = local();
             const newDocId = uid();
             d.documents.push({ id: newDocId, ...docPayload, storagePath:'', downloadURL:'' });
             d.contracts = d.contracts.map(x => x.id === existing.id ? { ...x, ...contractPayload, documentId:newDocId, downloadURL:'' } : x);
             setLocal(d);
-            latestData = local();
-            return { id: existing.id, ...contractPayload, documentId:newDocId, downloadURL:'' };
         } else {
             const d = local();
             const newDocId = uid(), newContractId = uid();
             d.documents.push({ id: newDocId, ...docPayload, storagePath:'', downloadURL:'' });
             d.contracts.push({ id: newContractId, ...contractPayload, documentId:newDocId, downloadURL:'' });
             setLocal(d);
-            latestData = local();
-            return { id: newContractId, ...contractPayload, documentId:newDocId, downloadURL:'' };
         }
         latestData = local();
         return;
@@ -909,12 +803,10 @@ async function saveContractPdf(row, blob) {
         }
         await updateDoc(doc(db, `users/${currentUser.uid}/contracts/${existing.id}`), { ...contractPayload, documentId, storagePath:path, downloadURL, updatedAt: serverTimestamp() });
         syncSavedContractLocal(existing, existing.id, documentId, docPayload, contractPayload, { storagePath:path, downloadURL });
-        return { id: existing.id, ...contractPayload, documentId, storagePath:path, downloadURL };
     } else {
         const docRef = await addDoc(collection(db, `users/${currentUser.uid}/documents`), { ...docPayload, storagePath:path, downloadURL, createdAt: serverTimestamp() });
         const contractRef = await addDoc(collection(db, `users/${currentUser.uid}/contracts`), { ...contractPayload, documentId: docRef.id, storagePath:path, downloadURL, createdAt: serverTimestamp() });
         syncSavedContractLocal(null, contractRef.id, docRef.id, docPayload, contractPayload, { storagePath:path, downloadURL });
-        return { id: contractRef.id, ...contractPayload, documentId: docRef.id, storagePath:path, downloadURL };
     }
 }
 
@@ -1157,8 +1049,7 @@ async function generateContract() {
         const img = canvas.toDataURL('image/png');
         pdf.addImage(img, 'PNG', 0, 0, 210, 297);
         const blob = pdf.output('blob');
-        const savedContract = await saveContractPdf(row, blob);
-        await ensureAutoDebtForLockedContract(savedContract);
+        await saveContractPdf(row, blob);
         toast(editingContractId ? 'บันทึกแก้ไขสัญญาแล้ว' : 'สร้างและบันทึกสัญญาแล้ว'); editingContractId = ''; editingContractNo = ''; $('contractFormCard').classList.add('hidden'); render(); switchTab('contracts');
     } catch (e) { console.error(e); toast('สร้างสัญญาไม่สำเร็จ: ' + e.message); }
 }
@@ -1197,7 +1088,7 @@ window.openContractPdf = async id => {
 window.editContractDraft = id => {
     const row = (latestData?.contracts || []).find(x => x.id === id);
     if (!row) return toast('ไม่พบสัญญา');
-    if (isContractLocked(row)) return toast('สัญญาที่ลงลายเซ็นครบแล้วถูกล็อก ไม่สามารถแก้ไขได้');
+    if (Number(row.signatureCount || 0) >= 5) return toast('สัญญาที่ลงลายเซ็นครบแล้วไม่สามารถแก้ไขได้');
     editingContractNo = row.contractNo || ''; editingContractId = row.id || '';
     showContractForm(row.debtorId || '');
     const map = { contractLenderName:'lenderName', contractLenderIdCard:'lenderIdCard', contractLenderAddress:'lenderAddress', contractAmount:'amount', contractDate:'contractDate', contractDueDate:'dueDate', contractInterestRate:'interestRate', contractPlace:'place', contractCollateral:'collateral', contractWitness1Name:'witness1Name', contractWitness2Name:'witness2Name', contractWriterName:'writerName' };
@@ -1209,8 +1100,7 @@ window.editContractDraft = id => {
 window.deleteContractDraft = async id => {
     const row = (latestData?.contracts || []).find(x => x.id === id);
     if (!row) return toast('ไม่พบสัญญา');
-    if (isContractLocked(row)) return toast('ลบไม่ได้ เพราะสัญญาลงลายเซ็นครบและถูกล็อกแล้ว');
-    if (contractSignedCount(row) > 0) return toast('ลบไม่ได้ เพราะมีลายเซ็นแล้ว แต่ยังสามารถแก้ไขได้');
+    if (Number(row.signatureCount || 0) > 0) return toast('ลบไม่ได้ เพราะมีลายเซ็นแล้ว แต่ยังสามารถแก้ไขได้');
     if (!confirm('ลบแบบร่างสัญญานี้ใช่หรือไม่?')) return;
     if (row.documentId) await deleteDocument(row.documentId, { force:true, skipConfirm:true });
     await deleteRow('contracts', id);
