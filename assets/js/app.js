@@ -8,7 +8,19 @@ const maskId = id => { const s = String(id || '').replace(/\D/g, ''); return s.l
 const normalizeIdCard = id => String(id || '').replace(/\D/g, '');
 function isDuplicateIdCard(id, ignoreId = '') { const v = normalizeIdCard(id); if (!v) return false; return (latestData?.debtors || []).some(d => d.id !== ignoreId && normalizeIdCard(d.idCard) === v) };
 const fullNameOf = o => [o.prefix, o.firstName, o.lastName].filter(Boolean).join(' ').trim();
-function toast(m) { const el = $('toast'); if (!el) return; el.textContent = m; el.classList.add('show'); clearTimeout(window.t); window.t = setTimeout(() => el.classList.remove('show'), 3000) }
+function toast(m, type='info') {
+    const el = $('toast'); if (!el) return;
+    const msg = String(m || '');
+    const autoType = /สำเร็จ|บันทึก|เพิ่ม|สร้าง|ลบแล้ว|เปิด|ล้าง Cache/.test(msg) ? 'success'
+        : /ผิดพลาด|ไม่สำเร็จ|ไม่ได้|ลบไม่ได้|error|Error|ไม่พบ/.test(msg) ? 'error'
+        : /กรุณา|เตือน|ยังไม่ได้|ต้อง/.test(msg) ? 'warning' : type;
+    const icons = { success:'bi-check-circle-fill', error:'bi-x-circle-fill', warning:'bi-exclamation-triangle-fill', info:'bi-info-circle-fill' };
+    el.className = `toast toast-${autoType}`;
+    el.innerHTML = `<i class="bi ${icons[autoType] || icons.info}"></i><span>${escapeHtml(msg)}</span>`;
+    requestAnimationFrame(() => el.classList.add('show'));
+    clearTimeout(window.t);
+    window.t = setTimeout(() => el.classList.remove('show'), 3200);
+}
 function getProfileName() {
     const p = (latestData?.settings?.profile) || latestData?.settings || {};
     return p.alias || p.displayName || currentUser?.displayName || currentUser?.email || 'ผู้ใช้งาน';
@@ -71,10 +83,10 @@ window.previewDocument = (id) => {
     $('previewTitle').textContent = doc.fileName || 'ดูเอกสาร';
     const mime = doc.mimeType || '';
     if (mime.startsWith('image/')) $('previewBody').innerHTML = `<img src="${url}" alt="${doc.fileName || ''}">`;
-    else if (mime.includes('pdf') || String(doc.fileName || '').toLowerCase().endsWith('.pdf')) $('previewBody').innerHTML = `<iframe src="${url}"></iframe>`;
+    else if (mime.includes('pdf') || String(doc.fileName || '').toLowerCase().endsWith('.pdf')) $('previewBody').innerHTML = `<iframe src="${url}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" title="PDF Preview"></iframe>`;
     else $('previewBody').innerHTML = `<div class="empty"><i class="bi ${fileIcon(mime, doc.fileName)}"></i><br>ไม่รองรับ Preview ไฟล์ชนิดนี้<br>กดดาวน์โหลด/เปิดไฟล์</div>`;
     $('previewDownloadBtn').href = url;
-    $('documentPreviewModal').classList.remove('hidden');
+    $('documentPreviewModal').classList.remove('hidden'); document.body.classList.add('modal-open');
 };
 
 function calc(d) { const paid = {}; d.payments.forEach(p => paid[p.debtId] = (paid[p.debtId] || 0) + num(p.amount)); const debtors = Object.fromEntries(d.debtors.map(x => [x.id, x])); const debts = d.debts.map(x => { const p = paid[x.id] || 0, remaining = Math.max(0, num(x.principal) - p), days = Math.max(0, Math.floor((new Date(today()) - new Date(x.dueDate || today())) / 86400000)); return { ...x, paid: p, remaining, isDue: remaining > 0 && String(x.dueDate || '') <= today(), isDueToday: remaining > 0 && String(x.dueDate || '') === today(), daysOverdue: days, debtor: debtors[x.debtorId] } }); return { debtors, debts, debtsById: Object.fromEntries(debts.map(x => [x.id, x])) } }
@@ -150,11 +162,12 @@ async function render() {
         : '<div class="empty">ยังไม่มีลูกหนี้</div>';
     fillSelects(d, c);
     fillLists(d, c); renderContractList(d, c);
-    fillSettings(d.settings || {})
+    fillSettings(d.settings || {});
+    if (typeof decorateButtons === 'function') setTimeout(decorateButtons, 0);
 }
 function renderAging(debts) { const b = { a: 0, b: 0, c: 0, d: 0 }; debts.filter(x => x.remaining > 0 && x.isDue).forEach(x => { if (x.daysOverdue <= 30) b.a += x.remaining; else if (x.daysOverdue <= 60) b.b += x.remaining; else if (x.daysOverdue <= 90) b.c += x.remaining; else b.d += x.remaining }); $('aging030').textContent = money(b.a); $('aging3160').textContent = money(b.b); $('aging6190').textContent = money(b.c); $('aging90').textContent = money(b.d) }
 function fillSelects(d, c) { const debtorOpts = '<option value="">-- เลือกลูกหนี้ --</option>' + d.debtors.map(x => `<option value="${x.id}">${x.name}</option>`).join('');['followupDebtorId', 'documentDebtorId', 'transactionDebtorId', 'contractDebtorId'].forEach(id => { if ($(id)) $(id).innerHTML = debtorOpts }); const debtOpts = '<option value="">-- เลือกก้อนหนี้ --</option>' + c.debts.filter(x => x.remaining > 0).map(x => `<option value="${x.id}">${x.debtor?.name || '-'} · ${x.title} · ${money(x.remaining)}</option>`).join(''); $('paymentDebtId').innerHTML = debtOpts; $('followupDebtId').innerHTML = '<option value="">-- ไม่ระบุก้อนหนี้ --</option>' + debtOpts.replace('<option value="">-- เลือกก้อนหนี้ --</option>', '') }
-function fillLists(d, c) { $('paymentList').innerHTML = d.payments.length ? d.payments.map(p => `<div class="item"><div><div class="item-title">${money(p.amount)}</div><div class="item-sub">${p.paidDate} · ${c.debtsById[p.debtId]?.title || '-'} · ${p.note || ''}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติชำระ</div>'; $('followupList').innerHTML = d.followups.length ? d.followups.map(f => `<div class="item"><div><div class="item-title">${c.debtors[f.debtorId]?.name || '-'} · ${f.status || '-'}</div><div class="item-sub">${f.contactDate} · ${f.channel || '-'} · นัด ${f.nextFollowupDate || '-'}</div><div class="item-sub">${f.result || ''}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติติดตาม</div>'; $('documentList').innerHTML = d.documents.length ? d.documents.map(doc => { const isImg = String(doc.mimeType || '').startsWith('image/'); const thumb = isImg && doc.downloadURL ? `<img src="${doc.downloadURL}" alt="">` : `<i class="bi ${fileIcon(doc.mimeType, doc.fileName)}"></i>`; return `<div class="item doc-card"><div class="doc-thumb">${thumb}</div><div><div class="item-title">${doc.type} · ${doc.fileName}</div><div class="item-sub">${c.debtors[doc.debtorId]?.name || '-'} · ${doc.createdDate || '-'} · ${doc.size ? money(doc.size / 1024) + ' KB' : ''}</div></div><div class="doc-actions"><button class="mini" onclick="previewDocument('${doc.id}')">เปิด</button><button class="mini mini-danger" onclick="deleteDocument('${doc.id}')">ลบ</button></div></div>` }).join('') : '<div class="empty">ยังไม่มีเอกสาร</div>' }
+function fillLists(d, c) { $('paymentList').innerHTML = d.payments.length ? d.payments.map(p => `<div class="item"><div><div class="item-title">${money(p.amount)}</div><div class="item-sub">${p.paidDate} · ${c.debtsById[p.debtId]?.title || '-'} · ${p.note || ''}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติชำระ</div>'; $('followupList').innerHTML = d.followups.length ? d.followups.map(f => `<div class="item"><div><div class="item-title">${c.debtors[f.debtorId]?.name || '-'} · ${f.status || '-'}</div><div class="item-sub">${f.contactDate} · ${f.channel || '-'} · นัด ${f.nextFollowupDate || '-'}</div><div class="item-sub">${f.result || ''}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติติดตาม</div>'; $('documentList').innerHTML = d.documents.length ? d.documents.map(doc => { const isImg = String(doc.mimeType || '').startsWith('image/'); const thumb = isImg && doc.downloadURL ? `<img src="${doc.downloadURL}" alt="">` : `<i class="bi ${fileIcon(doc.mimeType, doc.fileName)}"></i>`; return `<div class="item doc-card"><div class="doc-thumb">${thumb}</div><div><div class="item-title">${doc.type} · ${doc.fileName}</div><div class="item-sub">${c.debtors[doc.debtorId]?.name || '-'} · ${doc.createdDate || '-'} · ${doc.size ? money(doc.size / 1024) + ' KB' : ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="previewDocument('${doc.id}')"><i class="bi bi-box-arrow-up-right"></i></button><button class="icon-action icon-delete" type="button" title="ลบเอกสาร" aria-label="ลบเอกสาร" onclick="deleteDocument('${doc.id}')"><i class="bi bi-trash"></i></button></div></div>` }).join('') : '<div class="empty">ยังไม่มีเอกสาร</div>' }
 function fillSettings(s) {
     if ($('notifyEmail')) $('notifyEmail').value = s.notifyEmail || '';
     if ($('telegramChatId')) $('telegramChatId').value = s.telegramChatId || '';
@@ -565,7 +578,7 @@ function buildContractHtml(row, debtor) {
     const lenderName = row.lenderName || currentProfile().lenderName || getDisplayName();
     const borrowerName = debtor.name || row.borrowerName || '-';
     const collateral = row.collateral || row.terms || 'ไม่มีหลักประกันเพิ่มเติม';
-    const interest = row.interestRate ? `${row.interestRate}%` : 'ตามที่กฎหมายกำหนด';
+    const interest = row.interestRate ? `${row.interestRate}% ต่อปี` : 'ตามที่กฎหมายกำหนด';
     const sig = id => { const data = getSignatureData(id); return data ? `<img class="contract-sign-img" src="${data}">` : '<div class="contract-sign-empty"></div>'; };
     return `<div class="contract-paper contract-template">
         <h1>หนังสือสัญญาเงินกู้ตามกฎหมายใหม่</h1>
@@ -653,7 +666,7 @@ function loadContractTemplateImage(){
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = reject;
-            img.src = CONTRACT_TEMPLATE_URL + '?v=6.12';
+            img.src = CONTRACT_TEMPLATE_URL + '?v=7.0';
         });
     }
     return contractTemplateImagePromise;
@@ -764,7 +777,7 @@ async function renderContractImageCanvas(row, debtor){
     const cdate = thDateParts(row.contractDate || today());
     const ddate = thDateParts(row.dueDate);
     const collateral = row.collateral || row.terms || '-';
-    const interest = row.interestRate ? `${row.interestRate}%` : '-';
+    const interest = row.interestRate ? `${row.interestRate}% ต่อปี` : '-';
     const borrowerAge = debtorAgeForContract(debtor, row.contractDate || today());
 
     // v6.9: only reposition the blue filled values. The black template remains untouched.
@@ -861,11 +874,42 @@ window.deleteContractDraft = async id => {
 };
 window.showContractForm = showContractForm;
 
-if ($('closePreviewBtn')) $('closePreviewBtn').onclick = () => $('documentPreviewModal').classList.add('hidden');
+if ($('closePreviewBtn')) $('closePreviewBtn').onclick = () => { $('documentPreviewModal').classList.add('hidden'); document.body.classList.remove('modal-open'); };
 const themeModes = ['light', 'dark', 'auto']; function getThemeMode() { return localStorage.getItem('themeMode') || 'auto' } function applyTheme() { const mode = getThemeMode(), resolved = mode === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode; document.documentElement.setAttribute('data-theme', resolved); document.body.setAttribute('data-theme', resolved); $('themeIcon').className = mode === 'auto' ? 'bi bi-circle-half' : resolved === 'dark' ? 'bi bi-moon-stars' : 'bi bi-sun' } $('themeBtn').onclick = () => { const cur = getThemeMode(), next = themeModes[(themeModes.indexOf(cur) + 1) % themeModes.length]; localStorage.setItem('themeMode', next); applyTheme(); toast(next === 'auto' ? 'โหมดอัตโนมัติ' : next === 'dark' ? 'โหมดกลางคืน' : 'โหมดกลางวัน') };
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('installBtn').classList.remove('hidden') }); $('installBtn').onclick = async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $('installBtn').classList.add('hidden') } };
 async function setupSW() { if (!('serviceWorker' in navigator)) return; const reg = await navigator.serviceWorker.register('service-worker.js'); if (reg.waiting) { newWorker = reg.waiting; $('updateBtn').classList.remove('hidden') } reg.addEventListener('updatefound', () => { const w = reg.installing; w?.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) { newWorker = w; $('updateBtn').classList.remove('hidden'); toast('มีเวอร์ชันใหม่พร้อมอัปเดต') } }) }); navigator.serviceWorker.addEventListener('controllerchange', () => location.reload()) } $('updateBtn').onclick = () => { if (newWorker) newWorker.postMessage({ type: 'SKIP_WAITING' }); else location.reload() }; $('clearCacheBtn').onclick = async () => { if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); toast('ล้าง Cache แล้ว') } }; $('enablePushBtn').onclick = async () => { if (!('Notification' in window)) return toast('Browser ไม่รองรับ Notification'); const p = await Notification.requestPermission(); toast(p === 'granted' ? 'เปิด Notification แล้ว' : 'ยังไม่ได้อนุญาต Notification') };
+
+/* ===== v7.0 UI Refresh helpers ===== */
+const BUTTON_ICON_MAP = [
+    [/ปิด/, 'bi-x-lg'], [/ล้าง/, 'bi-eraser'], [/บันทึก/, 'bi-check2-circle'], [/เพิ่ม/, 'bi-plus-circle'],
+    [/สร้าง/, 'bi-file-earmark-plus'], [/แก้ไข/, 'bi-pencil-square'], [/ยกเลิก/, 'bi-arrow-counterclockwise'],
+    [/ทดสอบ/, 'bi-send'], [/เปิด/, 'bi-box-arrow-up-right'], [/ดาวน์โหลด|Download|Export/, 'bi-download'],
+    [/Import/, 'bi-upload'], [/ติดตั้ง/, 'bi-phone'], [/Notification/, 'bi-bell'], [/สมัคร/, 'bi-person-plus'],
+    [/เข้าสู่ระบบ/, 'bi-box-arrow-in-right'], [/Demo/, 'bi-play-circle'], [/อ่านข้อมูล/, 'bi-card-text'], [/นำข้อมูล/, 'bi-arrow-right-circle']
+];
+function decorateButtons(){
+    document.querySelectorAll('button, a.secondary, label.file').forEach(el => {
+        if (el.dataset.v7Decorated) return;
+        const text = (el.textContent || '').trim();
+        if (!text) return;
+        const found = BUTTON_ICON_MAP.find(([re]) => re.test(text));
+        if (!found) return;
+        const icon = found[1];
+        el.dataset.v7Decorated = '1';
+        el.setAttribute('title', el.getAttribute('title') || text);
+        if (el.matches('.mini')) {
+            el.classList.add('icon-mini');
+            el.setAttribute('aria-label', text);
+            el.innerHTML = `<i class="bi ${icon}"></i>`;
+        } else if (!el.querySelector('i')) {
+            el.insertAdjacentHTML('afterbegin', `<i class="bi ${icon}"></i> `);
+        }
+    });
+}
+window.addEventListener('DOMContentLoaded', decorateButtons);
+
 try {
+    decorateButtons();
     applyTheme();
     initFirebase();
     setupSW();
