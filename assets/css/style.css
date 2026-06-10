@@ -1693,3 +1693,100 @@ label.file {
 }
 @keyframes updatePulse{50%{transform:scale(1.04)}}
 button, .primary, .secondary, .danger, .ghost, .round-action, .segment, .file, .mini, .icon-btn, .icon-action, .bottom-tab, .bottom-tab span, label.file{font-weight:400!important;}
+
+/* ===== v7.6.1 Mobile Form Readability ===== */
+:root{
+  --field-border: rgba(37,99,235,.22);
+  --field-border-strong: rgba(37,99,235,.42);
+  --field-label-bg: rgba(37,99,235,.10);
+  --field-label-text: #1d4ed8;
+}
+
+label:not(.dropzone):not(.file){
+  display:inline-flex !important;
+  align-items:center !important;
+  width:auto !important;
+  max-width:100% !important;
+  margin:14px 0 7px !important;
+  padding:4px 9px !important;
+  border-radius:999px !important;
+  background:var(--field-label-bg) !important;
+  color:var(--field-label-text) !important;
+  font-size:12px !important;
+  line-height:1.25 !important;
+  font-weight:500 !important;
+  letter-spacing:.01em !important;
+}
+
+.input,
+select.input,
+textarea.input{
+  border:1.5px solid var(--field-border) !important;
+  background:var(--card) !important;
+  color:var(--text) !important;
+  font-weight:400 !important;
+  box-shadow:0 1px 0 rgba(15,23,42,.04) !important;
+}
+
+.input::placeholder,
+textarea.input::placeholder{
+  color:rgba(100,116,139,.72) !important;
+  font-weight:400 !important;
+}
+
+.input:focus,
+select.input:focus,
+textarea.input:focus{
+  border-color:var(--field-border-strong) !important;
+  box-shadow:0 0 0 4px rgba(37,99,235,.12) !important;
+}
+
+.contract-section-box,
+.card{
+  border-color:rgba(148,163,184,.22) !important;
+}
+
+@media(max-width:720px){
+  label:not(.dropzone):not(.file){
+    font-size:12.5px !important;
+    margin-top:15px !important;
+    margin-bottom:8px !important;
+    padding:5px 10px !important;
+  }
+  .input,
+  select.input,
+  textarea.input{
+    min-height:54px !important;
+    border-radius:16px !important;
+    font-size:16px !important;
+    padding-left:14px !important;
+    padding-right:14px !important;
+  }
+  textarea.input{
+    min-height:104px !important;
+    padding-top:13px !important;
+  }
+  .contract-section-box{
+    background:rgba(37,99,235,.035) !important;
+    border-color:rgba(37,99,235,.16) !important;
+  }
+  .contract-section-box h4{
+    padding:8px 10px !important;
+    border-radius:12px !important;
+    background:rgba(22,163,74,.08) !important;
+  }
+}
+
+@media(prefers-color-scheme: dark){
+  :root{
+    --field-border: rgba(96,165,250,.30);
+    --field-border-strong: rgba(96,165,250,.58);
+    --field-label-bg: rgba(96,165,250,.16);
+    --field-label-text: #bfdbfe;
+  }
+  .input,
+  select.input,
+  textarea.input{
+    background:rgba(15,23,42,.82) !important;
+  }
+}
