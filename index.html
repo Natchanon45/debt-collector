@@ -25,7 +25,7 @@
         <div class="header-actions">
             <button id="themeBtn" class="icon-btn" title="เปลี่ยนโหมด"><i id="themeIcon"
                     class="bi bi-circle-half"></i></button>
-            <button id="updateBtn" class="icon-btn hidden"><i class="bi bi-arrow-clockwise"></i></button>
+            <button id="updateBtn" class="icon-btn hidden" title="อัปเดตแอป"><i class="bi bi-arrow-clockwise"></i></button>
             <div id="userMenuWrap" class="user-menu-wrap hidden">
                 <button id="userMenuBtn" class="user-avatar" title="บัญชีผู้ใช้"><i class="bi bi-person"></i></button>
                 <ul id="userDropdown" class="user-dropdown hidden">
@@ -139,8 +139,10 @@
                         <label>LINE ID</label><input id="debtorLineId" class="input">
                         <label>เลขบัตรประชาชน</label><input id="debtorIdCard" class="input" type="tel"
                             inputmode="numeric" autocomplete="off" maxlength="13">
-                        <label>ที่อยู่</label><textarea id="debtorAddress" class="input"></textarea>
-                        <label>เขต/อำเภอ</label><input id="debtorDistrict" class="input">
+                        <label>วันเดือนปีเกิด</label><input id="debtorBirthDate" class="input" type="date">
+                        <label>บ้านเลขที่ / ที่อยู่ย่อ</label><textarea id="debtorAddress" class="input" placeholder="เช่น 123/45 หมู่ 6"></textarea>
+                        <label>ตำบล / แขวง</label><input id="debtorSubDistrict" class="input">
+                        <label>อำเภอ / เขต</label><input id="debtorDistrict" class="input">
                         <label>จังหวัด</label><input id="debtorProvince" class="input">
                         <button id="addDebtorBtn" class="primary">เพิ่มลูกหนี้</button>
                     </div>
@@ -155,8 +157,10 @@
                     <label>LINE ID</label><input id="editDebtorLineId" class="input">
                     <label>เลขบัตรประชาชน</label><input id="editDebtorIdCard" class="input" type="tel"
                         inputmode="numeric" autocomplete="off" maxlength="13">
-                    <label>ที่อยู่</label><textarea id="editDebtorAddress" class="input"></textarea>
-                    <label>เขต/อำเภอ</label><input id="editDebtorDistrict" class="input">
+                    <label>วันเดือนปีเกิด</label><input id="editDebtorBirthDate" class="input" type="date">
+                    <label>บ้านเลขที่ / ที่อยู่ย่อ</label><textarea id="editDebtorAddress" class="input" placeholder="เช่น 123/45 หมู่ 6"></textarea>
+                    <label>ตำบล / แขวง</label><input id="editDebtorSubDistrict" class="input">
+                    <label>อำเภอ / เขต</label><input id="editDebtorDistrict" class="input">
                     <label>จังหวัด</label><input id="editDebtorProvince" class="input">
                     <button id="saveEditDebtorBtn" class="primary">บันทึกการแก้ไข</button>
                     <button id="cancelEditDebtorBtn" class="secondary">ยกเลิก</button>
@@ -380,6 +384,8 @@
                             accept=".json,.txt"></label>
                 </div>
             </section>
+
+            <footer id="appFooter" class="app-footer">Version 7.4.0 • พัฒนาโดย นายณัฐชนน ศรีเปล่ง • Copyright © 2026</footer>
 
             <nav class="bottom-nav">
                 <button class="bottom-tab active" data-tab="dashboard"><i class="bi bi-house"></i><span>หน้าหลัก</span></button>

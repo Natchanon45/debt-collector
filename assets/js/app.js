@@ -1,4 +1,10 @@
 import { firebaseConfig, OCR_FUNCTION_URL, TELEGRAM_TEST_FUNCTION_URL, VAPID_PUBLIC_KEY } from './firebase-config.js';
+const APP_INFO = {
+    version: '7.5.0',
+    authorized: 'นายณัฐชนน ศรีเปล่ง',
+    year: new Date().getFullYear()
+};
+const APP_VERSION = APP_INFO.version;
 const $ = id => document.getElementById(id);
 let firebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId), auth, db, storage, currentUser = null, demoMode = !firebaseReady, deferredPrompt = null, newWorker = null, latestData = null, pendingOcrDebtor = null;
 const LS = 'debt_collector_phase3_v1', blank = { debtors: [], debts: [], payments: [], followups: [], documents: [], contracts: [], settings: {} };
@@ -63,10 +69,14 @@ async function uploadDocumentFiles(debtorId, type, files) {
         await add('documents', { debtorId, type, fileName: f.name, mimeType: f.type || '', size: f.size || 0, createdDate: today(), storagePath: path, downloadURL });
     }
 }
-async function deleteDocument(docId) {
+async function deleteDocument(docId, opts = {}) {
     const doc = (latestData?.documents || []).find(x => x.id === docId);
     if (!doc) return toast('ไม่พบเอกสาร');
-    if (!confirm(`ลบเอกสาร ${doc.fileName || ''} ใช่หรือไม่?`)) return;
+    const linkedContract = (latestData?.contracts || []).find(c => c.documentId === docId);
+    if (linkedContract && !opts.force) {
+        return toast('เอกสารนี้ผูกกับสัญญา กรุณาลบ/แก้ไขจากหน้าสัญญา เพื่อป้องกันเปิด PDF ไม่ได้');
+    }
+    if (!opts.skipConfirm && !confirm(`ลบเอกสาร ${doc.fileName || ''} ใช่หรือไม่?`)) return;
     if (!demoMode && doc.storagePath) {
         try { const { ref, deleteObject } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); await deleteObject(ref(storage, doc.storagePath)); } catch (e) { console.warn('Storage delete warning', e) }
     }
@@ -183,10 +193,10 @@ function fillSettings(s) {
 }
 window.openDebtForm = (id, name) => { if ($('transactionDebtorId')) $('transactionDebtorId').value = id; switchTransaction('debt'); switchTab('transactions') };
 window.openDebtorDocuments = id => { if ($('documentDebtorId')) $('documentDebtorId').value = id; switchTab('customers'); $('documentDebtorId')?.scrollIntoView({ behavior:'smooth', block:'center' }); toast('เลือกเอกสารของลูกหนี้แล้ว'); };
-window.openEditDebtor = id => { const d = (latestData?.debtors || []).find(x => x.id === id); if (!d) return;['Name', 'Phone', 'LineId', 'IdCard', 'Address', 'District', 'Province'].forEach(k => { $('editDebtor' + k).value = d[k.charAt(0).toLowerCase() + k.slice(1)] || '' }); $('editDebtorId').value = id; $('editDebtorCard').classList.remove('hidden'); switchTab('customers') };
+window.openEditDebtor = id => { const d = (latestData?.debtors || []).find(x => x.id === id); if (!d) return;['Name', 'Phone', 'LineId', 'IdCard', 'BirthDate', 'Address', 'SubDistrict', 'District', 'Province'].forEach(k => { const el = $('editDebtor' + k); if (el) el.value = d[k.charAt(0).toLowerCase() + k.slice(1)] || '' }); $('editDebtorId').value = id; $('editDebtorCard').classList.remove('hidden'); switchTab('customers') };
 window.deleteDebtor = async id => { if (!canDeleteDebtor(id)) return toast('ลบไม่ได้ เพราะลูกหนี้ถูกนำไปใช้งานแล้ว'); const debtor = (latestData?.debtors || []).find(x => x.id === id); if (!confirm(`ลบลูกหนี้ ${debtor?.name || ''} ใช่หรือไม่?`)) return; await deleteRow('debtors', id); toast('ลบลูกหนี้แล้ว'); render() };
-$('addDebtorBtn').onclick = async () => { const name = $('debtorName').value.trim(); if (!name) return toast('กรุณากรอกชื่อลูกหนี้'); if (isDuplicateIdCard($('debtorIdCard').value)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', { name, phone: $('debtorPhone').value.trim(), lineId: $('debtorLineId').value.trim(), idCard: $('debtorIdCard').value.trim(), address: $('debtorAddress').value.trim(), district: $('debtorDistrict').value.trim(), province: $('debtorProvince').value.trim() });['debtorName', 'debtorPhone', 'debtorLineId', 'debtorIdCard', 'debtorAddress', 'debtorDistrict', 'debtorProvince'].forEach(id => $(id).value = ''); toast('เพิ่มลูกหนี้สำเร็จ'); hideCustomerForm(); switchTab('customers'); render() };
-$('saveEditDebtorBtn').onclick = async () => { const id = $('editDebtorId').value; if (!id) return; if (isDuplicateIdCard($('editDebtorIdCard').value, id)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await updateRow('debtors', id, { name: $('editDebtorName').value.trim(), phone: $('editDebtorPhone').value.trim(), lineId: $('editDebtorLineId').value.trim(), idCard: $('editDebtorIdCard').value.trim(), address: $('editDebtorAddress').value.trim(), district: $('editDebtorDistrict').value.trim(), province: $('editDebtorProvince').value.trim() }); $('editDebtorCard').classList.add('hidden'); toast('แก้ไขข้อมูลลูกหนี้แล้ว'); render() };
+$('addDebtorBtn').onclick = async () => { const name = $('debtorName').value.trim(); if (!name) return toast('กรุณากรอกชื่อลูกหนี้'); if (isDuplicateIdCard($('debtorIdCard').value)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', { name, phone: $('debtorPhone').value.trim(), lineId: $('debtorLineId').value.trim(), idCard: $('debtorIdCard').value.trim(), birthDate: $('debtorBirthDate')?.value || '', address: $('debtorAddress').value.trim(), subDistrict: $('debtorSubDistrict')?.value.trim() || '', district: $('debtorDistrict').value.trim(), province: $('debtorProvince').value.trim() });['debtorName', 'debtorPhone', 'debtorLineId', 'debtorIdCard', 'debtorBirthDate', 'debtorAddress', 'debtorSubDistrict', 'debtorDistrict', 'debtorProvince'].forEach(id => { if ($(id)) $(id).value = '' }); toast('เพิ่มลูกหนี้สำเร็จ'); hideCustomerForm(); switchTab('customers'); render() };
+$('saveEditDebtorBtn').onclick = async () => { const id = $('editDebtorId').value; if (!id) return; if (isDuplicateIdCard($('editDebtorIdCard').value, id)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await updateRow('debtors', id, { name: $('editDebtorName').value.trim(), phone: $('editDebtorPhone').value.trim(), lineId: $('editDebtorLineId').value.trim(), idCard: $('editDebtorIdCard').value.trim(), birthDate: $('editDebtorBirthDate')?.value || '', address: $('editDebtorAddress').value.trim(), subDistrict: $('editDebtorSubDistrict')?.value.trim() || '', district: $('editDebtorDistrict').value.trim(), province: $('editDebtorProvince').value.trim() }); $('editDebtorCard').classList.add('hidden'); toast('แก้ไขข้อมูลลูกหนี้แล้ว'); render() };
 $('cancelEditDebtorBtn').onclick = () => $('editDebtorCard').classList.add('hidden');
 $('addDebtBtn').onclick = async () => { const debtorId = $('transactionDebtorId').value, principal = num($('debtPrincipal').value); if (!debtorId) return toast('เลือกลูกหนี้ก่อน'); if (principal <= 0) return toast('กรอกยอดหนี้'); await add('debts', { debtorId, title: $('debtTitle').value || 'ก้อนหนี้', principal, minCollectAmount: num($('debtMinCollect').value) || principal, dueDate: $('debtDueDate').value || today(), status: 'open' });['debtTitle', 'debtPrincipal', 'debtMinCollect', 'debtDueDate'].forEach(id => $(id).value = ''); toast('เพิ่มก้อนหนี้สำเร็จ'); switchTab('transactions'); switchTransaction('debt'); render() };
 $('addPaymentBtn').onclick = async () => { if (!$('paymentDebtId').value) return toast('เลือกก้อนหนี้'); const amount = num($('paymentAmount').value); if (amount <= 0) return toast('กรอกจำนวนเงิน'); await add('payments', { debtId: $('paymentDebtId').value, amount, paidDate: $('paymentDate').value || today(), note: $('paymentNote').value }); $('paymentAmount').value = ''; $('paymentNote').value = ''; toast('บันทึกชำระแล้ว'); switchTab('transactions'); switchTransaction('payment'); render() };
@@ -205,39 +215,75 @@ $('addDocumentBtn').onclick = async () => {
         render();
     } catch (e) { console.error(e); toast('อัปโหลดไม่สำเร็จ: ' + e.message) }
 };
-function normalizeThaiLocation(text) {
+function normalizeThaiPrefix(name='') {
+    return String(name || '')
+        .replace(/น\s*\.\s*ส\s*\.?/g, 'นางสาว')
+        .replace(/นส\s*\.?/g, 'นางสาว')
+        .replace(/ด\s*\.\s*ช\s*\.?/g, 'เด็กชาย')
+        .replace(/ด\s*\.\s*ญ\s*\.?/g, 'เด็กหญิง')
+        .replace(/นาย\s+/g, 'นาย ')
+        .replace(/นางสาว\s+/g, 'นางสาว ')
+        .replace(/นาง\s+/g, 'นาง ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+function parseThaiAddressParts(text='') {
     const raw = String(text || '').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-    const provinces = ['กรุงเทพมหานคร', 'กระบี่', 'กาญจนบุรี', 'กาฬสินธุ์', 'กำแพงเพชร', 'ขอนแก่น', 'จันทบุรี', 'ฉะเชิงเทรา', 'ชลบุรี', 'ชัยนาท', 'ชัยภูมิ', 'ชุมพร', 'เชียงราย', 'เชียงใหม่', 'ตรัง', 'ตราด', 'ตาก', 'นครนายก', 'นครปฐม', 'นครพนม', 'นครราชสีมา', 'นครศรีธรรมราช', 'นครสวรรค์', 'นนทบุรี', 'นราธิวาส', 'น่าน', 'บึงกาฬ', 'บุรีรัมย์', 'ปทุมธานี', 'ประจวบคีรีขันธ์', 'ปราจีนบุรี', 'ปัตตานี', 'พระนครศรีอยุธยา', 'พะเยา', 'พังงา', 'พัทลุง', 'พิจิตร', 'พิษณุโลก', 'เพชรบุรี', 'เพชรบูรณ์', 'แพร่', 'ภูเก็ต', 'มหาสารคาม', 'มุกดาหาร', 'แม่ฮ่องสอน', 'ยโสธร', 'ยะลา', 'ร้อยเอ็ด', 'ระนอง', 'ระยอง', 'ราชบุรี', 'ลพบุรี', 'ลำปาง', 'ลำพูน', 'เลย', 'ศรีสะเกษ', 'สกลนคร', 'สงขลา', 'สตูล', 'สมุทรปราการ', 'สมุทรสงคราม', 'สมุทรสาคร', 'สระแก้ว', 'สระบุรี', 'สิงห์บุรี', 'สุโขทัย', 'สุพรรณบุรี', 'สุราษฎร์ธานี', 'สุรินทร์', 'หนองคาย', 'หนองบัวลำภู', 'อ่างทอง', 'อำนาจเจริญ', 'อุดรธานี', 'อุตรดิตถ์', 'อุทัยธานี', 'อุบลราชธานี'];
+    const provinceList = ['กรุงเทพมหานคร','กระบี่','กาญจนบุรี','กาฬสินธุ์','กำแพงเพชร','ขอนแก่น','จันทบุรี','ฉะเชิงเทรา','ชลบุรี','ชัยนาท','ชัยภูมิ','ชุมพร','เชียงราย','เชียงใหม่','ตรัง','ตราด','ตาก','นครนายก','นครปฐม','นครพนม','นครราชสีมา','นครศรีธรรมราช','นครสวรรค์','นนทบุรี','นราธิวาส','น่าน','บึงกาฬ','บุรีรัมย์','ปทุมธานี','ประจวบคีรีขันธ์','ปราจีนบุรี','ปัตตานี','พระนครศรีอยุธยา','พะเยา','พังงา','พัทลุง','พิจิตร','พิษณุโลก','เพชรบุรี','เพชรบูรณ์','แพร่','ภูเก็ต','มหาสารคาม','มุกดาหาร','แม่ฮ่องสอน','ยโสธร','ยะลา','ร้อยเอ็ด','ระนอง','ระยอง','ราชบุรี','ลพบุรี','ลำปาง','ลำพูน','เลย','ศรีสะเกษ','สกลนคร','สงขลา','สตูล','สมุทรปราการ','สมุทรสงคราม','สมุทรสาคร','สระแก้ว','สระบุรี','สิงห์บุรี','สุโขทัย','สุพรรณบุรี','สุราษฎร์ธานี','สุรินทร์','หนองคาย','หนองบัวลำภู','อ่างทอง','อำนาจเจริญ','อุดรธานี','อุตรดิตถ์','อุทัยธานี','อุบลราชธานี'];
     let province = '';
     if (/กรุงเทพ|กทม/.test(raw)) province = 'กรุงเทพมหานคร';
-    if (!province) { province = provinces.find(p => raw.includes(p)) || '' }
-    let district = '';
-    const districtPatterns = [
-        /(?:เขต|อำเภอ|อ\.)\s*([ก-๙A-Za-z]+(?:\s+[ก-๙A-Za-z]+)?)/,
-        /(?:แขวง|ตำบล|ต\.)\s*[ก-๙A-Za-z]+\s+(?:เขต|อำเภอ|อ\.)\s*([ก-๙A-Za-z]+(?:\s+[ก-๙A-Za-z]+)?)/,
-        /(?:เขต|อำเภอ|อ\.)\s*([ก-๙A-Za-z]+)(?=\s*(?:จังหวัด|จ\.|กรุงเทพ|$))/
-    ];
-    for (const p of districtPatterns) { const m = raw.match(p); if (m && m[1]) { district = m[1].trim(); break } }
-    if (district) {
-        district = district.replace(/จังหวัด.*$/, '').replace(/กรุงเทพมหานคร.*$/, '').replace(/กทม.*$/, '').trim();
-    }
-    return { district, province };
+    if (!province) province = provinceList.find(p => raw.includes(p)) || '';
+
+    const subMatch = raw.match(/(?:แขวง|ตำบล|ต\.)\s*([^\s,]+(?:\s+[^\s,]+)?)/);
+    const distMatch = raw.match(/(?:เขต|อำเภอ|อ\.)\s*([^\s,]+(?:\s+[^\s,]+)?)/);
+    let subDistrict = subMatch ? subMatch[1].trim() : '';
+    let district = distMatch ? distMatch[1].trim() : '';
+    const cleanPart = v => String(v || '')
+        .replace(/(?:เขต|อำเภอ|อ\.|จังหวัด|จ\.|กรุงเทพมหานคร|กทม).*$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    subDistrict = cleanPart(subDistrict);
+    district = cleanPart(district);
+
+    // บ้านเลขที่สำหรับสัญญา: เก็บเฉพาะเลขบ้านจริง ไม่ดึงซอย/ถนนตาม OCR
+    // เช่น "2/465 ซ.เสรีไทย 91 แขวงมีนบุรี" -> "2/465"
+    // เช่น "214 ม.14 ต.ไชยบุรี" -> "214"
+    // เช่น "2/465 ซ.เสรีไทย 91 แขวงมีนบุรี" -> "2/465"
+    // ไม่ดึงหมู่ / ม. ไปใส่ในช่องบ้านเลขที่ของสัญญา เพื่อให้ฟอร์มอ่านง่ายและไม่ล้นช่อง
+    let houseNo = '';
+    const houseMatch = raw.match(/(?:บ้านเลขที่\s*)?([0-9]+(?:\/[0-9]+)?)/i);
+    if (houseMatch) houseNo = houseMatch[1].replace(/\s+/g, ' ').trim();
+    return { houseNo, subDistrict, district, province };
+}
+function normalizeThaiLocation(text) {
+    const p = parseThaiAddressParts(text);
+    return { district: p.district, province: p.province, subDistrict: p.subDistrict, houseNo: p.houseNo };
 }
 function parseOcrResult(data) {
-    const full = data.fullName || data.name || ''; let prefix = '', firstName = '', lastName = '';
-    const nm = full.match(/(นาย|นาง|นางสาว|เด็กชาย|เด็กหญิง)\s*([^\s]+)\s*(.*)/);
-    if (nm) { prefix = nm[1]; firstName = nm[2] || ''; lastName = (nm[3] || '').trim() } else { const p = full.split(/\s+/).filter(Boolean); firstName = p[0] || ''; lastName = p.slice(1).join(' ') }
+    const full = normalizeThaiPrefix(data.fullName || data.name || '');
+    let prefix = '', firstName = '', lastName = '';
+    const nm = full.match(/^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)\s*([^\s]+)\s*(.*)$/);
+    if (nm) { prefix = nm[1]; firstName = nm[2] || ''; lastName = (nm[3] || '').trim() }
+    else { const p = full.split(/\s+/).filter(Boolean); firstName = p[0] || ''; lastName = p.slice(1).join(' ') }
     const raw = (data.rawText || '') + ' ' + (data.address || '') + ' ' + (data.district || '') + ' ' + (data.province || '');
     const loc = normalizeThaiLocation(raw);
-    return { prefix, firstName, lastName, idCard: data.idCard || '', address: data.address || '', district: (data.district || loc.district || '').trim(), province: (data.province || loc.province || '').trim() }
+    return {
+        prefix, firstName, lastName,
+        idCard: data.idCard || '',
+        address: data.address || '',
+        houseNo: loc.houseNo || '',
+        subDistrict: (data.subDistrict || data.tambon || loc.subDistrict || '').trim(),
+        district: (data.district || loc.district || '').trim(),
+        province: (data.province || loc.province || '').trim()
+    }
 }
 async function compressImageToBase64(file, maxWidth = 1600, quality = .86) { const img = await new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.onerror = reject; im.src = URL.createObjectURL(file) }); const scale = Math.min(1, maxWidth / img.width), canvas = document.createElement('canvas'); canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height); return canvas.toDataURL('image/jpeg', quality).split(',')[1] }
 async function getAuthToken() { return currentUser?.getIdToken ? await currentUser.getIdToken() : '' }
-function fillOcrFields(o) { $('ocrPrefix').value = o.prefix || ''; $('ocrFirstName').value = o.firstName || ''; $('ocrLastName').value = o.lastName || ''; $('ocrIdCard').value = o.idCard || ''; $('ocrAddress').value = o.address || ''; $('ocrDistrict').value = o.district || ''; $('ocrProvince').value = o.province || ''; $('ocrIdMasked').textContent = o.idCard ? `แสดงแบบซ่อน: ${maskId(o.idCard)}` : '' }
-function ocrDebtorObject() { return { name: fullNameOf({ prefix: $('ocrPrefix').value, firstName: $('ocrFirstName').value, lastName: $('ocrLastName').value }), phone: '', lineId: '', idCard: $('ocrIdCard').value, address: $('ocrAddress').value, district: $('ocrDistrict').value, province: $('ocrProvince').value, source: 'ocr' } }
+function fillOcrFields(o) { $('ocrPrefix').value = o.prefix || ''; $('ocrFirstName').value = o.firstName || ''; $('ocrLastName').value = o.lastName || ''; $('ocrIdCard').value = o.idCard || ''; $('ocrAddress').value = o.address || ''; if ($('debtorSubDistrict')) $('debtorSubDistrict').value = o.subDistrict || ''; $('ocrDistrict').value = o.district || ''; $('ocrProvince').value = o.province || ''; $('ocrIdMasked').textContent = o.idCard ? `แสดงแบบซ่อน: ${maskId(o.idCard)}` : '' }
+function ocrDebtorObject() { const addr = $('ocrAddress').value; const parts = parseThaiAddressParts(addr + ' ' + $('ocrDistrict').value + ' ' + $('ocrProvince').value); return { name: fullNameOf({ prefix: $('ocrPrefix').value, firstName: $('ocrFirstName').value, lastName: $('ocrLastName').value }), phone: '', lineId: '', idCard: $('ocrIdCard').value, address: addr, houseNo: parts.houseNo || '', district: $('ocrDistrict').value || parts.district || '', province: $('ocrProvince').value || parts.province || '', subDistrict: parts.subDistrict || '', birthDate: '', source: 'ocr' } }
 $('runOcrBtn').onclick = async () => { const file = $('ocrFile').files[0]; if (!file) return toast('กรุณาถ่ายรูปหรือเลือกรูปบัตรก่อน'); if (!OCR_FUNCTION_URL) return toast('ยังไม่ได้ตั้งค่า OCR URL'); try { toast('กำลังอ่าน OCR...'); const imageBase64 = await compressImageToBase64(file), token = await getAuthToken(); const res = await fetch(OCR_FUNCTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ imageBase64 }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'OCR failed'); const parsed = parseOcrResult(data); fillOcrFields(parsed); pendingOcrDebtor = ocrDebtorObject(); $('confirmText').textContent = `ชื่อ: ${pendingOcrDebtor.name}\nเลขบัตร: ${maskId(pendingOcrDebtor.idCard)}\nเขต/อำเภอ: ${pendingOcrDebtor.district || '-'}\nจังหวัด: ${pendingOcrDebtor.province || '-'}`; $('confirmModal').classList.remove('hidden'); toast('อ่าน OCR สำเร็จ') } catch (e) { console.error(e); toast('OCR ไม่สำเร็จ: ' + e.message) } };
 $('confirmCreateDebtorBtn').onclick = async () => { if (!pendingOcrDebtor) pendingOcrDebtor = ocrDebtorObject(); if (!pendingOcrDebtor.name) return toast('ไม่มีชื่อลูกหนี้'); if (isDuplicateIdCard(pendingOcrDebtor.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', pendingOcrDebtor); $('confirmModal').classList.add('hidden'); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() };
-$('cancelCreateDebtorBtn').onclick = () => $('confirmModal').classList.add('hidden'); $('autoCreateDebtorBtn').onclick = async () => { const row = ocrDebtorObject(); if (!row.name) return toast('ไม่มีข้อมูล OCR'); if (isDuplicateIdCard(row.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', row); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() }; $('useOcrToDebtorBtn').onclick = () => { const row = ocrDebtorObject(); $('debtorName').value = row.name; $('debtorIdCard').value = row.idCard; $('debtorAddress').value = row.address; $('debtorDistrict').value = row.district; $('debtorProvince').value = row.province; showCustomerForm('manual'); switchTab('customers'); toast('นำข้อมูล OCR ไปกรอกฟอร์มแล้ว') };
+$('cancelCreateDebtorBtn').onclick = () => $('confirmModal').classList.add('hidden'); $('autoCreateDebtorBtn').onclick = async () => { const row = ocrDebtorObject(); if (!row.name) return toast('ไม่มีข้อมูล OCR'); if (isDuplicateIdCard(row.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', row); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() }; $('useOcrToDebtorBtn').onclick = () => { const row = ocrDebtorObject(); $('debtorName').value = row.name; $('debtorIdCard').value = row.idCard; if ($('debtorBirthDate')) $('debtorBirthDate').value = row.birthDate || ''; $('debtorAddress').value = row.address; if ($('debtorSubDistrict')) $('debtorSubDistrict').value = row.subDistrict || ''; $('debtorDistrict').value = row.district; $('debtorProvince').value = row.province; showCustomerForm('manual'); switchTab('customers'); toast('นำข้อมูล OCR ไปกรอกฟอร์มแล้ว') };
 function bindDropzones() { [['dropzone', 'documentFile', 'dropzoneText'], ['ocrDropzone', 'ocrFile', 'ocrFileName']].forEach(([dzId, fileId, textId]) => { const dz = $(dzId), file = $(fileId), text = $(textId); if (!dz || !file) return; const show = () => { if (file.files[0]) { if (text) text.textContent = fileId === 'documentFile' ? `เลือกแล้ว ${file.files.length} ไฟล์` : file.files[0].name; if (fileId === 'ocrFile') { $('ocrPreview').src = URL.createObjectURL(file.files[0]); $('ocrPreview').classList.remove('hidden') } } }; file.addEventListener('change', show);['dragenter', 'dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('dragover') }));['dragleave', 'drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('dragover') })); dz.addEventListener('drop', e => { if (e.dataTransfer.files.length) { file.files = e.dataTransfer.files; show() } }) }) }
 function sanitizeDecimalInput(value) {
     let v = String(value || '').replace(/,/g, '').replace(/[^\d.]/g, '');
@@ -400,12 +446,14 @@ function getSignatureData(id) { const c = $(id); return c && hasSignature(id) ? 
 const SIGNATURE_KEYS = { sigBorrower:'borrower', sigLender:'lender', sigWitness1:'witness1', sigWitness2:'witness2', sigWriter:'writer' };
 const SIGNATURE_IDS_BY_KEY = Object.fromEntries(Object.entries(SIGNATURE_KEYS).map(([id,key]) => [key,id]));
 const SIGNATURE_PDF_MAP = {
-    // template-png-final-1: coordinates calibrated to the user's supplied PNG background.
-    borrower:{ id:'sigBorrower', x:246, y:1130, w:120, h:26 },
-    lender:{ id:'sigLender', x:628, y:1130, w:120, h:26 },
-    witness1:{ id:'sigWitness1', x:246, y:1204, w:120, h:26 },
-    witness2:{ id:'sigWitness2', x:628, y:1204, w:120, h:26 },
-    writer:{ id:'sigWriter', x:246, y:1279, w:120, h:26 }
+    // Template V2.2 coordinates (1447x2048 master scale).
+    // Ink is drawn on the same row as the printed signature line.
+    // Names are drawn immediately to the right of the ink, still before the role label.
+    borrower:{ id:'sigBorrower', x:585, y:1458, w:118, h:40 },
+    lender:{ id:'sigLender', x:505, y:1509, w:118, h:40 },
+    witness1:{ id:'sigWitness1', x:610, y:1663, w:118, h:40 },
+    witness2:{ id:'sigWitness2', x:610, y:1715, w:118, h:40 },
+    writer:{ id:'sigWriter', x:610, y:1766, w:118, h:40 }
 };
 function initContractPads() { SIG_IDS.forEach(bindSignaturePad); }
 function cropSignatureCanvas(canvas, padding=12) {
@@ -551,9 +599,9 @@ function renderContractList(d, c) {
     const list = (d.contracts || []).sort((a,b)=>String(b.createdDate||'').localeCompare(String(a.createdDate||'')));
     $('contractList').innerHTML = list.length ? list.map(x => {
         const signed = Number(x.signatureCount || 0), complete = signed >= 5;
-        const status = complete ? 'สมบูรณ์' : (signed === 0 ? 'แบบร่าง' : `รอลายเซ็น ${signed}/5`);
+        const status = complete ? '5/5 : ลงลายเซ็นครบแล้ว' : `${signed}/5 : ยังแก้ไขได้อยู่`;
         const canDelete = signed === 0;
-        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${c.debtors[x.debtorId]?.name || x.borrowerName || '-'} · ${money(x.amount)}</div><div class="item-sub">${status} · วันที่ ${thaiDate(x.contractDate || x.createdDate)} · ครบกำหนด ${thaiDate(x.dueDate)} · ${x.fileName || ''}</div></div><div class="doc-actions icon-actions">${x.documentId ? `<button class="icon-action icon-view" type="button" title="เปิด PDF" aria-label="เปิด PDF" onclick="previewDocument('${x.documentId}')"><i class="bi bi-file-earmark-pdf"></i></button>` : ''}${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
+        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${c.debtors[x.debtorId]?.name || x.borrowerName || '-'} · ${money(x.amount)}</div><div class="item-sub">${status} · วันที่ ${thaiDate(x.contractDate || x.createdDate)} · ครบกำหนด ${thaiDate(x.dueDate)} · ${x.fileName || ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิด PDF" aria-label="เปิด PDF" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
     }).join('') : '<div class="empty">ยังไม่มีสัญญากู้ยืม</div>';
 }
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
@@ -674,6 +722,23 @@ function buildContractHtml(row, debtor) {
         <small class="contract-watermark">เอกสารสร้างจากระบบ Debt Collector</small>
     </div>`;
 }
+
+function syncSavedContractLocal(existing, contractId, documentId, docPayload, contractPayload, extra={}) {
+    const d = { ...blank, ...(latestData || local()) };
+    d.documents = Array.isArray(d.documents) ? d.documents.slice() : [];
+    d.contracts = Array.isArray(d.contracts) ? d.contracts.slice() : [];
+    const docRow = { id: documentId, ...docPayload, storagePath: extra.storagePath || '', downloadURL: extra.downloadURL || '', updatedDate: today() };
+    const contractRow = { id: contractId, ...contractPayload, documentId, storagePath: extra.storagePath || '', downloadURL: extra.downloadURL || '', updatedDate: today() };
+    const docIndex = d.documents.findIndex(x => x.id === documentId);
+    if (docIndex >= 0) d.documents[docIndex] = { ...d.documents[docIndex], ...docRow };
+    else d.documents.push(docRow);
+    const conIndex = d.contracts.findIndex(x => x.id === contractId);
+    if (conIndex >= 0) d.contracts[conIndex] = { ...d.contracts[conIndex], ...contractRow };
+    else d.contracts.push(contractRow);
+    latestData = d;
+    setLocal(d);
+}
+
 async function saveContractPdf(row, blob) {
     const debtorId = row.debtorId;
     const existing = (latestData?.contracts || []).find(x =>
@@ -702,6 +767,7 @@ async function saveContractPdf(row, blob) {
             d.contracts.push({ id: newContractId, ...contractPayload, documentId:newDocId, downloadURL:'' });
             setLocal(d);
         }
+        latestData = local();
         return;
     }
 
@@ -721,9 +787,11 @@ async function saveContractPdf(row, blob) {
             documentId = docRef.id;
         }
         await updateDoc(doc(db, `users/${currentUser.uid}/contracts/${existing.id}`), { ...contractPayload, documentId, storagePath:path, downloadURL, updatedAt: serverTimestamp() });
+        syncSavedContractLocal(existing, existing.id, documentId, docPayload, contractPayload, { storagePath:path, downloadURL });
     } else {
         const docRef = await addDoc(collection(db, `users/${currentUser.uid}/documents`), { ...docPayload, storagePath:path, downloadURL, createdAt: serverTimestamp() });
-        await addDoc(collection(db, `users/${currentUser.uid}/contracts`), { ...contractPayload, documentId: docRef.id, storagePath:path, downloadURL, createdAt: serverTimestamp() });
+        const contractRef = await addDoc(collection(db, `users/${currentUser.uid}/contracts`), { ...contractPayload, documentId: docRef.id, storagePath:path, downloadURL, createdAt: serverTimestamp() });
+        syncSavedContractLocal(null, contractRef.id, docRef.id, docPayload, contractPayload, { storagePath:path, downloadURL });
     }
 }
 
@@ -735,30 +803,30 @@ function loadContractTemplateImage(){
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = reject;
-            img.src = CONTRACT_TEMPLATE_URL + '?v=phase8-final-font-v2';
+            img.src = CONTRACT_TEMPLATE_URL + '?v=phase14-template-v2-readable';
         });
     }
     return contractTemplateImagePromise;
 }
-function contractCanvasPoint(x, y){ return { x: x * (2480/1055), y: y * (3508/1491) }; }
-function setupContractCanvasFont(ctx, size=40, bold=true){
+function contractCanvasPoint(x, y){ return { x: x * (2480/1447), y: y * (3508/2048) }; }
+function setupContractCanvasFont(ctx, size=40, bold=false){
     ctx.font = `${bold ? '700 ' : '400 '}${size}px "TH Sarabun New", "Sarabun", "Noto Sans Thai", Tahoma, sans-serif`;
     ctx.textBaseline = 'alphabetic';
 }
 function drawContractText(ctx, text, x, y, opt={}){
     const p = contractCanvasPoint(x, y);
-    const maxWidth = opt.maxWidth ? opt.maxWidth * (2480/1055) : 9999;
+    const maxWidth = opt.maxWidth ? opt.maxWidth * (2480/1447) : 9999;
     let align = opt.align || 'left';
     let size = opt.size || 40;
     const minSize = opt.minSize || 30;
     const value = String(text || '-').trim() || '-';
     ctx.fillStyle = opt.color || '#0000ff';
     while (size > minSize) {
-        setupContractCanvasFont(ctx, size, opt.bold !== false);
+        setupContractCanvasFont(ctx, size, opt.bold === true);
         if (ctx.measureText(value).width <= maxWidth) break;
         size -= 2;
     }
-    setupContractCanvasFont(ctx, size, opt.bold !== false);
+    setupContractCanvasFont(ctx, size, opt.bold === true);
     const textWidth = ctx.measureText(value).width;
     if (align === 'smart') {
         // Smart Alignment Rule v7.2:
@@ -768,8 +836,8 @@ function drawContractText(ctx, text, x, y, opt={}){
         align = 'center';
     }
     ctx.textAlign = align;
-    const indent = opt.indent != null ? opt.indent * (2480/1055) : 12;
-    const tx = align === 'right' ? p.x + maxWidth - (opt.rightPad || 0) * (2480/1055) : (align === 'center' ? p.x + (maxWidth / 2) : p.x + indent);
+    const indent = opt.indent != null ? opt.indent * (2480/1447) : 12;
+    const tx = align === 'right' ? p.x + maxWidth - (opt.rightPad || 0) * (2480/1447) : (align === 'center' ? p.x + (maxWidth / 2) : p.x + indent);
     ctx.fillText(value, tx, p.y, maxWidth);
 }
 function drawContractWrap(ctx, text, x, y, maxWidth, lineHeight=26, maxLines=2, opt={}){
@@ -777,8 +845,8 @@ function drawContractWrap(ctx, text, x, y, maxWidth, lineHeight=26, maxLines=2, 
     const lines = [];
     let current = '';
     const size = opt.size || 38;
-    setupContractCanvasFont(ctx, size, true);
-    const pxMax = maxWidth * (2480/1055);
+    setupContractCanvasFont(ctx, size, opt.bold === true);
+    const pxMax = maxWidth * (2480/1447);
     for (const word of words) {
         const test = current ? current + ' ' + word : word;
         if (ctx.measureText(test).width <= pxMax || !current) current = test;
@@ -789,12 +857,39 @@ function drawContractWrap(ctx, text, x, y, maxWidth, lineHeight=26, maxLines=2, 
     lines.forEach((line, i) => drawContractText(ctx, line, x, y + i*lineHeight, { maxWidth, size, minSize: opt.minSize || 24, align: opt.align || 'center' }));
 }
 
+function drawContractWrapSegments(ctx, text, segments, opt={}){
+    const size = opt.size || 34;
+    const minSize = opt.minSize || 22;
+    const words = String(text || '-').trim().split(/\s+/).filter(Boolean);
+    const lines = [];
+    let current = '';
+    let segIndex = 0;
+    setupContractCanvasFont(ctx, size, opt.bold === true);
+    const maxPxFor = i => (segments[Math.min(i, segments.length - 1)].maxWidth || 9999) * (2480/1447);
+    for (const word of words) {
+        const test = current ? current + ' ' + word : word;
+        if (ctx.measureText(test).width <= maxPxFor(segIndex) || !current) {
+            current = test;
+        } else {
+            lines.push(current);
+            current = word;
+            segIndex++;
+            if (lines.length >= segments.length) break;
+        }
+    }
+    if (current && lines.length < segments.length) lines.push(current);
+    lines.forEach((line, i) => {
+        const seg = segments[i];
+        drawContractText(ctx, line, seg.x, seg.y, { maxWidth: seg.maxWidth, size, minSize, align: seg.align || opt.align || 'left', bold: opt.bold === true });
+    });
+}
+
 function drawContractInlineWrap(ctx, text, firstX, firstY, firstMaxWidth, nextX, nextY, nextMaxWidth, lineHeight=34, opt={}){
     const words = String(text || '-').trim().split(/\s+/).filter(Boolean);
     const size = opt.size || 38;
-    setupContractCanvasFont(ctx, size, opt.bold !== false);
-    const firstPxMax = firstMaxWidth * (2480/1055);
-    const nextPxMax = nextMaxWidth * (2480/1055);
+    setupContractCanvasFont(ctx, size, opt.bold === true);
+    const firstPxMax = firstMaxWidth * (2480/1447);
+    const nextPxMax = nextMaxWidth * (2480/1447);
     const lines = [];
     let current = '';
     let currentMax = firstPxMax;
@@ -811,8 +906,9 @@ function drawContractInlineWrap(ctx, text, firstX, firstY, firstMaxWidth, nextX,
     }
     if (current && lines.length < 2) lines.push(current);
     const align = opt.align || 'center';
-    if (lines[0]) drawContractText(ctx, lines[0], firstX, firstY, { maxWidth:firstMaxWidth, size, minSize: opt.minSize || 24, align });
-    if (lines[1]) drawContractText(ctx, lines[1], nextX, nextY, { maxWidth:nextMaxWidth, size, minSize: opt.minSize || 24, align });
+    const nextAlign = opt.nextAlign || align;
+    if (lines[0]) drawContractText(ctx, lines[0], firstX, firstY, { maxWidth:firstMaxWidth, size, minSize: opt.minSize || 24, align, bold: opt.bold === true });
+    if (lines[1]) drawContractText(ctx, lines[1], nextX, nextY, { maxWidth:nextMaxWidth, size, minSize: opt.minSize || 24, align: nextAlign, bold: opt.bold === true });
 }
 function drawContractSignature(ctx, dataUrl, x, y, w, h){
     if (!dataUrl) return Promise.resolve();
@@ -820,7 +916,7 @@ function drawContractSignature(ctx, dataUrl, x, y, w, h){
         const img = new Image();
         img.onload = () => {
             const p = contractCanvasPoint(x, y);
-            const boxW = w*(2480/1055), boxH = h*(3508/1491);
+            const boxW = w*(2480/1447), boxH = h*(3508/2048);
             const scale = Math.min(boxW / img.width, boxH / img.height);
             const drawW = img.width * scale, drawH = img.height * scale;
             const dx = p.x + (boxW - drawW) / 2;
@@ -840,58 +936,84 @@ async function renderContractImageCanvas(row, debtor){
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
-    const borrowerAddress = [debtor.address, debtor.district, debtor.province].filter(Boolean).join(' ');
+
     const borrowerName = debtor.name || row.borrowerName || '-';
     const lenderName = row.lenderName || currentProfile().lenderName || getDisplayName();
     const cdate = thDateParts(row.contractDate || today());
     const ddate = thDateParts(row.dueDate);
     const collateral = row.collateral || row.terms || '-';
-    const interest = row.interestRate ? `${row.interestRate}%` : '-';
+    const interest = row.interestRate ? `${row.interestRate}% ต่อปี` : '-';
     const borrowerAge = debtorAgeForContract(debtor, row.contractDate || today());
+    const parsedAddress = parseThaiAddressParts([debtor.houseNo, debtor.address, debtor.subDistrict, debtor.district, debtor.province].filter(Boolean).join(' '));
+    const houseNo = debtor.houseNo || parsedAddress.houseNo || '-';
+    const subDistrict = debtor.subDistrict || debtor.tambon || debtor.subdistrict || parsedAddress.subDistrict || '';
+    const district = debtor.district || parsedAddress.district || '';
+    const province = debtor.province || parsedAddress.province || '';
+    const borrowerNameWithId = fullId(debtor.idCard) ? `${borrowerName} เลขประจำตัวประชาชน ${fullId(debtor.idCard)}` : borrowerName;
+    const lenderNameWithId = fullId(row.lenderIdCard) ? `${lenderName} เลขประจำตัวประชาชน ${fullId(row.lenderIdCard)}` : lenderName;
+    const amountParts = money(row.amount).split('.');
+    const amountInteger = amountParts[0] || '-';
+    const amountSatang = amountParts[1] || '00';
+    const amountThai = bahtTextFallback(row.amount).replace(/บาทถ้วน$/, '').replace(/บาท$/, '') || '-';
 
-    // template-png-final-1: all blue filled values are positioned over the user's PNG background.
-    // Normal fields are centered on the printed line; money stays right-aligned to reduce number tampering.
-    drawContractText(ctx, row.contractNo || nextContractNo(), 181, 117, { maxWidth:129, size:30, minSize:22, align:'center' });
-    drawContractText(ctx, row.place || '-', 162, 154, { maxWidth:147, size:30, minSize:22, align:'center' });
-    drawContractText(ctx, cdate.day, 162, 192, { maxWidth:77, align:'center', size:30, minSize:22 });
-    drawContractText(ctx, cdate.month, 286, 192, { maxWidth:146, align:'center', size:30, minSize:20 });
-    drawContractText(ctx, cdate.year, 474, 192, { maxWidth:130, align:'center', size:30, minSize:22 });
+    // Template V2 final: coordinates are based on the 1447x2048 PNG master.
+    // All filled values are blue (#0000ff), normal weight, then flattened into one PNG image for mobile-safe PDF rendering.
+    const FS = 42;
+    const FS_SMALL = 40;
+    const FS_ID = 36;
+    const FS_SIG_NAME = 34;
+    const FS_INLINE_ID = 34;
 
-    drawContractText(ctx, borrowerName, 177, 267, { maxWidth:130, size:30, minSize:21, align:'smart' });
-    drawContractText(ctx, borrowerAge, 389, 267, { maxWidth:86, align:'center', size:30, minSize:21 });
-    drawContractInlineWrap(ctx, borrowerAddress || '-', 542, 267, 381, 136, 304, 783, 37, { size:30, minSize:21, align:'smart' });
-    drawContractText(ctx, fullId(debtor.idCard), 292, 341, { maxWidth:627, size:30, minSize:21, align:'smart' });
+    // Header
+    drawContractText(ctx, row.contractNo || nextContractNo(), 248, 166, { maxWidth:359, size:FS, minSize:22, align:'left' });
+    drawContractText(ctx, row.place || '-', 755, 166, { maxWidth:514, size:FS, minSize:22, align:'left' });
+    drawContractText(ctx, cdate.day, 688, 217, { maxWidth:107, size:FS, minSize:22, align:'center' });
+    drawContractText(ctx, cdate.month, 858, 217, { maxWidth:203, size:FS, minSize:20, align:'center' });
+    drawContractText(ctx, cdate.year, 1116, 217, { maxWidth:154, size:FS, minSize:22, align:'center' });
 
-    drawContractText(ctx, lenderName, 315, 379, { maxWidth:243, size:30, minSize:21, align:'smart' });
-    drawContractText(ctx, fullId(row.lenderIdCard), 729, 379, { maxWidth:191, size:30, minSize:21, align:'smart' });
-    drawContractWrap(ctx, row.lenderAddress || '-', 162, 416, 758, 34, 1, { size:30, minSize:21, align:'smart' });
+    // Borrower section
+    drawContractText(ctx, borrowerName, 435, 268, { maxWidth:520, size:FS, minSize:28, align:'center' });
+    drawContractText(ctx, borrowerAge || '-', 1000, 268, { maxWidth:55, size:FS_SMALL, minSize:28, align:'center' });
+    drawContractText(ctx, houseNo, 1150, 268, { maxWidth:120, size:FS_SMALL, minSize:26, align:'center' });
+    drawContractText(ctx, subDistrict || '-', 225, 320, { maxWidth:200, size:FS_SMALL, minSize:26, align:'center' });
+    drawContractText(ctx, district || '-', 485, 320, { maxWidth:260, size:FS_SMALL, minSize:26, align:'center' });
+    drawContractText(ctx, province || '-', 810, 320, { maxWidth:340, size:FS_SMALL, minSize:26, align:'center' });
 
-    drawContractText(ctx, borrowerName, 295, 490, { maxWidth:243, size:30, minSize:21, align:'smart' });
-    drawContractText(ctx, lenderName, 619, 490, { maxWidth:199, size:30, minSize:21, align:'smart' });
-    drawContractText(ctx, money(row.amount), 136, 527, { maxWidth:155, align:'right', size:30, minSize:21 });
-    drawContractText(ctx, bahtTextFallback(row.amount), 359, 527, { maxWidth:164, size:30, minSize:21, align:'center' });
+    // Lender section. ID numbers are added as small blue annotations below the printed line without changing the template wording.
+    drawContractText(ctx, lenderName, 315, 371, { maxWidth:760, size:FS, minSize:28, align:'center' });
 
-    drawContractText(ctx, collateral, 562, 565, { maxWidth:191, size:30, minSize:20, align:'smart' });
-    drawContractText(ctx, ddate.day, 715, 676, { maxWidth:43, align:'center', size:30, minSize:21 });
-    drawContractText(ctx, ddate.month, 813, 676, { maxWidth:104, align:'center', size:30, minSize:20 });
-    drawContractText(ctx, ddate.year, 162, 714, { maxWidth:77, size:30, minSize:21, align:'center' });
-    drawContractText(ctx, interest, 377, 751, { maxWidth:121, align:'smart', size:30, minSize:20 });
+    // Clause 1
+    drawContractText(ctx, borrowerNameWithId, 381, 422, { maxWidth:600, size:FS_INLINE_ID, minSize:20, align:'center' });
+    drawContractText(ctx, lenderNameWithId, 175, 473, { maxWidth:956, size:FS_INLINE_ID, minSize:20, align:'center' });
+    drawContractText(ctx, amountInteger, 175, 525, { maxWidth:454, size:FS, minSize:28, align:'right', rightPad:8 });
+    drawContractText(ctx, amountThai, 677, 525, { maxWidth:298, size:FS, minSize:26, align:'center' });
+    drawContractText(ctx, amountSatang, 1031, 525, { maxWidth:202, size:FS, minSize:26, align:'center' });
 
-    // Signature Engine v6.12: cropped signatures are reduced and bottom-aligned close above the line.
+    // Clause 2 - collateral can flow across almost three full lines.
+    drawContractWrapSegments(ctx, collateral, [
+        { x:779, y:627, maxWidth:490, align:'left' },
+        { x:182, y:678, maxWidth:1088, align:'left' },
+        { x:182, y:730, maxWidth:1088, align:'left' }
+    ], { size:FS_SMALL, minSize:26, align:'left' });
+
+    // Clause 3 and 4
+    drawContractText(ctx, ddate.day || '-', 223, 935, { maxWidth:118, size:FS, minSize:28, align:'center' });
+    drawContractText(ctx, ddate.month || '-', 405, 935, { maxWidth:202, size:FS, minSize:26, align:'center' });
+    drawContractText(ctx, ddate.year || '-', 655, 935, { maxWidth:178, size:FS, minSize:28, align:'center' });
+    drawContractText(ctx, interest, 545, 986, { maxWidth:645, size:FS, minSize:26, align:'center' });
+
     const signatures = row.signatures || {};
     for (const [key, box] of Object.entries(SIGNATURE_PDF_MAP)) {
         await drawContractSignature(ctx, signatures[key], box.x, box.y, box.w, box.h);
     }
 
-    // Names under signature lines, calibrated to the user's PNG background.
-    const LEFT_SIGN_NAME = { x:224, maxWidth:164 };
-    const RIGHT_SIGN_NAME = { x:606, maxWidth:164 };
-    // Signature names use the same default PDF text size as other filled fields and sit close under the signature line.
-    drawContractText(ctx, `(${borrowerName})`, LEFT_SIGN_NAME.x, 1173, { maxWidth:LEFT_SIGN_NAME.maxWidth, size:30, minSize:21, align:'center' });
-    drawContractText(ctx, `(${lenderName})`, RIGHT_SIGN_NAME.x, 1173, { maxWidth:RIGHT_SIGN_NAME.maxWidth, size:30, minSize:21, align:'center' });
-    drawContractText(ctx, `(${row.witness1Name || '-'})`, LEFT_SIGN_NAME.x, 1248, { maxWidth:LEFT_SIGN_NAME.maxWidth, size:30, minSize:21, align:'center' });
-    drawContractText(ctx, `(${row.witness2Name || '-'})`, RIGHT_SIGN_NAME.x, 1248, { maxWidth:RIGHT_SIGN_NAME.maxWidth, size:30, minSize:21, align:'center' });
-    drawContractText(ctx, `(${row.writerName || lenderName})`, LEFT_SIGN_NAME.x, 1323, { maxWidth:LEFT_SIGN_NAME.maxWidth, size:30, minSize:21, align:'center' });
+    // Signature names: same row as the ink, directly to the right of the signature.
+    // This avoids tiny text under the signature line and keeps every signer readable.
+    drawContractText(ctx, `(${borrowerName})`, 700, 1494, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${lenderName})`, 650, 1545, { maxWidth:330, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${row.witness1Name || '-'})`, 700, 1700, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${row.witness2Name || '-'})`, 700, 1752, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${row.writerName || lenderName})`, 700, 1803, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
     return canvas;
 }
 
@@ -909,8 +1031,8 @@ async function generateContract() {
         toast('กำลังสร้าง PDF...');
         const canvas = await renderContractImageCanvas(row, debtor);
         const { jsPDF } = window.jspdf; const pdf = new jsPDF('p', 'mm', 'a4');
-        const img = canvas.toDataURL('image/jpeg', 0.96);
-        pdf.addImage(img, 'JPEG', 0, 0, 210, 297);
+        const img = canvas.toDataURL('image/png');
+        pdf.addImage(img, 'PNG', 0, 0, 210, 297);
         const blob = pdf.output('blob');
         await saveContractPdf(row, blob);
         toast(editingContractId ? 'บันทึกแก้ไขสัญญาแล้ว' : 'สร้างและบันทึกสัญญาแล้ว'); editingContractId = ''; editingContractNo = ''; $('contractFormCard').classList.add('hidden'); render(); switchTab('contracts');
@@ -922,6 +1044,40 @@ if ($('generateContractBtn')) $('generateContractBtn').onclick = generateContrac
 bindContractSmartUi();
 document.querySelectorAll('[data-clear-sig]').forEach(b => b.onclick = () => clearSignature(b.dataset.clearSig));
 window.addEventListener('resize', () => { if (!$('contractFormCard')?.classList.contains('hidden')) SIG_IDS.forEach(id => resizeSignatureCanvas($(id))); });
+
+
+window.openContractPdf = async id => {
+    const row = (latestData?.contracts || []).find(x => x.id === id);
+    if (!row) return toast('ไม่พบสัญญา');
+    const doc = (latestData?.documents || []).find(x => x.id === row.documentId);
+    if (doc?.id && doc?.downloadURL) return previewDocument(doc.id);
+    if (row.downloadURL) {
+        $('previewTitle').textContent = row.fileName || 'สัญญากู้ยืมเงิน.pdf';
+        $('previewBody').innerHTML = `<iframe src="${row.downloadURL}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" title="PDF Preview"></iframe>`;
+        $('previewDownloadBtn').href = row.downloadURL;
+        $('documentPreviewModal').classList.remove('hidden');
+        document.body.classList.add('modal-open');
+        return;
+    }
+    try {
+        toast('กำลังสร้าง Preview สัญญาจากข้อมูลที่บันทึกไว้...');
+        const debtor = debtorForContract(row.debtorId || '');
+        const canvas = await renderContractImageCanvas(row, debtor);
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
+        const blobUrl = URL.createObjectURL(pdf.output('blob'));
+        $('previewTitle').textContent = row.fileName || 'สัญญากู้ยืมเงิน.pdf';
+        $('previewBody').innerHTML = `<iframe src="${blobUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" title="PDF Preview"></iframe>`;
+        $('previewDownloadBtn').href = blobUrl;
+        $('previewDownloadBtn').download = row.fileName || 'loan-contract.pdf';
+        $('documentPreviewModal').classList.remove('hidden');
+        document.body.classList.add('modal-open');
+    } catch (e) {
+        console.error(e);
+        toast('เปิดสัญญาไม่สำเร็จ: ' + e.message);
+    }
+};
 
 window.editContractDraft = id => {
     const row = (latestData?.contracts || []).find(x => x.id === id);
@@ -940,7 +1096,7 @@ window.deleteContractDraft = async id => {
     if (!row) return toast('ไม่พบสัญญา');
     if (Number(row.signatureCount || 0) > 0) return toast('ลบไม่ได้ เพราะมีลายเซ็นแล้ว แต่ยังสามารถแก้ไขได้');
     if (!confirm('ลบแบบร่างสัญญานี้ใช่หรือไม่?')) return;
-    if (row.documentId) await deleteDocument(row.documentId);
+    if (row.documentId) await deleteDocument(row.documentId, { force:true, skipConfirm:true });
     await deleteRow('contracts', id);
     toast('ลบแบบร่างสัญญาแล้ว');
     render();
@@ -948,9 +1104,38 @@ window.deleteContractDraft = async id => {
 window.showContractForm = showContractForm;
 
 if ($('closePreviewBtn')) $('closePreviewBtn').onclick = () => { $('documentPreviewModal').classList.add('hidden'); document.body.classList.remove('modal-open'); };
+function renderAppFooter(){
+    const text = `Version ${APP_INFO.version} • พัฒนาโดย ${APP_INFO.authorized} • Copyright © ${APP_INFO.year}`;
+    if ($('appFooter')) $('appFooter').textContent = text;
+}
+async function clearAppCaches(){
+    if (!('caches' in window)) return;
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(k => /debt-collector/i.test(k)).map(k => caches.delete(k)));
+}
+async function forceAppUpdate(){
+    try {
+        if (newWorker) {
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+            setTimeout(() => location.reload(), 700);
+            return;
+        }
+        if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg) await reg.update();
+        }
+        await clearAppCaches();
+        toast('กำลังโหลดเวอร์ชันล่าสุด');
+        setTimeout(() => location.replace(location.pathname + '?v=' + encodeURIComponent(APP_VERSION) + '&t=' + Date.now()), 500);
+    } catch (e) {
+        console.error(e);
+        await clearAppCaches();
+        location.reload();
+    }
+}
 const themeModes = ['light', 'dark', 'auto']; function getThemeMode() { return localStorage.getItem('themeMode') || 'auto' } function applyTheme() { const mode = getThemeMode(), resolved = mode === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode; document.documentElement.setAttribute('data-theme', resolved); document.body.setAttribute('data-theme', resolved); $('themeIcon').className = mode === 'auto' ? 'bi bi-circle-half' : resolved === 'dark' ? 'bi bi-moon-stars' : 'bi bi-sun' } $('themeBtn').onclick = () => { const cur = getThemeMode(), next = themeModes[(themeModes.indexOf(cur) + 1) % themeModes.length]; localStorage.setItem('themeMode', next); applyTheme(); toast(next === 'auto' ? 'โหมดอัตโนมัติ' : next === 'dark' ? 'โหมดกลางคืน' : 'โหมดกลางวัน') };
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('installBtn').classList.remove('hidden') }); $('installBtn').onclick = async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $('installBtn').classList.add('hidden') } };
-async function setupSW() { if (!('serviceWorker' in navigator)) return; const reg = await navigator.serviceWorker.register('service-worker.js'); if (reg.waiting) { newWorker = reg.waiting; $('updateBtn').classList.remove('hidden') } reg.addEventListener('updatefound', () => { const w = reg.installing; w?.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) { newWorker = w; $('updateBtn').classList.remove('hidden'); toast('มีเวอร์ชันใหม่พร้อมอัปเดต') } }) }); navigator.serviceWorker.addEventListener('controllerchange', () => location.reload()) } $('updateBtn').onclick = () => { if (newWorker) newWorker.postMessage({ type: 'SKIP_WAITING' }); else location.reload() }; $('clearCacheBtn').onclick = async () => { if ('caches' in window) { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); toast('ล้าง Cache แล้ว') } }; $('enablePushBtn').onclick = async () => { if (!('Notification' in window)) return toast('Browser ไม่รองรับ Notification'); const p = await Notification.requestPermission(); toast(p === 'granted' ? 'เปิด Notification แล้ว' : 'ยังไม่ได้อนุญาต Notification') };
+async function setupSW() { if (!('serviceWorker' in navigator)) return; const reg = await navigator.serviceWorker.register('service-worker.js?v=' + encodeURIComponent(APP_VERSION)); if (reg.waiting) { newWorker = reg.waiting; $('updateBtn')?.classList.remove('hidden') } reg.addEventListener('updatefound', () => { const w = reg.installing; w?.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) { newWorker = w; $('updateBtn')?.classList.remove('hidden'); toast('มีเวอร์ชันใหม่พร้อมอัปเดต') } }) }); navigator.serviceWorker.addEventListener('controllerchange', () => location.reload()); setTimeout(() => reg.update().catch(()=>{}), 1500); } if ($('updateBtn')) $('updateBtn').onclick = forceAppUpdate; if ($('clearCacheBtn')) $('clearCacheBtn').onclick = async () => { await clearAppCaches(); toast('ล้าง Cache แล้ว') }; if ($('enablePushBtn')) $('enablePushBtn').onclick = async () => { if (!('Notification' in window)) return toast('Browser ไม่รองรับ Notification'); const p = await Notification.requestPermission(); toast(p === 'granted' ? 'เปิด Notification แล้ว' : 'ยังไม่ได้อนุญาต Notification') };
 
 /* ===== v7.0 UI Refresh helpers ===== */
 const BUTTON_ICON_MAP = [
@@ -983,6 +1168,7 @@ window.addEventListener('DOMContentLoaded', decorateButtons);
 
 try {
     decorateButtons();
+    renderAppFooter();
     applyTheme();
     initFirebase();
     setupSW();

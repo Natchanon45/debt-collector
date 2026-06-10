@@ -1633,21 +1633,63 @@ body.modal-open .bottom-nav{display:none!important;}
 @media(max-width:720px){.contract-ui-grid,.contract-summary-grid{grid-template-columns:1fr}.contract-action-row{flex-direction:column}.contract-action-row .primary,.contract-action-row .secondary{width:100%}}
 
 
-/* ===== Final button typography adjustment =====
-   User request: button text should not be bold anywhere in the app. */
+/* Phase 9 final: keep all button text regular weight (not bold) */
 button,
 .primary,
 .secondary,
-.ghost,
 .danger,
-.file,
-.mini,
+.ghost,
 .round-action,
 .segment,
+.file,
+.mini,
 .icon-btn,
+.icon-action,
 .bottom-tab,
 .bottom-tab span,
-.contract-action-row .secondary,
-.contract-action-row .primary {
+label.file {
     font-weight: 400 !important;
 }
+
+/* Phase 9 final: make the refresh summary action look and behave like a real button */
+#refreshContractSummaryBtn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    min-height: 48px !important;
+    cursor: pointer !important;
+    font-weight: 400 !important;
+}
+
+
+/* Phase 10 app version footer + update button */
+.app-footer{
+    margin: 18px auto calc(86px + env(safe-area-inset-bottom,0px));
+    padding: 10px 12px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+    font-weight: 400 !important;
+}
+#updateBtn:not(.hidden){
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #16a34a !important;
+    border-color: rgba(22,163,74,.35) !important;
+    animation: updatePulse 1.8s ease-in-out infinite;
+}
+#updateBtn:not(.hidden)::after{
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #22c55e;
+    top: 6px;
+    right: 6px;
+}
+@keyframes updatePulse{50%{transform:scale(1.04)}}
+button, .primary, .secondary, .danger, .ghost, .round-action, .segment, .file, .mini, .icon-btn, .icon-action, .bottom-tab, .bottom-tab span, label.file{font-weight:400!important;}
