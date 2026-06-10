@@ -238,7 +238,7 @@ function ocrDebtorObject() { return { name: fullNameOf({ prefix: $('ocrPrefix').
 $('runOcrBtn').onclick = async () => { const file = $('ocrFile').files[0]; if (!file) return toast('กรุณาถ่ายรูปหรือเลือกรูปบัตรก่อน'); if (!OCR_FUNCTION_URL) return toast('ยังไม่ได้ตั้งค่า OCR URL'); try { toast('กำลังอ่าน OCR...'); const imageBase64 = await compressImageToBase64(file), token = await getAuthToken(); const res = await fetch(OCR_FUNCTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ imageBase64 }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'OCR failed'); const parsed = parseOcrResult(data); fillOcrFields(parsed); pendingOcrDebtor = ocrDebtorObject(); $('confirmText').textContent = `ชื่อ: ${pendingOcrDebtor.name}\nเลขบัตร: ${maskId(pendingOcrDebtor.idCard)}\nเขต/อำเภอ: ${pendingOcrDebtor.district || '-'}\nจังหวัด: ${pendingOcrDebtor.province || '-'}`; $('confirmModal').classList.remove('hidden'); toast('อ่าน OCR สำเร็จ') } catch (e) { console.error(e); toast('OCR ไม่สำเร็จ: ' + e.message) } };
 $('confirmCreateDebtorBtn').onclick = async () => { if (!pendingOcrDebtor) pendingOcrDebtor = ocrDebtorObject(); if (!pendingOcrDebtor.name) return toast('ไม่มีชื่อลูกหนี้'); if (isDuplicateIdCard(pendingOcrDebtor.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', pendingOcrDebtor); $('confirmModal').classList.add('hidden'); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() };
 $('cancelCreateDebtorBtn').onclick = () => $('confirmModal').classList.add('hidden'); $('autoCreateDebtorBtn').onclick = async () => { const row = ocrDebtorObject(); if (!row.name) return toast('ไม่มีข้อมูล OCR'); if (isDuplicateIdCard(row.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', row); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() }; $('useOcrToDebtorBtn').onclick = () => { const row = ocrDebtorObject(); $('debtorName').value = row.name; $('debtorIdCard').value = row.idCard; $('debtorAddress').value = row.address; $('debtorDistrict').value = row.district; $('debtorProvince').value = row.province; showCustomerForm('manual'); switchTab('customers'); toast('นำข้อมูล OCR ไปกรอกฟอร์มแล้ว') };
-function bindDropzones() { [['dropzone', 'documentFile', 'dropzoneText'], ['ocrDropzone', 'ocrFile', 'ocrFileName']].forEach(([dzId, fileId, textId]) => { const dz = $(dzId), file = $(fileId), text = $(textId); if (!dz || !file) return; const show = () => { if (file.files[0]) { if (text) text.textContent = file.files[0].name; if (fileId === 'ocrFile') { $('ocrPreview').src = URL.createObjectURL(file.files[0]); $('ocrPreview').classList.remove('hidden') } } }; file.addEventListener('change', show);['dragenter', 'dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('dragover') }));['dragleave', 'drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('dragover') })); dz.addEventListener('drop', e => { if (e.dataTransfer.files.length) { file.files = e.dataTransfer.files; show() } }) }) }
+function bindDropzones() { [['dropzone', 'documentFile', 'dropzoneText'], ['ocrDropzone', 'ocrFile', 'ocrFileName']].forEach(([dzId, fileId, textId]) => { const dz = $(dzId), file = $(fileId), text = $(textId); if (!dz || !file) return; const show = () => { if (file.files[0]) { if (text) text.textContent = fileId === 'documentFile' ? `เลือกแล้ว ${file.files.length} ไฟล์` : file.files[0].name; if (fileId === 'ocrFile') { $('ocrPreview').src = URL.createObjectURL(file.files[0]); $('ocrPreview').classList.remove('hidden') } } }; file.addEventListener('change', show);['dragenter', 'dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('dragover') }));['dragleave', 'drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('dragover') })); dz.addEventListener('drop', e => { if (e.dataTransfer.files.length) { file.files = e.dataTransfer.files; show() } }) }) }
 function sanitizeDecimalInput(value) {
     let v = String(value || '').replace(/,/g, '').replace(/[^\d.]/g, '');
     const firstDot = v.indexOf('.');
@@ -400,12 +400,12 @@ function getSignatureData(id) { const c = $(id); return c && hasSignature(id) ? 
 const SIGNATURE_KEYS = { sigBorrower:'borrower', sigLender:'lender', sigWitness1:'witness1', sigWitness2:'witness2', sigWriter:'writer' };
 const SIGNATURE_IDS_BY_KEY = Object.fromEntries(Object.entries(SIGNATURE_KEYS).map(([id,key]) => [key,id]));
 const SIGNATURE_PDF_MAP = {
-    // v6.12: reduced signatures and lowered them so the ink nearly touches the signature line.
-    borrower:{ id:'sigBorrower', x:185, y:1328, w:140, h:24 },
-    lender:{ id:'sigLender', x:645, y:1328, w:140, h:24 },
-    witness1:{ id:'sigWitness1', x:185, y:1381, w:140, h:24 },
-    witness2:{ id:'sigWitness2', x:645, y:1381, w:140, h:24 },
-    writer:{ id:'sigWriter', x:185, y:1431, w:140, h:24 }
+    // template-png-final-1: coordinates calibrated to the user's supplied PNG background.
+    borrower:{ id:'sigBorrower', x:246, y:1130, w:120, h:26 },
+    lender:{ id:'sigLender', x:628, y:1130, w:120, h:26 },
+    witness1:{ id:'sigWitness1', x:246, y:1204, w:120, h:26 },
+    witness2:{ id:'sigWitness2', x:628, y:1204, w:120, h:26 },
+    writer:{ id:'sigWriter', x:246, y:1279, w:120, h:26 }
 };
 function initContractPads() { SIG_IDS.forEach(bindSignaturePad); }
 function cropSignatureCanvas(canvas, padding=12) {
@@ -461,6 +461,72 @@ function restoreContractSignatures(signatures={}) {
     Object.entries(signatures || {}).forEach(([key, data]) => restoreSignatureCanvas(SIGNATURE_IDS_BY_KEY[key], data));
 }
 function debtorForContract(id) { return (latestData?.debtors || []).find(x => x.id === id) || {}; }
+
+function readContractFormRow(includeSignatures=false){
+    const debtor = debtorForContract($('contractDebtorId')?.value || '');
+    const p = currentProfile();
+    const signatures = includeSignatures ? collectContractSignatures() : {};
+    return {
+        contractNo: editingContractNo || nextContractNo(),
+        sourceContractId: editingContractId || '',
+        debtorId: $('contractDebtorId')?.value || '',
+        borrowerName: debtor.name || '',
+        lenderName: (($('contractLenderName')?.value || '').trim() || p.lenderName || getDisplayName()),
+        lenderIdCard: normalizeIdCard(($('contractLenderIdCard')?.value || p.lenderIdCard || '')),
+        lenderAddress: (($('contractLenderAddress')?.value || '').trim() || p.lenderAddress || ''),
+        amount: num($('contractAmount')?.value),
+        contractDate: $('contractDate')?.value || today(),
+        dueDate: $('contractDueDate')?.value || '',
+        interestRate: String($('contractInterestRate')?.value || '').replace(/,/g,''),
+        place: (($('contractPlace')?.value || '').trim()),
+        collateral: (($('contractCollateral')?.value || '').trim()),
+        witness1Name: (($('contractWitness1Name')?.value || '').trim()),
+        witness2Name: (($('contractWitness2Name')?.value || '').trim()),
+        writerName: (($('contractWriterName')?.value || '').trim() || (($('contractLenderName')?.value || '').trim())),
+        templateType: $('contractTemplateType')?.value || 'loan_new_law',
+        signatures,
+        signatureCount: Object.keys(signatures).length,
+        status: Object.keys(signatures).length >= 5 ? 'completed' : (Object.keys(signatures).length ? 'partial' : 'draft')
+    };
+}
+function updateContractSmartUi(){
+    const debtor = debtorForContract($('contractDebtorId')?.value || '');
+    const row = readContractFormRow(false);
+    const age = debtorAgeForContract(debtor, row.contractDate || today());
+    if ($('contractBorrowerAgeHint')) $('contractBorrowerAgeHint').textContent = `อายุผู้กู้: ${age || '-'} ปี`;
+    const interest = Number(String(row.interestRate || '').replace(/[^0-9.]/g,''));
+    const interestHint = $('contractInterestHint');
+    if (interestHint) {
+        const over = Number.isFinite(interest) && interest > 15;
+        interestHint.classList.toggle('danger', over);
+        interestHint.innerHTML = over ? '⚠️ ดอกเบี้ยเกิน 15% ต่อปี กรุณาตรวจสอบก่อนสร้าง PDF' : 'สูงสุดตามกฎหมาย 15% ต่อปี';
+    }
+    if ($('contractSummaryBox')) {
+        $('contractSummaryBox').innerHTML = `
+            <div class="contract-summary-title"><i class="bi bi-clipboard-check"></i> สรุปก่อนสร้าง PDF</div>
+            <div class="contract-summary-grid">
+                <div><span>ผู้กู้</span><strong>${escapeHtml(debtor.name || '-')}</strong></div>
+                <div><span>อายุ</span><strong>${escapeHtml(age || '-')} ปี</strong></div>
+                <div><span>เงินกู้</span><strong>${money(row.amount)}</strong></div>
+                <div><span>ดอกเบี้ย</span><strong>${escapeHtml(row.interestRate || '-')}% ต่อปี</strong></div>
+                <div><span>ทำสัญญา</span><strong>${thaiDate(row.contractDate)}</strong></div>
+                <div><span>ครบกำหนด</span><strong>${thaiDate(row.dueDate)}</strong></div>
+            </div>`;
+    }
+}
+function bindContractSmartUi(){
+    const ids = ['contractTemplateType','contractDebtorId','contractLenderName','contractAmount','contractDate','contractDueDate','contractInterestRate','contractPlace','contractCollateral','contractWitness1Name','contractWitness2Name','contractWriterName'];
+    ids.forEach(id => {
+        const el = $(id); if (el && !el.dataset.phase8Bound) {
+            ['input','change'].forEach(evt => el.addEventListener(evt, updateContractSmartUi));
+            el.dataset.phase8Bound = '1';
+        }
+    });
+    if ($('refreshContractSummaryBtn') && !$('refreshContractSummaryBtn').dataset.phase8Bound) {
+        $('refreshContractSummaryBtn').onclick = updateContractSmartUi;
+        $('refreshContractSummaryBtn').dataset.phase8Bound = '1';
+    }
+}
 function showContractForm(prefillDebtorId='') {
     if (!prefillDebtorId) { editingContractNo = ''; editingContractId = ''; }
     const card = $('contractFormCard'); if (!card) return;
@@ -470,10 +536,13 @@ function showContractForm(prefillDebtorId='') {
     if ($('contractLenderIdCard')) $('contractLenderIdCard').value = p.lenderIdCard || '';
     if ($('contractLenderAddress')) $('contractLenderAddress').value = p.lenderAddress || '';
     if (prefillDebtorId && $('contractDebtorId')) $('contractDebtorId').value = prefillDebtorId;
+    bindContractSmartUi();
+    updateContractSmartUi();
     initContractPads();
     setTimeout(() => {
         SIG_IDS.forEach(id => resizeSignatureCanvas($(id)));
         if (!editingContractId) restoreContractSignatures({});
+        updateContractSmartUi();
     }, 120);
     card.scrollIntoView({ behavior:'smooth' });
 }
@@ -578,7 +647,7 @@ function buildContractHtml(row, debtor) {
     const lenderName = row.lenderName || currentProfile().lenderName || getDisplayName();
     const borrowerName = debtor.name || row.borrowerName || '-';
     const collateral = row.collateral || row.terms || 'ไม่มีหลักประกันเพิ่มเติม';
-    const interest = row.interestRate ? `${row.interestRate}% ต่อปี` : 'ตามที่กฎหมายกำหนด';
+    const interest = row.interestRate ? `${row.interestRate}%` : 'ตามที่กฎหมายกำหนด';
     const sig = id => { const data = getSignatureData(id); return data ? `<img class="contract-sign-img" src="${data}">` : '<div class="contract-sign-empty"></div>'; };
     return `<div class="contract-paper contract-template">
         <h1>หนังสือสัญญาเงินกู้ตามกฎหมายใหม่</h1>
@@ -666,7 +735,7 @@ function loadContractTemplateImage(){
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = reject;
-            img.src = CONTRACT_TEMPLATE_URL + '?v=7.0';
+            img.src = CONTRACT_TEMPLATE_URL + '?v=phase8-final-font-v2';
         });
     }
     return contractTemplateImagePromise;
@@ -683,7 +752,7 @@ function drawContractText(ctx, text, x, y, opt={}){
     let size = opt.size || 40;
     const minSize = opt.minSize || 30;
     const value = String(text || '-').trim() || '-';
-    ctx.fillStyle = opt.color || '#1554b7';
+    ctx.fillStyle = opt.color || '#0000ff';
     while (size > minSize) {
         setupContractCanvasFont(ctx, size, opt.bold !== false);
         if (ctx.measureText(value).width <= maxWidth) break;
@@ -692,11 +761,11 @@ function drawContractText(ctx, text, x, y, opt={}){
     setupContractCanvasFont(ctx, size, opt.bold !== false);
     const textWidth = ctx.measureText(value).width;
     if (align === 'smart') {
-        // Smart Alignment Rule v6.11:
-        // - amount fields stay right-aligned
-        // - text wider than half the line is centered
-        // - short text starts from the left edge with a small two-space indent
-        align = textWidth >= (maxWidth / 2) ? 'center' : 'left';
+        // Smart Alignment Rule v7.2:
+        // - every normal filled value is centered on the printed line
+        // - amount fields explicitly pass align:'right' to prevent number insertion
+        // - signatures/names stay handled by their own centered line boxes
+        align = 'center';
     }
     ctx.textAlign = align;
     const indent = opt.indent != null ? opt.indent * (2480/1055) : 12;
@@ -777,36 +846,36 @@ async function renderContractImageCanvas(row, debtor){
     const cdate = thDateParts(row.contractDate || today());
     const ddate = thDateParts(row.dueDate);
     const collateral = row.collateral || row.terms || '-';
-    const interest = row.interestRate ? `${row.interestRate}% ต่อปี` : '-';
+    const interest = row.interestRate ? `${row.interestRate}%` : '-';
     const borrowerAge = debtorAgeForContract(debtor, row.contractDate || today());
 
-    // v6.9: only reposition the blue filled values. The black template remains untouched.
-    // Header fields start from the same X column, based on the "ลำดับที่" field.
-    drawContractText(ctx, row.contractNo || nextContractNo(), 105, 130, { maxWidth:210, size:32, minSize:24, align:'smart' });
-    drawContractText(ctx, row.place || '-', 105, 174, { maxWidth:500, size:32, minSize:24, align:'smart' });
-    drawContractText(ctx, cdate.day, 105, 219, { maxWidth:60, align:'center', size:32, minSize:24 });
-    drawContractText(ctx, cdate.month, 205, 219, { maxWidth:120, align:'center', size:32, minSize:22 });
-    drawContractText(ctx, cdate.year, 348, 219, { maxWidth:120, align:'center', size:32, minSize:24 });
+    // template-png-final-1: all blue filled values are positioned over the user's PNG background.
+    // Normal fields are centered on the printed line; money stays right-aligned to reduce number tampering.
+    drawContractText(ctx, row.contractNo || nextContractNo(), 181, 117, { maxWidth:129, size:30, minSize:22, align:'center' });
+    drawContractText(ctx, row.place || '-', 162, 154, { maxWidth:147, size:30, minSize:22, align:'center' });
+    drawContractText(ctx, cdate.day, 162, 192, { maxWidth:77, align:'center', size:30, minSize:22 });
+    drawContractText(ctx, cdate.month, 286, 192, { maxWidth:146, align:'center', size:30, minSize:20 });
+    drawContractText(ctx, cdate.year, 474, 192, { maxWidth:130, align:'center', size:30, minSize:22 });
 
-    drawContractText(ctx, borrowerName, 122, 291, { maxWidth:260, size:32, minSize:23, align:'smart' });
-    drawContractText(ctx, borrowerAge, 425, 291, { maxWidth:100, align:'center', size:32, minSize:23 });
-    drawContractInlineWrap(ctx, borrowerAddress || '-', 650, 291, 320, 48, 335, 910, 34, { size:32, minSize:23, align:'smart' });
-    drawContractText(ctx, fullId(debtor.idCard), 226, 374, { maxWidth:740, size:32, minSize:23, align:'smart' });
+    drawContractText(ctx, borrowerName, 177, 267, { maxWidth:130, size:30, minSize:21, align:'smart' });
+    drawContractText(ctx, borrowerAge, 389, 267, { maxWidth:86, align:'center', size:30, minSize:21 });
+    drawContractInlineWrap(ctx, borrowerAddress || '-', 542, 267, 381, 136, 304, 783, 37, { size:30, minSize:21, align:'smart' });
+    drawContractText(ctx, fullId(debtor.idCard), 292, 341, { maxWidth:627, size:30, minSize:21, align:'smart' });
 
-    drawContractText(ctx, lenderName, 305, 423, { maxWidth:240, size:32, minSize:23, align:'smart' });
-    drawContractText(ctx, fullId(row.lenderIdCard), 772, 423, { maxWidth:220, size:32, minSize:23, align:'smart' });
-    drawContractWrap(ctx, row.lenderAddress || '-', 95, 470, 860, 34, 1, { size:32, minSize:23, align:'smart' });
+    drawContractText(ctx, lenderName, 315, 379, { maxWidth:243, size:30, minSize:21, align:'smart' });
+    drawContractText(ctx, fullId(row.lenderIdCard), 729, 379, { maxWidth:191, size:30, minSize:21, align:'smart' });
+    drawContractWrap(ctx, row.lenderAddress || '-', 162, 416, 758, 34, 1, { size:30, minSize:21, align:'smart' });
 
-    drawContractText(ctx, borrowerName, 210, 563, { maxWidth:250, size:32, minSize:23, align:'smart' });
-    drawContractText(ctx, lenderName, 570, 563, { maxWidth:205, size:32, minSize:23, align:'smart' });
-    drawContractText(ctx, money(row.amount), 55, 611, { maxWidth:155, align:'right', size:32, minSize:23 });
-    drawContractText(ctx, bahtTextFallback(row.amount), 270, 611, { maxWidth:240, size:32, minSize:23, align:'center' });
+    drawContractText(ctx, borrowerName, 295, 490, { maxWidth:243, size:30, minSize:21, align:'smart' });
+    drawContractText(ctx, lenderName, 619, 490, { maxWidth:199, size:30, minSize:21, align:'smart' });
+    drawContractText(ctx, money(row.amount), 136, 527, { maxWidth:155, align:'right', size:30, minSize:21 });
+    drawContractText(ctx, bahtTextFallback(row.amount), 359, 527, { maxWidth:164, size:30, minSize:21, align:'center' });
 
-    drawContractText(ctx, collateral, 555, 663, { maxWidth:190, size:32, minSize:22, align:'smart' });
-    drawContractText(ctx, ddate.day, 725, 806, { maxWidth:65, align:'center', size:32, minSize:23 });
-    drawContractText(ctx, ddate.month, 835, 806, { maxWidth:130, align:'center', size:32, minSize:21 });
-    drawContractText(ctx, ddate.year, 95, 852, { maxWidth:100, size:32, minSize:23, align:'center' });
-    drawContractText(ctx, interest, 325, 898, { maxWidth:120, align:'smart', size:32, minSize:22 });
+    drawContractText(ctx, collateral, 562, 565, { maxWidth:191, size:30, minSize:20, align:'smart' });
+    drawContractText(ctx, ddate.day, 715, 676, { maxWidth:43, align:'center', size:30, minSize:21 });
+    drawContractText(ctx, ddate.month, 813, 676, { maxWidth:104, align:'center', size:30, minSize:20 });
+    drawContractText(ctx, ddate.year, 162, 714, { maxWidth:77, size:30, minSize:21, align:'center' });
+    drawContractText(ctx, interest, 377, 751, { maxWidth:121, align:'smart', size:30, minSize:20 });
 
     // Signature Engine v6.12: cropped signatures are reduced and bottom-aligned close above the line.
     const signatures = row.signatures || {};
@@ -814,12 +883,15 @@ async function renderContractImageCanvas(row, debtor){
         await drawContractSignature(ctx, signatures[key], box.x, box.y, box.w, box.h);
     }
 
-    // Names are below the signature lines; only the signature image itself is above the line.
-    drawContractText(ctx, `(${borrowerName})`, 145, 1372, { maxWidth:190, size:21, minSize:16, align:'center' });
-    drawContractText(ctx, `(${lenderName})`, 605, 1372, { maxWidth:190, size:21, minSize:16, align:'center' });
-    drawContractText(ctx, `(${row.witness1Name || '-'})`, 145, 1425, { maxWidth:190, size:21, minSize:16, align:'center' });
-    drawContractText(ctx, `(${row.witness2Name || '-'})`, 605, 1425, { maxWidth:190, size:21, minSize:16, align:'center' });
-    drawContractText(ctx, `(${row.writerName || lenderName})`, 145, 1474, { maxWidth:180, size:20, minSize:15, align:'center' });
+    // Names under signature lines, calibrated to the user's PNG background.
+    const LEFT_SIGN_NAME = { x:224, maxWidth:164 };
+    const RIGHT_SIGN_NAME = { x:606, maxWidth:164 };
+    // Signature names use the same default PDF text size as other filled fields and sit close under the signature line.
+    drawContractText(ctx, `(${borrowerName})`, LEFT_SIGN_NAME.x, 1173, { maxWidth:LEFT_SIGN_NAME.maxWidth, size:30, minSize:21, align:'center' });
+    drawContractText(ctx, `(${lenderName})`, RIGHT_SIGN_NAME.x, 1173, { maxWidth:RIGHT_SIGN_NAME.maxWidth, size:30, minSize:21, align:'center' });
+    drawContractText(ctx, `(${row.witness1Name || '-'})`, LEFT_SIGN_NAME.x, 1248, { maxWidth:LEFT_SIGN_NAME.maxWidth, size:30, minSize:21, align:'center' });
+    drawContractText(ctx, `(${row.witness2Name || '-'})`, RIGHT_SIGN_NAME.x, 1248, { maxWidth:RIGHT_SIGN_NAME.maxWidth, size:30, minSize:21, align:'center' });
+    drawContractText(ctx, `(${row.writerName || lenderName})`, LEFT_SIGN_NAME.x, 1323, { maxWidth:LEFT_SIGN_NAME.maxWidth, size:30, minSize:21, align:'center' });
     return canvas;
 }
 
@@ -828,10 +900,10 @@ async function generateContract() {
     if (!$('contractLenderName')?.value.trim()) return toast('กรุณากรอกชื่อผู้ให้กู้');
     const debtor = debtorForContract($('contractDebtorId').value);
     const p = currentProfile();
-    const signatures = collectContractSignatures();
-    const signatureCount = Object.keys(signatures).length;
-    const row = { contractNo: editingContractNo || nextContractNo(), sourceContractId: editingContractId || '', debtorId:$('contractDebtorId').value, borrowerName:debtor.name || '', lenderName:($('contractLenderName').value.trim() || p.lenderName || getDisplayName()), lenderIdCard:normalizeIdCard($('contractLenderIdCard').value || p.lenderIdCard || ''), lenderAddress:($('contractLenderAddress').value.trim() || p.lenderAddress || ''), amount:num($('contractAmount').value), contractDate:$('contractDate').value || today(), dueDate:$('contractDueDate').value, interestRate:String($('contractInterestRate').value || '').replace(/,/g,''), place:$('contractPlace').value.trim(), collateral:($('contractCollateral')?.value || '').trim(), witness1Name:$('contractWitness1Name').value.trim(), witness2Name:$('contractWitness2Name').value.trim(), writerName:($('contractWriterName')?.value || '').trim() || ($('contractLenderName')?.value || '').trim(), signatures, signatureCount, status: signatureCount >= 5 ? 'completed' : (signatureCount ? 'partial' : 'draft') };
+    const row = readContractFormRow(true);
     if (!row.amount) return toast('กรุณากรอกจำนวนเงินกู้');
+    const interestNum = Number(String(row.interestRate || '').replace(/[^0-9.]/g,''));
+    if (Number.isFinite(interestNum) && interestNum > 15) return toast('อัตราดอกเบี้ยเกิน 15% ต่อปี กรุณาแก้ไขก่อนสร้าง PDF');
     await saveSettings({ profile: { ...p, lenderName: row.lenderName, lenderIdCard: row.lenderIdCard, lenderAddress: row.lenderAddress } });
     try {
         toast('กำลังสร้าง PDF...');
@@ -847,6 +919,7 @@ async function generateContract() {
 if ($('newContractBtn')) $('newContractBtn').onclick = () => showContractForm();
 if ($('closeContractFormBtn')) $('closeContractFormBtn').onclick = () => $('contractFormCard').classList.add('hidden');
 if ($('generateContractBtn')) $('generateContractBtn').onclick = generateContract;
+bindContractSmartUi();
 document.querySelectorAll('[data-clear-sig]').forEach(b => b.onclick = () => clearSignature(b.dataset.clearSig));
 window.addEventListener('resize', () => { if (!$('contractFormCard')?.classList.contains('hidden')) SIG_IDS.forEach(id => resizeSignatureCanvas($(id))); });
 

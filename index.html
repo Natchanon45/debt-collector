@@ -36,7 +36,8 @@
             </div>
         </div>
     </header>
-    <main class="page">        <section id="authView" class="view active">
+    <main class="page">
+        <section id="authView" class="view active">
             <div class="card hero">
                 <h2>เข้าสู่ระบบ</h2>
                 <p>ระบบติดตามทวงหนี้พร้อม OCR และแจ้งเตือน</p><label>อีเมล</label><input id="email" class="input"
@@ -184,8 +185,9 @@
             <section id="tab-transactions" class="panel">
                 <div class="card">
                     <h3><i class="bi bi-cash-coin"></i> ธุรกรรม</h3>
-                    <div class="form-switch-row"><button class="segment active" data-tx="debt"><i class="bi bi-plus-circle"></i> เพิ่มหนี้</button><button
-                            class="segment" data-tx="payment"><i class="bi bi-receipt"></i> ชำระ</button><button class="segment"
+                    <div class="form-switch-row"><button class="segment active" data-tx="debt"><i
+                                class="bi bi-plus-circle"></i> เพิ่มหนี้</button><button class="segment"
+                            data-tx="payment"><i class="bi bi-receipt"></i> ชำระ</button><button class="segment"
                             data-tx="followup"><i class="bi bi-telephone"></i> ติดตาม</button></div>
                 </div>
 
@@ -257,26 +259,49 @@
                         <h3><i class="bi bi-pen"></i> แบบฟอร์มสัญญากู้ยืม</h3><button id="closeContractFormBtn"
                             class="mini mini-danger">ปิด</button>
                     </div>
-                    <label>ลูกหนี้ / ผู้กู้</label><select id="contractDebtorId" class="input"></select>
-                    <label>ชื่อผู้ให้กู้</label>
-                    <input id="contractLenderName" class="input" placeholder="เช่น นายณัฐชนน ศรีเปล่ง">
-                    <label>เลขบัตรประชาชนผู้ให้กู้</label><input id="contractLenderIdCard" class="input" type="tel"
-                        inputmode="numeric" maxlength="13">
-                    <label>ที่อยู่ผู้ให้กู้</label><textarea id="contractLenderAddress" class="input"></textarea>
-                    <label>จำนวนเงินกู้</label><input id="contractAmount" class="input money-input" inputmode="decimal"
-                        autocomplete="off">
-                    <label>วันที่ทำสัญญา</label><input id="contractDate" class="input" type="date">
-                    <label>วันครบกำหนดชำระ</label><input id="contractDueDate" class="input" type="date">
-                    <label>อัตราดอกเบี้ยต่อปี (%)</label><input id="contractInterestRate" class="input money-input"
-                        inputmode="decimal" autocomplete="off" placeholder="ไม่เกินอัตราที่กฎหมายกำหนด">
-                    <label>สถานที่ทำสัญญา</label><input id="contractPlace" class="input"
-                        placeholder="เช่น กรุงเทพมหานคร">
-                    <label>หลักทรัพย์ค้ำประกัน</label><textarea id="contractCollateral" class="input"
-                        placeholder="เช่น โฉนดบ้านและที่ดิน / ทองคำ / รถยนต์ / วัตถุมีค่า ฯลฯ"></textarea>
-                    <label>ชื่อพยาน 1</label><input id="contractWitness1Name" class="input">
-                    <label>ชื่อพยาน 2 (ถ้ามี)</label><input id="contractWitness2Name" class="input">
-                    <label>ชื่อผู้เขียนและพยาน</label><input id="contractWriterName" class="input"
-                        placeholder="ถ้าไม่กรอก ระบบใช้ชื่อผู้ให้กู้">
+                    <div class="contract-ui-grid">
+                        <div class="contract-section-box">
+                            <h4><i class="bi bi-file-earmark-text"></i> ข้อมูลสัญญา</h4>
+                            <label>รูปแบบเอกสาร</label>
+                            <select id="contractTemplateType" class="input">
+                                <option value="loan_new_law">สัญญากู้ยืมเงินตามกฎหมายใหม่</option>
+                            </select>
+                            <label>ลูกหนี้ / ผู้กู้</label><select id="contractDebtorId" class="input"></select>
+                            <div id="contractBorrowerAgeHint" class="contract-inline-hint">อายุ: -</div>
+                            <label>สถานที่ทำสัญญา</label><input id="contractPlace" class="input"
+                                placeholder="เช่น กรุงเทพมหานคร">
+                            <label>วันที่ทำสัญญา</label><input id="contractDate" class="input" type="date">
+                            <label>วันครบกำหนดชำระ</label><input id="contractDueDate" class="input" type="date">
+                        </div>
+                        <div class="contract-section-box">
+                            <h4><i class="bi bi-person-badge"></i> ข้อมูลผู้ให้กู้</h4>
+                            <label>ชื่อผู้ให้กู้</label>
+                            <input id="contractLenderName" class="input" placeholder="เช่น นายณัฐชนน ศรีเปล่ง">
+                            <label>เลขบัตรประชาชนผู้ให้กู้</label><input id="contractLenderIdCard" class="input"
+                                type="tel" inputmode="numeric" maxlength="13">
+                            <label>ที่อยู่ผู้ให้กู้</label><textarea id="contractLenderAddress"
+                                class="input"></textarea>
+                        </div>
+                        <div class="contract-section-box">
+                            <h4><i class="bi bi-cash-coin"></i> รายละเอียดเงินกู้</h4>
+                            <label>จำนวนเงินกู้</label><input id="contractAmount" class="input money-input"
+                                inputmode="decimal" autocomplete="off">
+                            <label>อัตราดอกเบี้ยต่อปี (%)</label><input id="contractInterestRate"
+                                class="input money-input" inputmode="decimal" autocomplete="off"
+                                placeholder="ไม่เกิน 15% ต่อปี">
+                            <div id="contractInterestHint" class="contract-inline-hint">สูงสุดตามกฎหมาย 15% ต่อปี</div>
+                            <label>หลักทรัพย์ค้ำประกัน</label><textarea id="contractCollateral" class="input"
+                                placeholder="เช่น โฉนดบ้านและที่ดิน / ทองคำ / รถยนต์ / วัตถุมีค่า ฯลฯ"></textarea>
+                        </div>
+                        <div class="contract-section-box">
+                            <h4><i class="bi bi-people"></i> พยานและผู้เขียน</h4>
+                            <label>ชื่อพยาน 1</label><input id="contractWitness1Name" class="input">
+                            <label>ชื่อพยาน 2 (ถ้ามี)</label><input id="contractWitness2Name" class="input">
+                            <label>ชื่อผู้เขียนและพยาน</label><input id="contractWriterName" class="input"
+                                placeholder="ถ้าไม่กรอก ระบบใช้ชื่อผู้ให้กู้">
+                        </div>
+                    </div>
+                    <div id="contractSummaryBox" class="contract-summary-box"></div>
 
                     <div class="signature-grid">
                         <div class="signature-box"><b>ผู้ให้กู้</b><canvas id="sigLender"
@@ -295,8 +320,10 @@
                                 class="sig-pad"></canvas><button class="mini" data-clear-sig="sigWriter">ล้าง</button>
                         </div>
                     </div>
-                    <button id="generateContractBtn" class="primary"><i class="bi bi-filetype-pdf"></i> สร้าง PDF
-                        และบันทึก</button>
+                    <div class="contract-action-row">
+                        <button id="generateContractBtn" class="primary"><i class="bi bi-filetype-pdf"></i> สร้าง PDF
+                            และบันทึก</button>
+                    </div>
                     <p class="note">หมายเหตุ: แบบฟอร์มนี้เป็นแม่แบบทั่วไป
                         ควรตรวจทานข้อมูลและเงื่อนไขให้ถูกต้องก่อนนำไปใช้จริง</p>
                 </div>
@@ -348,20 +375,17 @@
                 <div class="card">
                     <h3><i class="bi bi-cloud-arrow-down"></i> สำรองข้อมูล</h3>
                     <button id="exportJsonBtn" class="primary"><i class="bi bi-download"></i> สำรอง json</button>
-                        <button id="exportTxtBtn" class="primary"> <i class="bi bi-download"></i>สำรอง txt  </button>
-                        <label class="file"><i class="bi bi-upload"></i> นำเข้า json/txt<input id="importFile" type="file" accept=".json,.txt"></label>
+                    <button id="exportTxtBtn" class="primary"> <i class="bi bi-download"></i>สำรอง txt </button>
+                    <label class="file"><i class="bi bi-upload"></i> นำเข้า json/txt<input id="importFile" type="file"
+                            accept=".json,.txt"></label>
                 </div>
             </section>
 
             <nav class="bottom-nav">
-                <button class="bottom-tab active" data-tab="dashboard"><i
-                        class="bi bi-house"></i><span>หน้าหลัก</span></button>
-                <button class="bottom-tab" data-tab="customers"><i
-                        class="bi bi-people"></i><span>ลูกหนี้ทั้งหมด</span></button>
-                <button class="bottom-tab" data-tab="transactions"><i
-                        class="bi bi-cash-coin"></i><span>ธุรกรรม</span></button>
-                <button class="bottom-tab" data-tab="contracts"><i
-                        class="bi bi-file-earmark-text"></i><span>สัญญา</span></button>
+                <button class="bottom-tab active" data-tab="dashboard"><i class="bi bi-house"></i><span>หน้าหลัก</span></button>
+                <button class="bottom-tab" data-tab="customers"><i class="bi bi-people"></i><span>ลูกหนี้ทั้งหมด</span></button>
+                <button class="bottom-tab" data-tab="contracts"><i class="bi bi-file-earmark-text"></i><span>สัญญา</span></button>
+                <button class="bottom-tab" data-tab="transactions"><i class="bi bi-cash-coin"></i><span>ธุรกรรม</span></button>
                 <button class="bottom-tab" data-tab="settings"><i class="bi bi-gear"></i><span>ตั้งค่า</span></button>
             </nav>
         </section>
