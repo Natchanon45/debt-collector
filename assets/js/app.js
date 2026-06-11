@@ -278,14 +278,33 @@ function debtRemainingForDebtor(c, debtorId) {
         .filter(dd => sameId(dd.debtorId, debtorId))
         .reduce((s, dd) => s + num(dd.remaining), 0);
 }
-function contractDisplayAmount(contract, c) {
-    const direct = num(contract?.amount);
-    if (direct > 0) return direct;
-    const byContract = (c.debts || [])
-        .filter(d => sameId(d.contractId, contract?.id) || (contract?.contractNo && sameId(d.contractNo, contract.contractNo)))
+function contractExactAmount(contract, c) {
+    // ยอดที่แสดงในรายการสัญญาต้องยึดจากสัญญาแต่ละใบก่อน
+    // ไม่ดึงยอดจากก้อนหนี้รวม/ก้อนหนี้ใบอื่น เพราะจะทำให้หลายรายการแสดงยอดเท่ากันผิดใบได้
+    const directFields = [
+        contract?.amount,
+        contract?.loanAmount,
+        contract?.borrowAmount,
+        contract?.principalAmount,
+        contract?.contractAmount
+    ];
+    for (const v of directFields) {
+        const amount = num(v);
+        if (amount > 0) return amount;
+    }
+
+    // ถ้าเป็นข้อมูลเก่าที่ไม่มี amount ในสัญญา ให้หาเฉพาะก้อนหนี้ที่ผูกด้วย contractId เท่านั้น
+    // contractNo อาจซ้ำ/ว่างในข้อมูลเก่า จึงไม่ใช้เป็นเงื่อนไขหลักในการคำนวณยอดรายการ
+    const byContractId = (c.debts || [])
+        .filter(d => contract?.id && sameId(d.contractId, contract.id))
         .reduce((s, d) => s + num(d.principal), 0);
-    if (byContract > 0) return byContract;
-    return num(contract?.totalDebtAmount);
+    if (byContractId > 0) return byContractId;
+
+    const total = num(contract?.totalDebtAmount);
+    return total > 0 ? total : 0;
+}
+function contractDisplayAmount(contract, c) {
+    return contractExactAmount(contract, c);
 }
 function sortDebtsForPayment(a, b) {
     return String(a.debtor?.name || '').localeCompare(String(b.debtor?.name || ''), 'th')
@@ -441,7 +460,15 @@ function fillLists(d, c) {
     $('followupList').innerHTML = followupRows.length ? followupRows.map(f => { const debt = c.debtsById[f.debtId] || {}; return `<div class="item"><div><div class="item-title">${escapeHtml(c.debtors[f.debtorId]?.name || '-')} · ${escapeHtml(f.status || '-')}</div><div class="item-sub">${escapeHtml(debt.title || debtGroupName(debt) || '-')} · ${formatDate(f.contactDate)} · ${escapeHtml(f.channel || '-')} · นัด ${formatDate(f.nextFollowupDate)}</div><div class="item-sub">${escapeHtml(f.result || '')}</div></div></div>` }).join('') : '<div class="empty">ยังไม่มีประวัติติดตามตามตัวกรองนี้</div>';
     const documentDebtorFilter = $('documentDebtorId')?.value || '';
     const documentRows = d.documents.filter(doc => !documentDebtorFilter || sameId(doc.debtorId, documentDebtorFilter));
-    $('documentList').innerHTML = documentRows.length ? documentRows.map(doc => { const isImg = String(doc.mimeType || '').startsWith('image/'); const thumb = isImg && doc.downloadURL ? `<img loading="lazy" decoding="async" src="${doc.downloadURL}" alt="">` : `<i class="bi ${fileIcon(doc.mimeType, doc.fileName)}"></i>`; return `<div class="item doc-card"><div class="doc-thumb">${thumb}</div><div><div class="item-title">${escapeHtml(doc.type)} · ${escapeHtml(doc.fileName)}</div><div class="item-sub">${escapeHtml(c.debtors[doc.debtorId]?.name || '-')} · ${formatDate(doc.createdDate)} · ${doc.size ? money(doc.size / 1024) + ' KB' : ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="previewDocument('${doc.id}')"><i class="bi bi-box-arrow-up-right"></i></button><button class="icon-action icon-delete" type="button" title="ลบเอกสาร" aria-label="ลบเอกสาร" onclick="deleteDocument('${doc.id}')"><i class="bi bi-trash"></i></button></div></div>` }).join('') : '<div class="empty">ยังไม่มีเอกสารของลูกหนี้นี้</div>';
+    const contractsByDocumentId = Object.fromEntries((d.contracts || []).filter(x => x.documentId).map(x => [String(x.documentId), x]));
+    $('documentList').innerHTML = documentRows.length ? documentRows.map(doc => {
+        const isImg = String(doc.mimeType || '').startsWith('image/');
+        const thumb = isImg && doc.downloadURL ? `<img loading="lazy" decoding="async" src="${doc.downloadURL}" alt="">` : `<i class="bi ${fileIcon(doc.mimeType, doc.fileName)}"></i>`;
+        const linkedContract = contractsByDocumentId[String(doc.id)];
+        const contractAmountText = linkedContract ? ` · ยอดสัญญา ${money(contractExactAmount(linkedContract, c))}` : '';
+        const contractNoText = linkedContract?.contractNo ? ` · เลขที่ ${escapeHtml(linkedContract.contractNo)}` : '';
+        return `<div class="item doc-card"><div class="doc-thumb">${thumb}</div><div><div class="item-title">${escapeHtml(doc.type)} · ${escapeHtml(doc.fileName)}</div><div class="item-sub">${escapeHtml(c.debtors[doc.debtorId]?.name || '-')} · ${formatDate(doc.createdDate)}${contractNoText}${contractAmountText} · ${doc.size ? money(doc.size / 1024) + ' KB' : ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="previewDocument('${doc.id}')"><i class="bi bi-box-arrow-up-right"></i></button><button class="icon-action icon-delete" type="button" title="ลบเอกสาร" aria-label="ลบเอกสาร" onclick="deleteDocument('${doc.id}')"><i class="bi bi-trash"></i></button></div></div>`
+    }).join('') : '<div class="empty">ยังไม่มีเอกสารของลูกหนี้นี้</div>';
 }
 function fillSettings(s) {
     if ($('notifyEmail')) $('notifyEmail').value = s.notifyEmail || '';
