@@ -1793,16 +1793,35 @@ textarea.input:focus{
   }
 }
 
-@media(prefers-color-scheme: dark){
-  :root{
-    --field-border: rgba(96,165,250,.30);
-    --field-border-strong: rgba(96,165,250,.58);
-    --field-label-bg: rgba(96,165,250,.16);
-    --field-label-text: #bfdbfe;
-  }
-  .input,
-  select.input,
-  textarea.input{
-    background:rgba(15,23,42,.82) !important;
-  }
+/* v7.6.2: Dark field colors must follow the app theme, not macOS/browser preference.
+   This prevents light/day mode from accidentally receiving dark input and label colors. */
+[data-theme=dark]{
+  --field-border: rgba(96,165,250,.30);
+  --field-border-strong: rgba(96,165,250,.58);
+  --field-label-bg: rgba(96,165,250,.16);
+  --field-label-text: #bfdbfe;
+}
+
+[data-theme=dark] .input,
+[data-theme=dark] select.input,
+[data-theme=dark] textarea.input{
+  background:rgba(15,23,42,.82) !important;
+}
+
+/* Force day/light mode fields to remain readable even when the device is set to dark appearance. */
+html:not([data-theme=dark]) label:not(.dropzone):not(.file),
+body:not([data-theme=dark]) label:not(.dropzone):not(.file){
+  background:rgba(37,99,235,.10) !important;
+  color:#1d4ed8 !important;
+}
+
+html:not([data-theme=dark]) .input,
+html:not([data-theme=dark]) select.input,
+html:not([data-theme=dark]) textarea.input,
+body:not([data-theme=dark]) .input,
+body:not([data-theme=dark]) select.input,
+body:not([data-theme=dark]) textarea.input{
+  background:#ffffff !important;
+  color:#111827 !important;
+  border-color:rgba(37,99,235,.22) !important;
 }
