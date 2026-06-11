@@ -111,8 +111,7 @@
                                 class="mini mini-danger">ปิด</button>
                         </div>
                         <div class="form-switch-row"><button id="manualCustomerBtn"
-                                class="segment active">กรอกเอง</button><button id="ocrCustomerBtn" class="segment">OCR
-                                บัตร</button></div>
+                                class="segment active">กรอกเอง</button><button id="ocrCustomerBtn" class="segment">แสกนบัตร</button></div>
                     </div>
 
                     <div id="ocrCustomerBox" class="hidden">
@@ -130,12 +129,13 @@
                         <div class="card">
                             <h3><i class="bi bi-card-text"></i> ผลลัพธ์ OCR</h3>
                             <label>คำนำหน้า</label><input id="ocrPrefix" class="input">
-                            <label>ชื่อ</label><input id="ocrFirstName" class="input">
-                            <label>นามสกุล</label><input id="ocrLastName" class="input">
+                            <label>ชื่อ-นามสกุล</label><input id="ocrFirstName" class="input">
+                            <input id="ocrLastName" type="hidden">
                             <label>เลขบัตรประชาชน</label><input id="ocrIdCard" class="input" type="tel"
                                 inputmode="numeric" autocomplete="off" maxlength="13"><small id="ocrIdMasked"
                                 class="masked-text"></small>
                             <label>ที่อยู่</label><textarea id="ocrAddress" class="input"></textarea>
+                            <label>ตำบล/แขวง</label><input id="ocrSubDistrict" class="input">
                             <label>เขต/อำเภอ</label><input id="ocrDistrict" class="input">
                             <label>จังหวัด</label><input id="ocrProvince" class="input">
                             <button id="autoCreateDebtorBtn" class="primary">เพิ่มลูกหนี้จาก OCR ทันที</button>
@@ -436,7 +436,7 @@
                 </div>
             </section>
 
-            <footer id="appFooter" class="app-footer">Version 7.9.1 • พัฒนาโดย นายณัฐชนน ศรีเปล่ง • © 2026</footer>
+            <footer id="appFooter" class="app-footer">Version 7.9.4 • พัฒนาโดย นายณัฐชนน ศรีเปล่ง • © 2026</footer>
 
             <nav class="bottom-nav">
                 <button class="bottom-tab active" data-tab="dashboard"><i class="bi bi-house"></i><span>หน้าหลัก</span></button>

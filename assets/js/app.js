@@ -623,38 +623,60 @@ function normalizeThaiPrefix(name = '') {
         .trim();
 }
 function stripThaiPrefix(name = '') {
-    return normalizeThaiPrefix(name).replace(/^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)\s*/,'').trim();
+    return normalizeThaiPrefix(name).replace(/^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)\s*/, '').trim();
 }
-function parseThaiNameParts(data = {}) {
-    const candidates = [data.fullName, data.name, data.thaiName, data.firstName, data.lastName]
+function cleanOcrNameText(v = '') {
+    return normalizeThaiPrefix(v)
+        .replace(/[0-9\-]{6,}/g, ' ')
+        .replace(/บัตร\s*ประจำตัว\s*ประชาชน/g, ' ')
+        .replace(/เลข\s*ประจำตัว\s*ประชาชน/g, ' ')
+        .replace(/ชื่อตัว\s*และ\s*ชื่อสกุล/g, ' ')
+        .replace(/ชื่อ\s*-?\s*นามสกุล/g, ' ')
+        .replace(/นามสกุล/g, ' ')
+        .replace(/^ชื่อ\s*/g, ' ')
+        .replace(/(?:วันเดือนปีเกิด|วันเกิด|เกิด|ที่อยู่|ศาสนา|หมู่โลหิต|Date of Birth|Address|Religion).*$/i, ' ')
+        .replace(/[^\u0E00-\u0E7F\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+function extractPrefixFromOcr(data = {}) {
+    const sources = [data.prefix, data.title, data.fullName, data.name, data.thaiName, data.firstName, data.lastName, data.rawText]
         .map(v => normalizeThaiPrefix(v || ''))
         .filter(Boolean);
-    let full = candidates.find(v => /^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)\s+/.test(v)) || candidates[0] || '';
-    let prefix = '';
-    let firstName = '';
-    let lastName = '';
-    const m = full.match(/^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)\s*(.+)$/);
-    if (m) {
-        prefix = m[1];
-        full = m[2].trim();
+    for (const src of sources) {
+        const m = src.match(/(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)/);
+        if (m) return m[1];
     }
-    const cleanFirst = stripThaiPrefix(data.firstName || '');
-    const cleanLast = stripThaiPrefix(data.lastName || '');
-    if (cleanFirst && cleanLast && cleanFirst !== cleanLast && !cleanFirst.includes(cleanLast)) {
-        firstName = cleanFirst.split(/\s+/)[0] || '';
-        lastName = cleanLast.replace(firstName, '').trim() || cleanLast;
-    } else {
-        const tokens = full.split(/\s+/).filter(Boolean);
-        firstName = tokens[0] || cleanFirst.split(/\s+/)[0] || '';
-        lastName = tokens.slice(1).join(' ') || cleanLast.replace(firstName, '').trim();
-    }
-    if (!prefix) {
-        const prefSource = candidates.find(v => /^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)/.test(v)) || '';
-        const pm = prefSource.match(/^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)/);
-        prefix = pm ? pm[1] : '';
-    }
-    lastName = stripThaiPrefix(lastName).replace(firstName, '').trim() || stripThaiPrefix(lastName);
-    return { prefix, firstName, lastName };
+    return '';
+}
+function extractNameFromRawText(rawText = '') {
+    const raw = normalizeThaiPrefix(rawText || '').replace(/[\u0000-\u001F\u007F]/g, ' ');
+    const m = raw.match(/(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)\s+([\u0E00-\u0E7F]+(?:\s+[\u0E00-\u0E7F]+){1,3})/);
+    if (!m) return '';
+    return cleanOcrNameText(m[2]);
+}
+function parseThaiNameParts(data = {}) {
+    const prefix = extractPrefixFromOcr(data);
+    const joinedName = cleanOcrNameText([data.firstName, data.lastName].filter(Boolean).join(' '));
+    const candidates = [
+        data.fullName,
+        data.name,
+        data.thaiName,
+        joinedName,
+        data.lastName,
+        data.firstName,
+        extractNameFromRawText(data.rawText || '')
+    ].map(v => cleanOcrNameText(stripThaiPrefix(v || ''))).filter(Boolean);
+
+    let fullName = candidates.find(v => {
+        const words = v.split(/\s+/).filter(Boolean);
+        return words.length >= 2 && !/บัตร|ประชาชน|ชื่อตัว|นามสกุล|ที่อยู่|แขวง|เขต|จังหวัด/.test(v);
+    }) || candidates[0] || '';
+
+    fullName = cleanOcrNameText(stripThaiPrefix(fullName));
+    const words = fullName.split(/\s+/).filter(Boolean);
+    if (words.length > 3) fullName = words.slice(0, 3).join(' ');
+    return { prefix, firstName: fullName, lastName: '' };
 }
 function parseThaiDateToIso(text = '') {
     const raw = String(text || '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -692,30 +714,28 @@ function cleanThaiLocationField(v = '') {
         .replace(/\s+/g, ' ')
         .trim());
 }
+function cleanOcrAddressOnly(v = '') {
+    return String(v || '')
+        .replace(/[\u0000-\u001F\u007F]/g, ' ')
+        .replace(/^ที่อยู่\s*/, '')
+        .replace(/\s*(?:แขวง|ตำบล|ต\.)\s*[^\s,]+.*$/g, '')
+        .replace(/\s*(?:เขต|อำเภอ|อ\.)\s*[^\s,]+.*$/g, '')
+        .replace(/\s*(?:จังหวัด|จ\.)\s*[^\s,]+.*$/g, '')
+        .replace(/\s*(?:กรุงเทพมหานคร|กรุงเทพฯ|กทม\.?).*$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
 function parseThaiAddressParts(text = '') {
     const raw = String(text || '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
     const provinceList = ['กรุงเทพมหานคร', 'กระบี่', 'กาญจนบุรี', 'กาฬสินธุ์', 'กำแพงเพชร', 'ขอนแก่น', 'จันทบุรี', 'ฉะเชิงเทรา', 'ชลบุรี', 'ชัยนาท', 'ชัยภูมิ', 'ชุมพร', 'เชียงราย', 'เชียงใหม่', 'ตรัง', 'ตราด', 'ตาก', 'นครนายก', 'นครปฐม', 'นครพนม', 'นครราชสีมา', 'นครศรีธรรมราช', 'นครสวรรค์', 'นนทบุรี', 'นราธิวาส', 'น่าน', 'บึงกาฬ', 'บุรีรัมย์', 'ปทุมธานี', 'ประจวบคีรีขันธ์', 'ปราจีนบุรี', 'ปัตตานี', 'พระนครศรีอยุธยา', 'พะเยา', 'พังงา', 'พัทลุง', 'พิจิตร', 'พิษณุโลก', 'เพชรบุรี', 'เพชรบูรณ์', 'แพร่', 'ภูเก็ต', 'มหาสารคาม', 'มุกดาหาร', 'แม่ฮ่องสอน', 'ยโสธร', 'ยะลา', 'ร้อยเอ็ด', 'ระนอง', 'ระยอง', 'ราชบุรี', 'ลพบุรี', 'ลำปาง', 'ลำพูน', 'เลย', 'ศรีสะเกษ', 'สกลนคร', 'สงขลา', 'สตูล', 'สมุทรปราการ', 'สมุทรสงคราม', 'สมุทรสาคร', 'สระแก้ว', 'สระบุรี', 'สิงห์บุรี', 'สุโขทัย', 'สุพรรณบุรี', 'สุราษฎร์ธานี', 'สุรินทร์', 'หนองคาย', 'หนองบัวลำภู', 'อ่างทอง', 'อำนาจเจริญ', 'อุดรธานี', 'อุตรดิตถ์', 'อุทัยธานี', 'อุบลราชธานี'];
     let province = '';
     if (/กรุงเทพ|กทม/.test(raw)) province = 'กรุงเทพมหานคร';
     if (!province) province = provinceList.find(p => raw.includes(p)) || '';
-    const subMatch = raw.match(/(?:แขวง|ตำบล|ต\.)\s*([^\s,]+(?:\s+[^\s,]+)?)/);
-    const distMatch = raw.match(/(?:เขต|อำเภอ|อ\.)\s*([^\s,]+(?:\s+[^\s,]+)?)/);
-    let subDistrict = subMatch ? subMatch[1].trim() : '';
-    let district = distMatch ? distMatch[1].trim() : '';
-    const cleanPart = v => String(v || '')
-        .replace(/(?:แขวง|ตำบล|ต\.|เขต|อำเภอ|อ\.|จังหวัด|จ\.|กรุงเทพมหานคร|กทม).*$/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    subDistrict = cleanThaiLocationField(cleanPart(subDistrict));
-    district = cleanThaiLocationField(cleanPart(district));
-    let shortAddress = raw
-        .replace(/^ที่อยู่\s*/,'')
-        .replace(/\s*(?:แขวง|ตำบล|ต\.)\s*[^\s,]+(?:\s+[^\s,]+)?(?=\s*(?:เขต|อำเภอ|อ\.|จังหวัด|จ\.|กรุงเทพ|กทม|$))/g, '')
-        .replace(/\s*(?:เขต|อำเภอ|อ\.)\s*[^\s,]+(?:\s+[^\s,]+)?(?=\s*(?:จังหวัด|จ\.|กรุงเทพ|กทม|$))/g, '')
-        .replace(/\s*(?:จังหวัด|จ\.)\s*[^\s,]+/g, '')
-        .replace(/\s*(?:กรุงเทพมหานคร|กรุงเทพฯ|กทม\.?)\s*$/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+    const subMatch = raw.match(/(?:แขวง|ตำบล|ต\.)\s*([^\s,]+)/);
+    const distMatch = raw.match(/(?:เขต|อำเภอ|อ\.)\s*([^\s,]+)/);
+    const subDistrict = cleanThaiLocationField(subMatch ? subMatch[1].trim() : '');
+    const district = cleanThaiLocationField(distMatch ? distMatch[1].trim() : '');
+    const shortAddress = cleanOcrAddressOnly(raw);
     const houseMatch = shortAddress.match(/(?:บ้านเลขที่\s*)?([0-9]+(?:\/[0-9]+)?)/i) || raw.match(/(?:บ้านเลขที่\s*)?([0-9]+(?:\/[0-9]+)?)/i);
     const houseNo = houseMatch ? houseMatch[1].trim() : '';
     return { houseNo, subDistrict, district, province, shortAddress };
@@ -742,9 +762,9 @@ function parseOcrResult(data) {
 }
 async function compressImageToBase64(file, maxWidth = 1600, quality = .86) { const img = await new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.onerror = reject; im.src = URL.createObjectURL(file) }); const scale = Math.min(1, maxWidth / img.width), canvas = document.createElement('canvas'); canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height); return canvas.toDataURL('image/jpeg', quality).split(',')[1] }
 async function getAuthToken() { return currentUser?.getIdToken ? await currentUser.getIdToken() : '' }
-function fillOcrFields(o) { $('ocrPrefix').value = o.prefix || ''; $('ocrFirstName').value = o.firstName || ''; $('ocrLastName').value = o.lastName || ''; $('ocrIdCard').value = o.idCard || ''; if ($('ocrBirthDate')) $('ocrBirthDate').value = o.birthDate || ''; $('ocrAddress').value = o.address || ''; if ($('debtorSubDistrict')) $('debtorSubDistrict').value = o.subDistrict || ''; $('ocrDistrict').value = o.district || ''; $('ocrProvince').value = o.province || ''; $('ocrIdMasked').textContent = o.idCard ? `แสดงแบบซ่อน: ${maskId(o.idCard)}` : '' }
-function ocrDebtorObject() { const addr = $('ocrAddress').value; const parts = parseThaiAddressParts(addr + ' ' + $('ocrDistrict').value + ' ' + $('ocrProvince').value); return { name: fullNameOf({ prefix: $('ocrPrefix').value, firstName: $('ocrFirstName').value, lastName: $('ocrLastName').value }), phone: '', lineId: '', idCard: $('ocrIdCard').value, address: parts.shortAddress || addr, houseNo: parts.houseNo || '', district: cleanThaiLocationField($('ocrDistrict').value || parts.district || ''), province: cleanThaiLocationField($('ocrProvince').value || parts.province || ''), subDistrict: cleanThaiLocationField($('debtorSubDistrict')?.value || parts.subDistrict || ''), birthDate: $('ocrBirthDate')?.value || '', source: 'ocr' } }
-$('runOcrBtn').onclick = async () => { const file = $('ocrFile').files[0]; if (!file) return toast('กรุณาถ่ายรูปหรือเลือกรูปบัตรก่อน'); if (!OCR_FUNCTION_URL) return toast('ยังไม่ได้ตั้งค่า OCR URL'); try { toast('กำลังอ่าน OCR...'); const imageBase64 = await compressImageToBase64(file), token = await getAuthToken(); const res = await fetch(OCR_FUNCTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ imageBase64 }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'OCR failed'); const parsed = parseOcrResult(data); fillOcrFields(parsed); pendingOcrDebtor = ocrDebtorObject(); $('confirmText').textContent = `ชื่อ: ${pendingOcrDebtor.name}\nเลขบัตร: ${maskId(pendingOcrDebtor.idCard)}\nเขต/อำเภอ: ${pendingOcrDebtor.district || '-'}\nจังหวัด: ${pendingOcrDebtor.province || '-'}`; $('confirmModal').classList.remove('hidden'); toast('อ่าน OCR สำเร็จ') } catch (e) { console.error(e); toast('OCR ไม่สำเร็จ: ' + e.message) } };
+function fillOcrFields(o) { $('ocrPrefix').value = o.prefix || ''; $('ocrFirstName').value = o.firstName || ''; $('ocrLastName').value = o.lastName || ''; $('ocrIdCard').value = o.idCard || ''; if ($('ocrBirthDate')) $('ocrBirthDate').value = o.birthDate || ''; $('ocrAddress').value = o.address || ''; if ($('ocrSubDistrict')) $('ocrSubDistrict').value = o.subDistrict || ''; $('ocrDistrict').value = o.district || ''; $('ocrProvince').value = o.province || ''; $('ocrIdMasked').textContent = o.idCard ? `แสดงแบบซ่อน: ${maskId(o.idCard)}` : '' }
+function ocrDebtorObject() { const addr = $('ocrAddress').value; const parts = parseThaiAddressParts(addr); return { name: fullNameOf({ prefix: $('ocrPrefix').value, firstName: $('ocrFirstName').value, lastName: $('ocrLastName').value }), phone: '', lineId: '', idCard: $('ocrIdCard').value, address: parts.shortAddress || cleanOcrAddressOnly(addr), houseNo: parts.houseNo || '', district: cleanThaiLocationField($('ocrDistrict').value || parts.district || ''), province: cleanThaiLocationField($('ocrProvince').value || parts.province || ''), subDistrict: cleanThaiLocationField($('ocrSubDistrict')?.value || parts.subDistrict || ''), birthDate: $('ocrBirthDate')?.value || '', source: 'ocr' } }
+$('runOcrBtn').onclick = async () => { const file = $('ocrFile').files[0]; if (!file) return toast('กรุณาถ่ายรูปหรือเลือกรูปบัตรก่อน'); if (!OCR_FUNCTION_URL) return toast('ยังไม่ได้ตั้งค่า OCR URL'); try { toast('กำลังอ่าน OCR...'); const imageBase64 = await compressImageToBase64(file), token = await getAuthToken(); const res = await fetch(OCR_FUNCTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ imageBase64 }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'OCR failed'); const parsed = parseOcrResult(data); fillOcrFields(parsed); pendingOcrDebtor = ocrDebtorObject(); $('confirmText').textContent = `ชื่อ: ${pendingOcrDebtor.name}\nเลขบัตร: ${maskId(pendingOcrDebtor.idCard)}\nตำบล/แขวง: ${pendingOcrDebtor.subDistrict || '-'}\nเขต/อำเภอ: ${pendingOcrDebtor.district || '-'}\nจังหวัด: ${pendingOcrDebtor.province || '-'}`; $('confirmModal').classList.remove('hidden'); toast('อ่าน OCR สำเร็จ') } catch (e) { console.error(e); toast('OCR ไม่สำเร็จ: ' + e.message) } };
 $('confirmCreateDebtorBtn').onclick = async () => { if (!pendingOcrDebtor) pendingOcrDebtor = ocrDebtorObject(); if (!pendingOcrDebtor.name) return toast('ไม่มีชื่อลูกหนี้'); if (isDuplicateIdCard(pendingOcrDebtor.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', pendingOcrDebtor); $('confirmModal').classList.add('hidden'); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() };
 $('cancelCreateDebtorBtn').onclick = () => $('confirmModal').classList.add('hidden'); $('autoCreateDebtorBtn').onclick = async () => { const row = ocrDebtorObject(); if (!row.name) return toast('ไม่มีข้อมูล OCR'); if (isDuplicateIdCard(row.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', row); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() }; $('useOcrToDebtorBtn').onclick = () => { const row = ocrDebtorObject(); $('debtorName').value = row.name; $('debtorIdCard').value = row.idCard; if ($('debtorBirthDate')) $('debtorBirthDate').value = row.birthDate || ''; $('debtorAddress').value = row.address; if ($('debtorSubDistrict')) $('debtorSubDistrict').value = row.subDistrict || ''; $('debtorDistrict').value = row.district; $('debtorProvince').value = row.province; showCustomerForm('manual'); switchTab('customers'); toast('นำข้อมูล OCR ไปกรอกฟอร์มแล้ว') };
 function bindDropzones() { [['dropzone', 'documentFile', 'dropzoneText'], ['ocrDropzone', 'ocrFile', 'ocrFileName']].forEach(([dzId, fileId, textId]) => { const dz = $(dzId), file = $(fileId), text = $(textId); if (!dz || !file) return; const show = () => { if (file.files[0]) { if (text) text.textContent = fileId === 'documentFile' ? `เลือกแล้ว ${file.files.length} ไฟล์` : file.files[0].name; if (fileId === 'ocrFile') { $('ocrPreview').src = URL.createObjectURL(file.files[0]); $('ocrPreview').classList.remove('hidden') } } }; file.addEventListener('change', show);['dragenter', 'dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('dragover') }));['dragleave', 'drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('dragover') })); dz.addEventListener('drop', e => { if (e.dataTransfer.files.length) { file.files = e.dataTransfer.files; show() } }) }) }
