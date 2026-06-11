@@ -1,19 +1,11 @@
 import { firebaseConfig, OCR_FUNCTION_URL, TELEGRAM_TEST_FUNCTION_URL, VAPID_PUBLIC_KEY } from './firebase-config.js';
-const APP_INFO = {
-    version: '7.7.7',
-    authorized: 'นายณัฐชนน ศรีเปล่ง',
-    year: new Date().getFullYear()
-};
-const APP_VERSION = APP_INFO.version;
-const $ = id => document.getElementById(id);
+import { APP_INFO, APP_VERSION, LS, blank } from './config.js';
+import { $, uid, today, num, money, maskId, normalizeIdCard, fullNameOf, isoDate, safeFileName, fileIcon, escapeHtml } from './utils.js';
+import { calc, calcAgeYears, addMonthsSafe, countContractMonths, roundMoney } from './calculate.js';
+import { applyTheme, initTheme } from './theme.js';
+
 let firebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId), auth, db, storage, currentUser = null, demoMode = !firebaseReady, deferredPrompt = null, newWorker = null, latestData = null, pendingOcrDebtor = null;
-const LS = 'debt_collector_phase3_v1', blank = { debtors: [], debts: [], payments: [], followups: [], documents: [], contracts: [], settings: {} };
-const uid = () => String(Date.now()) + Math.random().toString(16).slice(2), today = () => new Date().toISOString().slice(0, 10);
-const num = v => { const n = Number(String(v ?? '').replace(/,/g, '').replace(/[^0-9.\-]/g, '')); return Number.isFinite(n) ? n : 0 }, money = n => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const maskId = id => { const s = String(id || '').replace(/\D/g, ''); return s.length >= 13 ? `${s.slice(0, 1)}-${s.slice(1, 5)}-xxxxx-${s.slice(10, 12)}-${s.slice(12, 13)}` : s.replace(/.(?=.{4})/g, 'x') };
-const normalizeIdCard = id => String(id || '').replace(/\D/g, '');
 function isDuplicateIdCard(id, ignoreId = '') { const v = normalizeIdCard(id); if (!v) return false; return (latestData?.debtors || []).some(d => d.id !== ignoreId && normalizeIdCard(d.idCard) === v) };
-const fullNameOf = o => [o.prefix, o.firstName, o.lastName].filter(Boolean).join(' ').trim();
 function toast(m, type = 'info') {
     const el = $('toast'); if (!el) return;
     const msg = String(m || '');
@@ -39,7 +31,6 @@ function setUserDisplay(text) {
     if ($('userMenuWrap')) $('userMenuWrap').classList.toggle('hidden', !currentUser && !demoMode);
 }
 function local() { return JSON.parse(localStorage.getItem(LS) || JSON.stringify(blank)) } function setLocal(d) { localStorage.setItem(LS, JSON.stringify({ ...blank, ...d })) }
-function isoDate(d) { if (!(d instanceof Date) || Number.isNaN(d.getTime())) return today(); return d.toISOString().slice(0, 10); }
 async function getData() { if (demoMode) return local(); const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const names = ['debtors', 'debts', 'payments', 'followups', 'documents', 'contracts', 'settings']; const result = {}; for (const n of names) { const snap = await getDocs(collection(db, `users/${currentUser.uid}/${n}`)); result[n] = snap.docs.map(d => ({ id: d.id, ...d.data() })) } result.settings = (result.settings || []).reduce((acc, x) => ({ ...acc, ...x, profile: { ...(acc.profile || {}), ...(x.profile || {}) } }), {}); return { ...blank, ...result } }
 async function add(type, row) { if (demoMode) { const d = local(); const id = uid(); d[type].push({ id, ...row }); setLocal(d); return id } const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const ref = await addDoc(collection(db, `users/${currentUser.uid}/${type}`), { ...row, createdAt: serverTimestamp() }); return ref.id }
 async function updateRow(type, id, row) { if (demoMode) { const d = local(); d[type] = d[type].map(x => x.id === id ? { ...x, ...row } : x); setLocal(d); return } const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); await updateDoc(doc(db, `users/${currentUser.uid}/${type}/${id}`), row) }
@@ -54,8 +45,6 @@ function canDeleteDebtor(id, d = latestData) {
     return !d.debts.some(x => x.debtorId === id) && !d.followups.some(x => x.debtorId === id) && !d.documents.some(x => x.debtorId === id) && !(d.contracts || []).some(x => x.debtorId === id);
 }
 
-function safeFileName(name) { return String(name || 'file').replace(/[^\w.\-\u0E00-\u0E7F]+/g, '_').slice(0, 120) }
-function fileIcon(mime, name = '') { if (String(mime).startsWith('image/')) return 'bi-file-earmark-image'; if (String(mime).includes('pdf') || String(name).toLowerCase().endsWith('.pdf')) return 'bi-file-earmark-pdf'; return 'bi-file-earmark' }
 async function uploadDocumentFiles(debtorId, type, files) {
     if (demoMode) {
         for (const f of files) { await add('documents', { debtorId, type, fileName: f.name, mimeType: f.type, size: f.size, createdDate: today(), storagePath: '', downloadURL: '' }) }
@@ -115,7 +104,6 @@ window.previewDocument = async (id) => {
     showPreviewModal(doc.fileName || 'ดูเอกสาร', url, doc.mimeType || '', doc.fileName || '');
 };
 
-function calc(d) { const paid = {}; d.payments.forEach(p => paid[p.debtId] = (paid[p.debtId] || 0) + num(p.amount)); const debtors = Object.fromEntries(d.debtors.map(x => [x.id, x])); const debts = d.debts.map(x => { const p = paid[x.id] || 0, remaining = Math.max(0, num(x.principal) - p), days = Math.max(0, Math.floor((new Date(today()) - new Date(x.dueDate || today())) / 86400000)); return { ...x, paid: p, remaining, isDue: remaining > 0 && String(x.dueDate || '') <= today(), isDueToday: remaining > 0 && String(x.dueDate || '') === today(), daysOverdue: days, debtor: debtors[x.debtorId] } }); return { debtors, debts, debtsById: Object.fromEntries(debts.map(x => [x.id, x])) } }
 async function render() {
     const d = await getData(); latestData = d;
     const c = calc(d), due = c.debts.filter(x => x.isDue).sort((a, b) => b.daysOverdue - a.daysOverdue || b.remaining - a.remaining), followToday = d.followups.filter(f => String(f.nextFollowupDate || f.contactDate || '') <= today());
@@ -189,11 +177,11 @@ async function render() {
     fillSelects(d, c);
     fillLists(d, c); renderContractList(d, c);
     fillSettings(d.settings || {});
-    if (typeof decorateButtons === 'function') setTimeout(decorateButtons, 0);
+    if (typeof decorateButtons === 'function') setTimeout(() => { decorateButtons(); restoreUiChrome(); }, 0);
 }
 function renderAging(debts) { const b = { a: 0, b: 0, c: 0, d: 0 }; debts.filter(x => x.remaining > 0 && x.isDue).forEach(x => { if (x.daysOverdue <= 30) b.a += x.remaining; else if (x.daysOverdue <= 60) b.b += x.remaining; else if (x.daysOverdue <= 90) b.c += x.remaining; else b.d += x.remaining }); $('aging030').textContent = money(b.a); $('aging3160').textContent = money(b.b); $('aging6190').textContent = money(b.c); $('aging90').textContent = money(b.d) }
 function fillSelects(d, c) { const debtorOpts = '<option value="">-- เลือกลูกหนี้ --</option>' + d.debtors.map(x => `<option value="${x.id}">${x.name}</option>`).join('');['followupDebtorId', 'documentDebtorId', 'transactionDebtorId', 'contractDebtorId'].forEach(id => { if ($(id)) $(id).innerHTML = debtorOpts }); const debtOpts = '<option value="">-- เลือกก้อนหนี้ --</option>' + c.debts.filter(x => x.remaining > 0).map(x => `<option value="${x.id}">${x.debtor?.name || '-'} · ${x.title} · ${money(x.remaining)}</option>`).join(''); $('paymentDebtId').innerHTML = debtOpts; $('followupDebtId').innerHTML = '<option value="">-- ไม่ระบุก้อนหนี้ --</option>' + debtOpts.replace('<option value="">-- เลือกก้อนหนี้ --</option>', '') }
-function fillLists(d, c) { $('paymentList').innerHTML = d.payments.length ? d.payments.map(p => `<div class="item"><div><div class="item-title">${money(p.amount)}</div><div class="item-sub">${p.paidDate} · ${c.debtsById[p.debtId]?.title || '-'} · ${p.note || ''}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติชำระ</div>'; $('followupList').innerHTML = d.followups.length ? d.followups.map(f => `<div class="item"><div><div class="item-title">${c.debtors[f.debtorId]?.name || '-'} · ${f.status || '-'}</div><div class="item-sub">${f.contactDate} · ${f.channel || '-'} · นัด ${f.nextFollowupDate || '-'}</div><div class="item-sub">${f.result || ''}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติติดตาม</div>'; $('documentList').innerHTML = d.documents.length ? d.documents.map(doc => { const isImg = String(doc.mimeType || '').startsWith('image/'); const thumb = isImg && doc.downloadURL ? `<img src="${doc.downloadURL}" alt="">` : `<i class="bi ${fileIcon(doc.mimeType, doc.fileName)}"></i>`; return `<div class="item doc-card"><div class="doc-thumb">${thumb}</div><div><div class="item-title">${doc.type} · ${doc.fileName}</div><div class="item-sub">${c.debtors[doc.debtorId]?.name || '-'} · ${doc.createdDate || '-'} · ${doc.size ? money(doc.size / 1024) + ' KB' : ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="previewDocument('${doc.id}')"><i class="bi bi-box-arrow-up-right"></i></button><button class="icon-action icon-delete" type="button" title="ลบเอกสาร" aria-label="ลบเอกสาร" onclick="deleteDocument('${doc.id}')"><i class="bi bi-trash"></i></button></div></div>` }).join('') : '<div class="empty">ยังไม่มีเอกสาร</div>' }
+function fillLists(d, c) { $('paymentList').innerHTML = d.payments.length ? d.payments.map(p => `<div class="item"><div><div class="item-title">${money(p.amount)}</div><div class="item-sub">${p.paidDate} · ${c.debtsById[p.debtId]?.title || '-'} · ${p.note || ''}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติชำระ</div>'; $('followupList').innerHTML = d.followups.length ? d.followups.map(f => `<div class="item"><div><div class="item-title">${c.debtors[f.debtorId]?.name || '-'} · ${f.status || '-'}</div><div class="item-sub">${f.contactDate} · ${f.channel || '-'} · นัด ${f.nextFollowupDate || '-'}</div><div class="item-sub">${f.result || ''}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติติดตาม</div>'; $('documentList').innerHTML = d.documents.length ? d.documents.map(doc => { const isImg = String(doc.mimeType || '').startsWith('image/'); const thumb = isImg && doc.downloadURL ? `<img loading="lazy" decoding="async" src="${doc.downloadURL}" alt="">` : `<i class="bi ${fileIcon(doc.mimeType, doc.fileName)}"></i>`; return `<div class="item doc-card"><div class="doc-thumb">${thumb}</div><div><div class="item-title">${doc.type} · ${doc.fileName}</div><div class="item-sub">${c.debtors[doc.debtorId]?.name || '-'} · ${doc.createdDate || '-'} · ${doc.size ? money(doc.size / 1024) + ' KB' : ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="previewDocument('${doc.id}')"><i class="bi bi-box-arrow-up-right"></i></button><button class="icon-action icon-delete" type="button" title="ลบเอกสาร" aria-label="ลบเอกสาร" onclick="deleteDocument('${doc.id}')"><i class="bi bi-trash"></i></button></div></div>` }).join('') : '<div class="empty">ยังไม่มีเอกสาร</div>' }
 function fillSettings(s) {
     if ($('notifyEmail')) $('notifyEmail').value = s.notifyEmail || '';
     if ($('telegramChatId')) $('telegramChatId').value = s.telegramChatId || '';
@@ -647,7 +635,6 @@ function renderContractList(d, c) {
         return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${c.debtors[x.debtorId]?.name || x.borrowerName || '-'} · ${money(x.amount)}</div><div class="item-sub">${status} · วันที่ ${thaiDate(x.contractDate || x.createdDate)} · ครบกำหนด ${thaiDate(x.dueDate)} · ${x.fileName || ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิด PDF" aria-label="เปิด PDF" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
     }).join('') : '<div class="empty">ยังไม่มีสัญญากู้ยืม</div>';
 }
-function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])); }
 function bahtTextFallback(n) {
     const value = Number(String(n ?? 0).replace(/,/g, ''));
     if (!Number.isFinite(value) || value <= 0) return 'ศูนย์บาทถ้วน';
@@ -700,16 +687,6 @@ function thaiDate(v) {
     const d = new Date(String(v).includes('T') ? v : String(v) + 'T00:00:00');
     if (isNaN(d)) return v;
     return `${d.getDate()} ${TH_MONTHS_FULL[d.getMonth()]} ${d.getFullYear() + 543}`;
-}
-function calcAgeYears(birthValue, atValue = today()) {
-    if (!birthValue) return '';
-    const b = new Date(String(birthValue).includes('T') ? birthValue : String(birthValue) + 'T00:00:00');
-    const at = new Date(String(atValue || today()).includes('T') ? atValue : String(atValue || today()) + 'T00:00:00');
-    if (isNaN(b) || isNaN(at)) return '';
-    let age = at.getFullYear() - b.getFullYear();
-    const m = at.getMonth() - b.getMonth();
-    if (m < 0 || (m === 0 && at.getDate() < b.getDate())) age--;
-    return age >= 0 && age < 130 ? String(age) : '';
 }
 function debtorAgeForContract(debtor = {}, atValue = today()) {
     const explicit = String(debtor.age || '').trim();
@@ -783,24 +760,6 @@ function syncSavedContractLocal(existing, contractId, documentId, docPayload, co
 }
 
 
-function addMonthsSafe(dateStr, months) {
-    const base = new Date((dateStr || today()) + 'T00:00:00');
-    if (Number.isNaN(base.getTime())) return today();
-    const d = new Date(base);
-    const day = d.getDate();
-    d.setMonth(d.getMonth() + months);
-    if (d.getDate() < day) d.setDate(0);
-    return isoDate(d);
-}
-function countContractMonths(startDate, dueDate) {
-    const s = new Date((startDate || today()) + 'T00:00:00');
-    const e = new Date((dueDate || startDate || today()) + 'T00:00:00');
-    if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e <= s) return 1;
-    let months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
-    if (e.getDate() > s.getDate()) months += 1;
-    return Math.max(1, months);
-}
-function roundMoney(v) { return Math.round((Number(v || 0) + Number.EPSILON) * 100) / 100; }
 function buildContractDebtInstallments(contract) {
     const principal = roundMoney(num(contract.amount));
     const annualRate = Number(String(contract.interestRate || 0).replace(/[^0-9.]/g, '')) || 0;
@@ -1334,7 +1293,6 @@ async function forceAppUpdate() {
         location.reload();
     }
 }
-const themeModes = ['light', 'dark', 'auto']; function getThemeMode() { return localStorage.getItem('themeMode') || 'auto' } function applyTheme() { const mode = getThemeMode(), resolved = mode === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode; document.documentElement.setAttribute('data-theme', resolved); document.body.setAttribute('data-theme', resolved); $('themeIcon').className = mode === 'auto' ? 'bi bi-circle-half' : resolved === 'dark' ? 'bi bi-moon-stars' : 'bi bi-sun' } $('themeBtn').onclick = () => { const cur = getThemeMode(), next = themeModes[(themeModes.indexOf(cur) + 1) % themeModes.length]; localStorage.setItem('themeMode', next); applyTheme(); toast(next === 'auto' ? 'โหมดอัตโนมัติ' : next === 'dark' ? 'โหมดกลางคืน' : 'โหมดกลางวัน') };
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('installBtn').classList.remove('hidden') }); $('installBtn').onclick = async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $('installBtn').classList.add('hidden') } };
 async function setupSW() { if (!('serviceWorker' in navigator)) return; const reg = await navigator.serviceWorker.register('service-worker.js?v=' + encodeURIComponent(APP_VERSION)); if (reg.waiting) { newWorker = reg.waiting; $('updateBtn')?.classList.remove('hidden') } reg.addEventListener('updatefound', () => { const w = reg.installing; w?.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) { newWorker = w; $('updateBtn')?.classList.remove('hidden'); toast('มีเวอร์ชันใหม่พร้อมอัปเดต') } }) }); navigator.serviceWorker.addEventListener('controllerchange', () => location.reload()); setTimeout(() => reg.update().catch(() => { }), 1500); } if ($('updateBtn')) $('updateBtn').onclick = forceAppUpdate; if ($('clearCacheBtn')) $('clearCacheBtn').onclick = async () => { await clearAppCaches(); toast('ล้าง Cache แล้ว') }; if ($('enablePushBtn')) $('enablePushBtn').onclick = async () => { if (!('Notification' in window)) return toast('Browser ไม่รองรับ Notification'); const p = await Notification.requestPermission(); toast(p === 'granted' ? 'เปิด Notification แล้ว' : 'ยังไม่ได้อนุญาต Notification') };
 
@@ -1365,11 +1323,50 @@ function decorateButtons() {
         }
     });
 }
-window.addEventListener('DOMContentLoaded', decorateButtons);
+
+function restoreBottomNavIcons() {
+    const tabMap = {
+        dashboard: ['bi-house', 'หน้าหลัก'],
+        customers: ['bi-people', 'ลูกหนี้ทั้งหมด'],
+        contracts: ['bi-file-earmark-text', 'สัญญา'],
+        transactions: ['bi-cash-coin', 'ธุรกรรม'],
+        settings: ['bi-gear', 'ตั้งค่า']
+    };
+    document.querySelectorAll('.bottom-tab[data-tab]').forEach(btn => {
+        const cfg = tabMap[btn.dataset.tab];
+        if (!cfg) return;
+        const [icon, label] = cfg;
+        btn.innerHTML = `<i class="bi ${icon}" aria-hidden="true"></i><span>${label}</span>`;
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('title', label);
+    });
+}
+function restoreIconButtons() {
+    document.querySelectorAll('.mini.icon-action').forEach(btn => {
+        const title = btn.getAttribute('title') || btn.getAttribute('aria-label') || (btn.textContent || '').trim();
+        if (title) btn.setAttribute('aria-label', title);
+        if (btn.querySelector('i')) return;
+        let icon = 'bi-three-dots';
+        if (/เอกสาร/.test(title)) icon = 'bi-folder2-open';
+        else if (/เพิ่ม/.test(title)) icon = 'bi-plus-circle';
+        else if (/แก้ไข/.test(title)) icon = 'bi-pencil-square';
+        else if (/ลบ/.test(title)) icon = 'bi-trash';
+        else if (/เปิด/.test(title)) icon = 'bi-box-arrow-up-right';
+        btn.innerHTML = `<i class="bi ${icon}" aria-hidden="true"></i>`;
+    });
+}
+function restoreUiChrome() {
+    restoreBottomNavIcons();
+    restoreIconButtons();
+}
+
+window.addEventListener('DOMContentLoaded', () => { decorateButtons(); restoreUiChrome(); });
 
 try {
     decorateButtons();
+    restoreUiChrome();
     renderAppFooter();
+    initTheme(toast);
     applyTheme();
     initFirebase();
     setupSW();
