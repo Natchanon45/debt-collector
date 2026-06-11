@@ -1,6 +1,6 @@
 import { firebaseConfig, OCR_FUNCTION_URL, TELEGRAM_TEST_FUNCTION_URL, VAPID_PUBLIC_KEY } from './firebase-config.js';
 const APP_INFO = {
-    version: '7.7.1',
+    version: '7.7.3',
     authorized: 'นายณัฐชนน ศรีเปล่ง',
     year: new Date().getFullYear()
 };
@@ -926,7 +926,7 @@ function loadContractTemplateImage(){
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = reject;
-            img.src = CONTRACT_TEMPLATE_URL + '?v=7.7.2-template-v2-readable';
+            img.src = CONTRACT_TEMPLATE_URL + '?v=7.7.3-template-v2-readable';
         });
     }
     return contractTemplateImagePromise;
@@ -939,8 +939,8 @@ async function ensureContractCanvasFont(){
     contractFontReadyPromise = (async () => {
         try {
             if (window.FontFace && document.fonts) {
-                const normalUrl = './assets/fonts/THSarabun.ttf?v=7.7.2';
-                const boldUrl = './assets/fonts/THSarabun-Bold.ttf?v=7.7.2';
+                const normalUrl = './assets/fonts/THSarabun.ttf?v=7.7.3';
+                const boldUrl = './assets/fonts/THSarabun-Bold.ttf?v=7.7.3';
                 const alreadyLoaded = Array.from(document.fonts).some(f => f.family === 'THSarabunContract');
                 if (!alreadyLoaded) {
                     const normalFace = new FontFace('THSarabunContract', `url(${normalUrl})`, { weight:'400', style:'normal' });
@@ -1110,11 +1110,11 @@ async function renderContractImageCanvas(row, debtor){
 
     // Template V2 final: coordinates are based on the 1447x2048 PNG master.
     // All filled values are blue (#0000ff), normal weight, then flattened into one PNG image for mobile-safe PDF rendering.
-    const FS = 42;
-    const FS_SMALL = 40;
-    const FS_ID = 36;
-    const FS_SIG_NAME = 34;
-    const FS_INLINE_ID = 32;
+    const FS = 48;
+    const FS_SMALL = 46;
+    const FS_ID = 42;
+    const FS_SIG_NAME = 40;
+    const FS_INLINE_ID = 40;
 
     // Header
     drawContractText(ctx, row.contractNo || nextContractNo(), 248, 166, { maxWidth:359, size:FS, minSize:22, align:'left' });
@@ -1135,8 +1135,8 @@ async function renderContractImageCanvas(row, debtor){
     drawContractText(ctx, lenderName, 315, 371, { maxWidth:760, size:FS, minSize:28, align:'center' });
 
     // Clause 1
-    drawContractText(ctx, borrowerNameWithId, 381, 422, { maxWidth:575, size:FS_INLINE_ID, minSize:20, align:'center' });
-    drawContractText(ctx, lenderNameWithId, 205, 473, { maxWidth:900, size:FS_INLINE_ID, minSize:20, align:'center' });
+    drawContractText(ctx, borrowerNameWithId, 310, 422, { maxWidth:805, size:FS_INLINE_ID, minSize:28, align:'left' });
+    drawContractText(ctx, lenderNameWithId, 205, 473, { maxWidth:900, size:FS_INLINE_ID, minSize:28, align:'left' });
     drawContractText(ctx, amountInteger, 175, 525, { maxWidth:454, size:FS, minSize:28, align:'right', rightPad:8 });
     drawContractText(ctx, amountThai, 677, 525, { maxWidth:298, size:FS, minSize:26, align:'center' });
     drawContractText(ctx, amountSatang, 1031, 525, { maxWidth:202, size:FS, minSize:26, align:'center' });
@@ -1161,11 +1161,11 @@ async function renderContractImageCanvas(row, debtor){
 
     // Signature names: same row as the ink, directly to the right of the signature.
     // This avoids tiny text under the signature line and keeps every signer readable.
-    drawContractText(ctx, `(${borrowerName})`, 700, 1494, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${lenderName})`, 650, 1545, { maxWidth:330, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${row.witness1Name || '-'})`, 760, 1700, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${row.witness2Name || '-'})`, 760, 1752, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${row.writerName || lenderName})`, 760, 1803, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${borrowerName})`, 700, 1494, { maxWidth:390, size:FS_SIG_NAME, minSize:30, align:'left' });
+    drawContractText(ctx, `(${lenderName})`, 650, 1545, { maxWidth:360, size:FS_SIG_NAME, minSize:30, align:'left' });
+    drawContractText(ctx, `(${row.witness1Name || '-'})`, 760, 1700, { maxWidth:340, size:FS_SIG_NAME, minSize:30, align:'left' });
+    drawContractText(ctx, `(${row.witness2Name || '-'})`, 760, 1752, { maxWidth:340, size:FS_SIG_NAME, minSize:30, align:'left' });
+    drawContractText(ctx, `(${row.writerName || lenderName})`, 760, 1803, { maxWidth:340, size:FS_SIG_NAME, minSize:30, align:'left' });
     return canvas;
 }
 
