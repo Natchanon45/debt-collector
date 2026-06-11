@@ -1,6 +1,6 @@
 import { firebaseConfig, OCR_FUNCTION_URL, TELEGRAM_TEST_FUNCTION_URL, VAPID_PUBLIC_KEY } from './firebase-config.js';
 const APP_INFO = {
-    version: '7.7.5',
+    version: '7.7.7',
     authorized: 'นายณัฐชนน ศรีเปล่ง',
     year: new Date().getFullYear()
 };
@@ -14,13 +14,13 @@ const maskId = id => { const s = String(id || '').replace(/\D/g, ''); return s.l
 const normalizeIdCard = id => String(id || '').replace(/\D/g, '');
 function isDuplicateIdCard(id, ignoreId = '') { const v = normalizeIdCard(id); if (!v) return false; return (latestData?.debtors || []).some(d => d.id !== ignoreId && normalizeIdCard(d.idCard) === v) };
 const fullNameOf = o => [o.prefix, o.firstName, o.lastName].filter(Boolean).join(' ').trim();
-function toast(m, type='info') {
+function toast(m, type = 'info') {
     const el = $('toast'); if (!el) return;
     const msg = String(m || '');
     const autoType = /สำเร็จ|บันทึก|เพิ่ม|สร้าง|ลบแล้ว|เปิด|ล้าง Cache/.test(msg) ? 'success'
         : /ผิดพลาด|ไม่สำเร็จ|ไม่ได้|ลบไม่ได้|error|Error|ไม่พบ/.test(msg) ? 'error'
-        : /กรุณา|เตือน|ยังไม่ได้|ต้อง/.test(msg) ? 'warning' : type;
-    const icons = { success:'bi-check-circle-fill', error:'bi-x-circle-fill', warning:'bi-exclamation-triangle-fill', info:'bi-info-circle-fill' };
+            : /กรุณา|เตือน|ยังไม่ได้|ต้อง/.test(msg) ? 'warning' : type;
+    const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill', info: 'bi-info-circle-fill' };
     el.className = `toast toast-${autoType}`;
     el.innerHTML = `<i class="bi ${icons[autoType] || icons.info}"></i><span>${escapeHtml(msg)}</span>`;
     requestAnimationFrame(() => el.classList.add('show'));
@@ -39,7 +39,7 @@ function setUserDisplay(text) {
     if ($('userMenuWrap')) $('userMenuWrap').classList.toggle('hidden', !currentUser && !demoMode);
 }
 function local() { return JSON.parse(localStorage.getItem(LS) || JSON.stringify(blank)) } function setLocal(d) { localStorage.setItem(LS, JSON.stringify({ ...blank, ...d })) }
-function isoDate(d){ if (!(d instanceof Date) || Number.isNaN(d.getTime())) return today(); return d.toISOString().slice(0,10); }
+function isoDate(d) { if (!(d instanceof Date) || Number.isNaN(d.getTime())) return today(); return d.toISOString().slice(0, 10); }
 async function getData() { if (demoMode) return local(); const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const names = ['debtors', 'debts', 'payments', 'followups', 'documents', 'contracts', 'settings']; const result = {}; for (const n of names) { const snap = await getDocs(collection(db, `users/${currentUser.uid}/${n}`)); result[n] = snap.docs.map(d => ({ id: d.id, ...d.data() })) } result.settings = (result.settings || []).reduce((acc, x) => ({ ...acc, ...x, profile: { ...(acc.profile || {}), ...(x.profile || {}) } }), {}); return { ...blank, ...result } }
 async function add(type, row) { if (demoMode) { const d = local(); const id = uid(); d[type].push({ id, ...row }); setLocal(d); return id } const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const ref = await addDoc(collection(db, `users/${currentUser.uid}/${type}`), { ...row, createdAt: serverTimestamp() }); return ref.id }
 async function updateRow(type, id, row) { if (demoMode) { const d = local(); d[type] = d[type].map(x => x.id === id ? { ...x, ...row } : x); setLocal(d); return } const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); await updateDoc(doc(db, `users/${currentUser.uid}/${type}/${id}`), row) }
@@ -48,7 +48,7 @@ async function deleteRow(type, id) {
     const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
     await deleteDoc(doc(db, `users/${currentUser.uid}/${type}/${id}`));
 }
-async function saveSettings(row) { if (demoMode) { const d = local(); d.settings = { ...(d.settings || {}), ...row, profile: { ...((d.settings || {}).profile || {}), ...(row.profile || {}) } }; setLocal(d); latestData = { ...(latestData || blank), settings: d.settings }; return } const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); await setDoc(doc(db, `users/${currentUser.uid}/settings/profile`), row, { merge:true }); latestData = { ...(latestData || blank), settings: { ...((latestData || {}).settings || {}), ...row, profile: { ...(((latestData || {}).settings || {}).profile || {}), ...(row.profile || {}) } } }; }
+async function saveSettings(row) { if (demoMode) { const d = local(); d.settings = { ...(d.settings || {}), ...row, profile: { ...((d.settings || {}).profile || {}), ...(row.profile || {}) } }; setLocal(d); latestData = { ...(latestData || blank), settings: d.settings }; return } const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); await setDoc(doc(db, `users/${currentUser.uid}/settings/profile`), row, { merge: true }); latestData = { ...(latestData || blank), settings: { ...((latestData || {}).settings || {}), ...row, profile: { ...(((latestData || {}).settings || {}).profile || {}), ...(row.profile || {}) } } }; }
 function canDeleteDebtor(id, d = latestData) {
     if (!d) return false;
     return !d.debts.some(x => x.debtorId === id) && !d.followups.some(x => x.debtorId === id) && !d.documents.some(x => x.debtorId === id) && !(d.contracts || []).some(x => x.debtorId === id);
@@ -208,7 +208,7 @@ function fillSettings(s) {
     setUserDisplay();
 }
 window.openDebtForm = (id, name) => { if ($('transactionDebtorId')) $('transactionDebtorId').value = id; switchTransaction('debt'); switchTab('transactions') };
-window.openDebtorDocuments = id => { if ($('documentDebtorId')) $('documentDebtorId').value = id; switchTab('customers'); $('documentDebtorId')?.scrollIntoView({ behavior:'smooth', block:'center' }); toast('เลือกเอกสารของลูกหนี้แล้ว'); };
+window.openDebtorDocuments = id => { if ($('documentDebtorId')) $('documentDebtorId').value = id; switchTab('customers'); $('documentDebtorId')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); toast('เลือกเอกสารของลูกหนี้แล้ว'); };
 window.openEditDebtor = id => { const d = (latestData?.debtors || []).find(x => x.id === id); if (!d) return;['Name', 'Phone', 'LineId', 'IdCard', 'BirthDate', 'Address', 'SubDistrict', 'District', 'Province'].forEach(k => { const el = $('editDebtor' + k); if (el) el.value = d[k.charAt(0).toLowerCase() + k.slice(1)] || '' }); $('editDebtorId').value = id; $('editDebtorCard').classList.remove('hidden'); switchTab('customers') };
 window.deleteDebtor = async id => { if (!canDeleteDebtor(id)) return toast('ลบไม่ได้ เพราะลูกหนี้ถูกนำไปใช้งานแล้ว'); const debtor = (latestData?.debtors || []).find(x => x.id === id); if (!confirm(`ลบลูกหนี้ ${debtor?.name || ''} ใช่หรือไม่?`)) return; await deleteRow('debtors', id); toast('ลบลูกหนี้แล้ว'); render() };
 $('addDebtorBtn').onclick = async () => { const name = $('debtorName').value.trim(); if (!name) return toast('กรุณากรอกชื่อลูกหนี้'); if (isDuplicateIdCard($('debtorIdCard').value)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', { name, phone: $('debtorPhone').value.trim(), lineId: $('debtorLineId').value.trim(), idCard: $('debtorIdCard').value.trim(), birthDate: $('debtorBirthDate')?.value || '', address: $('debtorAddress').value.trim(), subDistrict: $('debtorSubDistrict')?.value.trim() || '', district: $('debtorDistrict').value.trim(), province: $('debtorProvince').value.trim() });['debtorName', 'debtorPhone', 'debtorLineId', 'debtorIdCard', 'debtorBirthDate', 'debtorAddress', 'debtorSubDistrict', 'debtorDistrict', 'debtorProvince'].forEach(id => { if ($(id)) $(id).value = '' }); toast('เพิ่มลูกหนี้สำเร็จ'); hideCustomerForm(); switchTab('customers'); render() };
@@ -231,7 +231,7 @@ $('addDocumentBtn').onclick = async () => {
         render();
     } catch (e) { console.error(e); toast('อัปโหลดไม่สำเร็จ: ' + e.message) }
 };
-function normalizeThaiPrefix(name='') {
+function normalizeThaiPrefix(name = '') {
     return String(name || '')
         .replace(/น\s*\.\s*ส\s*\.?/g, 'นางสาว')
         .replace(/นส\s*\.?/g, 'นางสาว')
@@ -243,9 +243,9 @@ function normalizeThaiPrefix(name='') {
         .replace(/\s+/g, ' ')
         .trim();
 }
-function parseThaiAddressParts(text='') {
+function parseThaiAddressParts(text = '') {
     const raw = String(text || '').replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-    const provinceList = ['กรุงเทพมหานคร','กระบี่','กาญจนบุรี','กาฬสินธุ์','กำแพงเพชร','ขอนแก่น','จันทบุรี','ฉะเชิงเทรา','ชลบุรี','ชัยนาท','ชัยภูมิ','ชุมพร','เชียงราย','เชียงใหม่','ตรัง','ตราด','ตาก','นครนายก','นครปฐม','นครพนม','นครราชสีมา','นครศรีธรรมราช','นครสวรรค์','นนทบุรี','นราธิวาส','น่าน','บึงกาฬ','บุรีรัมย์','ปทุมธานี','ประจวบคีรีขันธ์','ปราจีนบุรี','ปัตตานี','พระนครศรีอยุธยา','พะเยา','พังงา','พัทลุง','พิจิตร','พิษณุโลก','เพชรบุรี','เพชรบูรณ์','แพร่','ภูเก็ต','มหาสารคาม','มุกดาหาร','แม่ฮ่องสอน','ยโสธร','ยะลา','ร้อยเอ็ด','ระนอง','ระยอง','ราชบุรี','ลพบุรี','ลำปาง','ลำพูน','เลย','ศรีสะเกษ','สกลนคร','สงขลา','สตูล','สมุทรปราการ','สมุทรสงคราม','สมุทรสาคร','สระแก้ว','สระบุรี','สิงห์บุรี','สุโขทัย','สุพรรณบุรี','สุราษฎร์ธานี','สุรินทร์','หนองคาย','หนองบัวลำภู','อ่างทอง','อำนาจเจริญ','อุดรธานี','อุตรดิตถ์','อุทัยธานี','อุบลราชธานี'];
+    const provinceList = ['กรุงเทพมหานคร', 'กระบี่', 'กาญจนบุรี', 'กาฬสินธุ์', 'กำแพงเพชร', 'ขอนแก่น', 'จันทบุรี', 'ฉะเชิงเทรา', 'ชลบุรี', 'ชัยนาท', 'ชัยภูมิ', 'ชุมพร', 'เชียงราย', 'เชียงใหม่', 'ตรัง', 'ตราด', 'ตาก', 'นครนายก', 'นครปฐม', 'นครพนม', 'นครราชสีมา', 'นครศรีธรรมราช', 'นครสวรรค์', 'นนทบุรี', 'นราธิวาส', 'น่าน', 'บึงกาฬ', 'บุรีรัมย์', 'ปทุมธานี', 'ประจวบคีรีขันธ์', 'ปราจีนบุรี', 'ปัตตานี', 'พระนครศรีอยุธยา', 'พะเยา', 'พังงา', 'พัทลุง', 'พิจิตร', 'พิษณุโลก', 'เพชรบุรี', 'เพชรบูรณ์', 'แพร่', 'ภูเก็ต', 'มหาสารคาม', 'มุกดาหาร', 'แม่ฮ่องสอน', 'ยโสธร', 'ยะลา', 'ร้อยเอ็ด', 'ระนอง', 'ระยอง', 'ราชบุรี', 'ลพบุรี', 'ลำปาง', 'ลำพูน', 'เลย', 'ศรีสะเกษ', 'สกลนคร', 'สงขลา', 'สตูล', 'สมุทรปราการ', 'สมุทรสงคราม', 'สมุทรสาคร', 'สระแก้ว', 'สระบุรี', 'สิงห์บุรี', 'สุโขทัย', 'สุพรรณบุรี', 'สุราษฎร์ธานี', 'สุรินทร์', 'หนองคาย', 'หนองบัวลำภู', 'อ่างทอง', 'อำนาจเจริญ', 'อุดรธานี', 'อุตรดิตถ์', 'อุทัยธานี', 'อุบลราชธานี'];
     let province = '';
     if (/กรุงเทพ|กทม/.test(raw)) province = 'กรุงเทพมหานคร';
     if (!province) province = provinceList.find(p => raw.includes(p)) || '';
@@ -377,15 +377,17 @@ $('saveProfileBtn').onclick = async () => {
     const lenderName = ($('profileLenderName')?.value || '').trim();
     const displayName = lenderName || alias || getDisplayName();
     if (!displayName) return toast('กรุณากรอกชื่อผู้ใช้งานหรือชื่อผู้ให้กู้');
-    await saveSettings({ profile: {
-        alias: alias || displayName,
-        lenderName: displayName,
-        phone: $('profilePhone').value.trim(),
-        lineId: $('profileLineId').value.trim(),
-        telegramId: $('profileTelegramId').value.trim(),
-        lenderIdCard: normalizeIdCard($('profileLenderIdCard')?.value || ''),
-        lenderAddress: $('profileLenderAddress')?.value.trim() || ''
-    } });
+    await saveSettings({
+        profile: {
+            alias: alias || displayName,
+            lenderName: displayName,
+            phone: $('profilePhone').value.trim(),
+            lineId: $('profileLineId').value.trim(),
+            telegramId: $('profileTelegramId').value.trim(),
+            lenderIdCard: normalizeIdCard($('profileLenderIdCard')?.value || ''),
+            lenderAddress: $('profileLenderAddress')?.value.trim() || ''
+        }
+    });
     toast('บันทึกชื่อและที่อยู่ผู้ให้กู้ลงฐานข้อมูลแล้ว'); switchTab('settings');
     render();
 };
@@ -420,7 +422,7 @@ document.addEventListener('click', e => { if ($('userDropdown') && !$('userMenuW
 const contractSigState = {};
 let editingContractNo = '';
 let editingContractId = '';
-const SIG_IDS = ['sigLender','sigBorrower','sigWitness1','sigWitness2','sigWriter'];
+const SIG_IDS = ['sigLender', 'sigBorrower', 'sigWitness1', 'sigWitness2', 'sigWriter'];
 function resizeSignatureCanvas(canvas) {
     if (!canvas) return;
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -434,7 +436,7 @@ function resizeSignatureCanvas(canvas) {
     canvas.style.height = cssHeight + 'px';
     const ctx = canvas.getContext('2d');
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0000ff';
+    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111827';
     if (old) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, cssWidth, cssHeight); img.src = old; }
 }
 function bindSignaturePad(id) {
@@ -453,26 +455,26 @@ function bindSignaturePad(id) {
         canvas.addEventListener('pointercancel', end);
     } else {
         canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
-        canvas.addEventListener('touchstart', start, { passive:false }); canvas.addEventListener('touchmove', move, { passive:false }); canvas.addEventListener('touchend', end, { passive:false });
+        canvas.addEventListener('touchstart', start, { passive: false }); canvas.addEventListener('touchmove', move, { passive: false }); canvas.addEventListener('touchend', end, { passive: false });
     }
 }
 function clearSignature(id) { const c = $(id); if (!c) return; c.dataset.hasInk = ''; c.getContext('2d').clearRect(0, 0, c.width, c.height); }
 function hasSignature(id) { return $(id)?.dataset.hasInk === '1'; }
 function getSignatureData(id) { const c = $(id); return c && hasSignature(id) ? c.toDataURL('image/png') : ''; }
-const SIGNATURE_KEYS = { sigBorrower:'borrower', sigLender:'lender', sigWitness1:'witness1', sigWitness2:'witness2', sigWriter:'writer' };
-const SIGNATURE_IDS_BY_KEY = Object.fromEntries(Object.entries(SIGNATURE_KEYS).map(([id,key]) => [key,id]));
+const SIGNATURE_KEYS = { sigBorrower: 'borrower', sigLender: 'lender', sigWitness1: 'witness1', sigWitness2: 'witness2', sigWriter: 'writer' };
+const SIGNATURE_IDS_BY_KEY = Object.fromEntries(Object.entries(SIGNATURE_KEYS).map(([id, key]) => [key, id]));
 const SIGNATURE_PDF_MAP = {
     // Template V2.2 coordinates (1447x2048 master scale).
     // Ink is drawn on the same row as the printed signature line.
     // Names are drawn immediately to the right of the ink, still before the role label.
-    borrower:{ id:'sigBorrower', x:585, y:1458, w:118, h:40 },
-    lender:{ id:'sigLender', x:505, y:1509, w:118, h:40 },
-    witness1:{ id:'sigWitness1', x:610, y:1663, w:118, h:40 },
-    witness2:{ id:'sigWitness2', x:610, y:1715, w:118, h:40 },
-    writer:{ id:'sigWriter', x:610, y:1766, w:118, h:40 }
+    borrower: { id: 'sigBorrower', x: 585, y: 1458, w: 118, h: 40 },
+    lender: { id: 'sigLender', x: 505, y: 1509, w: 118, h: 40 },
+    witness1: { id: 'sigWitness1', x: 610, y: 1663, w: 118, h: 40 },
+    witness2: { id: 'sigWitness2', x: 610, y: 1715, w: 118, h: 40 },
+    writer: { id: 'sigWriter', x: 610, y: 1766, w: 118, h: 40 }
 };
 function initContractPads() { SIG_IDS.forEach(bindSignaturePad); }
-function cropSignatureCanvas(canvas, padding=12) {
+function cropSignatureCanvas(canvas, padding = 12) {
     if (!canvas || !hasSignature(canvas.id)) return '';
     const ctx = canvas.getContext('2d');
     const { width, height } = canvas;
@@ -520,21 +522,21 @@ function restoreSignatureCanvas(id, dataUrl) {
     };
     img.src = dataUrl;
 }
-function restoreContractSignatures(signatures={}) {
+function restoreContractSignatures(signatures = {}) {
     SIG_IDS.forEach(id => clearSignature(id));
     Object.entries(signatures || {}).forEach(([key, data]) => restoreSignatureCanvas(SIGNATURE_IDS_BY_KEY[key], data));
 }
 function debtorForContract(id) { return (latestData?.debtors || []).find(x => x.id === id) || {}; }
 
-function normalizeSignerName(v){ return String(v || '').trim(); }
-function contractRequiredSignatureKeys(row={}){
-    const keys = ['borrower','lender'];
+function normalizeSignerName(v) { return String(v || '').trim(); }
+function contractRequiredSignatureKeys(row = {}) {
+    const keys = ['borrower', 'lender'];
     if (normalizeSignerName(row.witness1Name)) keys.push('witness1');
     if (normalizeSignerName(row.witness2Name)) keys.push('witness2');
     keys.push('writer');
     return keys;
 }
-function contractSignedCount(row={}){
+function contractSignedCount(row = {}) {
     const sigs = row.signatures || {};
     const required = contractRequiredSignatureKeys(row);
     const fromSigs = required.filter(k => Boolean(sigs[k])).length;
@@ -543,11 +545,11 @@ function contractSignedCount(row={}){
     }
     return fromSigs;
 }
-function contractRequiredSignatureCount(row={}){ return contractRequiredSignatureKeys(row).length; }
-function isContractFullySigned(row={}){ return contractSignedCount(row) >= contractRequiredSignatureCount(row); }
-function isContractLocked(row={}){ return row.status === 'locked' || row.locked === true || isContractFullySigned(row); }
+function contractRequiredSignatureCount(row = {}) { return contractRequiredSignatureKeys(row).length; }
+function isContractFullySigned(row = {}) { return contractSignedCount(row) >= contractRequiredSignatureCount(row); }
+function isContractLocked(row = {}) { return row.status === 'locked' || row.locked === true || isContractFullySigned(row); }
 
-function readContractFormRow(includeSignatures=false){
+function readContractFormRow(includeSignatures = false) {
     const debtor = debtorForContract($('contractDebtorId')?.value || '');
     const p = currentProfile();
     const signatures = includeSignatures ? collectContractSignatures() : {};
@@ -562,7 +564,7 @@ function readContractFormRow(includeSignatures=false){
         amount: num($('contractAmount')?.value),
         contractDate: $('contractDate')?.value || today(),
         dueDate: $('contractDueDate')?.value || '',
-        interestRate: String($('contractInterestRate')?.value || '').replace(/,/g,''),
+        interestRate: String($('contractInterestRate')?.value || '').replace(/,/g, ''),
         place: (($('contractPlace')?.value || '').trim()),
         collateral: (($('contractCollateral')?.value || '').trim()),
         witness1Name: (($('contractWitness1Name')?.value || '').trim()),
@@ -577,12 +579,12 @@ function readContractFormRow(includeSignatures=false){
     row.locked = isContractFullySigned(row);
     return row;
 }
-function updateContractSmartUi(){
+function updateContractSmartUi() {
     const debtor = debtorForContract($('contractDebtorId')?.value || '');
     const row = readContractFormRow(false);
     const age = debtorAgeForContract(debtor, row.contractDate || today());
     if ($('contractBorrowerAgeHint')) $('contractBorrowerAgeHint').textContent = `อายุผู้กู้: ${age || '-'} ปี`;
-    const interest = Number(String(row.interestRate || '').replace(/[^0-9.]/g,''));
+    const interest = Number(String(row.interestRate || '').replace(/[^0-9.]/g, ''));
     const interestHint = $('contractInterestHint');
     if (interestHint) {
         const over = Number.isFinite(interest) && interest > 15;
@@ -602,11 +604,11 @@ function updateContractSmartUi(){
             </div>`;
     }
 }
-function bindContractSmartUi(){
-    const ids = ['contractTemplateType','contractDebtorId','contractLenderName','contractAmount','contractDate','contractDueDate','contractInterestRate','contractPlace','contractCollateral','contractWitness1Name','contractWitness2Name','contractWriterName'];
+function bindContractSmartUi() {
+    const ids = ['contractTemplateType', 'contractDebtorId', 'contractLenderName', 'contractAmount', 'contractDate', 'contractDueDate', 'contractInterestRate', 'contractPlace', 'contractCollateral', 'contractWitness1Name', 'contractWitness2Name', 'contractWriterName'];
     ids.forEach(id => {
         const el = $(id); if (el && !el.dataset.phase8Bound) {
-            ['input','change'].forEach(evt => el.addEventListener(evt, updateContractSmartUi));
+            ['input', 'change'].forEach(evt => el.addEventListener(evt, updateContractSmartUi));
             el.dataset.phase8Bound = '1';
         }
     });
@@ -615,7 +617,7 @@ function bindContractSmartUi(){
         $('refreshContractSummaryBtn').dataset.phase8Bound = '1';
     }
 }
-function showContractForm(prefillDebtorId='') {
+function showContractForm(prefillDebtorId = '') {
     if (!prefillDebtorId) { editingContractNo = ''; editingContractId = ''; }
     const card = $('contractFormCard'); if (!card) return;
     card.classList.remove('hidden'); if ($('contractDate') && !$('contractDate').value) $('contractDate').value = today();
@@ -632,11 +634,11 @@ function showContractForm(prefillDebtorId='') {
         if (!editingContractId) restoreContractSignatures({});
         updateContractSmartUi();
     }, 120);
-    card.scrollIntoView({ behavior:'smooth' });
+    card.scrollIntoView({ behavior: 'smooth' });
 }
 function renderContractList(d, c) {
     if (!$('contractList')) return;
-    const list = (d.contracts || []).sort((a,b)=>String(b.createdDate||'').localeCompare(String(a.createdDate||'')));
+    const list = (d.contracts || []).sort((a, b) => String(b.createdDate || '').localeCompare(String(a.createdDate || '')));
     $('contractList').innerHTML = list.length ? list.map(x => {
         const signed = contractSignedCount(x), required = contractRequiredSignatureCount(x), complete = isContractLocked(x);
         const debtStatus = x.autoDebtCreated ? ' · สร้างก้อนหนี้แล้ว' : '';
@@ -645,18 +647,18 @@ function renderContractList(d, c) {
         return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${c.debtors[x.debtorId]?.name || x.borrowerName || '-'} · ${money(x.amount)}</div><div class="item-sub">${status} · วันที่ ${thaiDate(x.contractDate || x.createdDate)} · ครบกำหนด ${thaiDate(x.dueDate)} · ${x.fileName || ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิด PDF" aria-label="เปิด PDF" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
     }).join('') : '<div class="empty">ยังไม่มีสัญญากู้ยืม</div>';
 }
-function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
-function bahtTextFallback(n){
-    const value = Number(String(n ?? 0).replace(/,/g,''));
+function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])); }
+function bahtTextFallback(n) {
+    const value = Number(String(n ?? 0).replace(/,/g, ''));
     if (!Number.isFinite(value) || value <= 0) return 'ศูนย์บาทถ้วน';
-    const nums = ['ศูนย์','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
-    const units = ['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
+    const nums = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+    const units = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
     const readInt = (numStr) => {
-        numStr = String(parseInt(numStr || '0',10));
+        numStr = String(parseInt(numStr || '0', 10));
         if (numStr === '0') return '';
         let out = '';
         const len = numStr.length;
-        for (let i=0;i<len;i++){
+        for (let i = 0; i < len; i++) {
             const d = Number(numStr[i]);
             if (!d) continue;
             const pos = len - i - 1;
@@ -668,12 +670,12 @@ function bahtTextFallback(n){
         return out;
     };
     const readMillion = (numStr) => {
-        numStr = String(parseInt(numStr || '0',10));
+        numStr = String(parseInt(numStr || '0', 10));
         if (numStr === '0') return 'ศูนย์';
         let parts = [];
-        while (numStr.length > 6) { parts.unshift(numStr.slice(-6)); numStr = numStr.slice(0,-6); }
+        while (numStr.length > 6) { parts.unshift(numStr.slice(-6)); numStr = numStr.slice(0, -6); }
         parts.unshift(numStr);
-        return parts.map((part, idx) => readInt(part) + (idx < parts.length-1 ? 'ล้าน' : '')).join('');
+        return parts.map((part, idx) => readInt(part) + (idx < parts.length - 1 ? 'ล้าน' : '')).join('');
     };
     const fixed = value.toFixed(2);
     const [baht, satang] = fixed.split('.');
@@ -681,25 +683,25 @@ function bahtTextFallback(n){
     const satangNum = Number(satang);
     return satangNum ? b + readInt(satang) + 'สตางค์' : b + 'ถ้วน';
 }
-function nextContractNo(){
+function nextContractNo() {
     const d = new Date();
-    const prefix = String(d.getFullYear()) + String(d.getMonth()+1).padStart(2,'0');
+    const prefix = String(d.getFullYear()) + String(d.getMonth() + 1).padStart(2, '0');
     const maxSeq = (latestData?.contracts || [])
         .map(x => String(x.contractNo || ''))
         .filter(no => no.startsWith(prefix))
         .map(no => Number(no.slice(6)) || 0)
-        .reduce((m,n)=>Math.max(m,n),0);
-    return prefix + String(maxSeq + 1).padStart(4,'0');
+        .reduce((m, n) => Math.max(m, n), 0);
+    return prefix + String(maxSeq + 1).padStart(4, '0');
 }
-const TH_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const TH_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 const TH_MONTHS_SHORT = TH_MONTHS_FULL;
-function thaiDate(v){
+function thaiDate(v) {
     if (!v) return '-';
     const d = new Date(String(v).includes('T') ? v : String(v) + 'T00:00:00');
     if (isNaN(d)) return v;
-    return `${d.getDate()} ${TH_MONTHS_FULL[d.getMonth()]} ${d.getFullYear()+543}`;
+    return `${d.getDate()} ${TH_MONTHS_FULL[d.getMonth()]} ${d.getFullYear() + 543}`;
 }
-function calcAgeYears(birthValue, atValue=today()){
+function calcAgeYears(birthValue, atValue = today()) {
     if (!birthValue) return '';
     const b = new Date(String(birthValue).includes('T') ? birthValue : String(birthValue) + 'T00:00:00');
     const at = new Date(String(atValue || today()).includes('T') ? atValue : String(atValue || today()) + 'T00:00:00');
@@ -709,26 +711,26 @@ function calcAgeYears(birthValue, atValue=today()){
     if (m < 0 || (m === 0 && at.getDate() < b.getDate())) age--;
     return age >= 0 && age < 130 ? String(age) : '';
 }
-function debtorAgeForContract(debtor={}, atValue=today()){
+function debtorAgeForContract(debtor = {}, atValue = today()) {
     const explicit = String(debtor.age || '').trim();
     if (explicit && explicit !== '-') return explicit;
     return calcAgeYears(debtor.birthDate || debtor.birthday || debtor.dob || debtor.dateOfBirth || debtor.birth_date, atValue) || '-';
 }
-function currentProfile(){ return (latestData?.settings?.profile) || latestData?.settings || {}; }
-function adjustSignaturePageBreak(paper){
+function currentProfile() { return (latestData?.settings?.profile) || latestData?.settings || {}; }
+function adjustSignaturePageBreak(paper) {
     const sign = paper?.querySelector('.contract-sign-section'); if (!sign) return;
     sign.style.marginTop = '';
     const page = 1123, top = sign.offsetTop, h = sign.offsetHeight;
     if ((top % page) + h > page - 42) sign.style.marginTop = (page - (top % page) + 30) + 'px';
 }
-function fullId(v){ return normalizeIdCard(v || '') || '-'; }
-function thDateParts(v){
+function fullId(v) { return normalizeIdCard(v || '') || '-'; }
+function thDateParts(v) {
     const t = thaiDate(v || today());
-    if (!t || t === '-') return { day:'____', month:'__________', year:'____', full:'-' };
+    if (!t || t === '-') return { day: '____', month: '__________', year: '____', full: '-' };
     const parts = t.split(' ');
-    return { day:parts[0]||'____', month:parts[1]||'__________', year:parts[2]||'____', full:t };
+    return { day: parts[0] || '____', month: parts[1] || '__________', year: parts[2] || '____', full: t };
 }
-function contractValue(v, cls=''){ return `<span class="contract-fill ${cls}"><span class="contract-fill-text">${escapeHtml(v || '-')}</span></span>`; }
+function contractValue(v, cls = '') { return `<span class="contract-fill ${cls}"><span class="contract-fill-text">${escapeHtml(v || '-')}</span></span>`; }
 function buildContractHtml(row, debtor) {
     const borrowerAddress = [debtor.address, debtor.district, debtor.province].filter(Boolean).join(' ');
     const cdate = thDateParts(row.contractDate || today());
@@ -764,7 +766,7 @@ function buildContractHtml(row, debtor) {
     </div>`;
 }
 
-function syncSavedContractLocal(existing, contractId, documentId, docPayload, contractPayload, extra={}) {
+function syncSavedContractLocal(existing, contractId, documentId, docPayload, contractPayload, extra = {}) {
     const d = { ...blank, ...(latestData || local()) };
     d.documents = Array.isArray(d.documents) ? d.documents.slice() : [];
     d.contracts = Array.isArray(d.contracts) ? d.contracts.slice() : [];
@@ -781,7 +783,7 @@ function syncSavedContractLocal(existing, contractId, documentId, docPayload, co
 }
 
 
-function addMonthsSafe(dateStr, months){
+function addMonthsSafe(dateStr, months) {
     const base = new Date((dateStr || today()) + 'T00:00:00');
     if (Number.isNaN(base.getTime())) return today();
     const d = new Date(base);
@@ -790,7 +792,7 @@ function addMonthsSafe(dateStr, months){
     if (d.getDate() < day) d.setDate(0);
     return isoDate(d);
 }
-function countContractMonths(startDate, dueDate){
+function countContractMonths(startDate, dueDate) {
     const s = new Date((startDate || today()) + 'T00:00:00');
     const e = new Date((dueDate || startDate || today()) + 'T00:00:00');
     if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e <= s) return 1;
@@ -798,10 +800,10 @@ function countContractMonths(startDate, dueDate){
     if (e.getDate() > s.getDate()) months += 1;
     return Math.max(1, months);
 }
-function roundMoney(v){ return Math.round((Number(v || 0) + Number.EPSILON) * 100) / 100; }
-function buildContractDebtInstallments(contract){
+function roundMoney(v) { return Math.round((Number(v || 0) + Number.EPSILON) * 100) / 100; }
+function buildContractDebtInstallments(contract) {
     const principal = roundMoney(num(contract.amount));
-    const annualRate = Number(String(contract.interestRate || 0).replace(/[^0-9.]/g,'')) || 0;
+    const annualRate = Number(String(contract.interestRate || 0).replace(/[^0-9.]/g, '')) || 0;
     const months = countContractMonths(contract.contractDate, contract.dueDate);
     const monthlyRate = annualRate / 100 / 12;
     const rows = [];
@@ -836,19 +838,19 @@ function buildContractDebtInstallments(contract){
     }
     return rows;
 }
-async function ensureAutoDebtForLockedContract(contract){
+async function ensureAutoDebtForLockedContract(contract) {
     if (!contract || !contract.id || !isContractLocked(contract)) return false;
     const existing = (latestData?.debts || []).some(d => d.source === 'contract_auto' && (d.contractId === contract.id || (contract.contractNo && d.contractNo === contract.contractNo)));
     if (contract.autoDebtCreated || existing) return false;
     const installments = buildContractDebtInstallments(contract);
     for (const row of installments) await add('debts', row);
-    const totalDebtAmount = roundMoney(installments.reduce((s,x)=>s + num(x.principal), 0));
+    const totalDebtAmount = roundMoney(installments.reduce((s, x) => s + num(x.principal), 0));
     await updateRow('contracts', contract.id, {
         status: 'locked', locked: true, autoDebtCreated: true,
         debtGeneratedDate: today(), installmentCount: installments.length, totalDebtAmount
     });
     if (latestData?.contracts) {
-        latestData.contracts = latestData.contracts.map(x => x.id === contract.id ? { ...x, status:'locked', locked:true, autoDebtCreated:true, debtGeneratedDate:today(), installmentCount:installments.length, totalDebtAmount } : x);
+        latestData.contracts = latestData.contracts.map(x => x.id === contract.id ? { ...x, status: 'locked', locked: true, autoDebtCreated: true, debtGeneratedDate: today(), installmentCount: installments.length, totalDebtAmount } : x);
     }
     toast(`ลงลายเซ็นครบแล้ว ระบบล็อกสัญญาและสร้างก้อนหนี้ ${installments.length} งวดแล้ว`);
     return true;
@@ -862,7 +864,7 @@ async function saveContractPdf(row, blob) {
         (row.contractNo && x.contractNo === row.contractNo)
     ) || null;
     const fileName = existing?.fileName || `loan-contract-${row.contractNo || debtorId}-${Date.now()}.pdf`;
-    const docPayload = { debtorId, type:'สัญญากู้ยืม', fileName, mimeType:'application/pdf', size: blob.size, createdDate: existing?.createdDate || today(), updatedDate: today() };
+    const docPayload = { debtorId, type: 'สัญญากู้ยืม', fileName, mimeType: 'application/pdf', size: blob.size, createdDate: existing?.createdDate || today(), updatedDate: today() };
     const contractPayload = { ...row, fileName, createdDate: existing?.createdDate || today(), updatedDate: today() };
 
     if (demoMode) {
@@ -874,19 +876,19 @@ async function saveContractPdf(row, blob) {
         } else if (existing?.id) {
             const d = local();
             const newDocId = uid();
-            d.documents.push({ id: newDocId, ...docPayload, storagePath:'', downloadURL:'' });
-            d.contracts = d.contracts.map(x => x.id === existing.id ? { ...x, ...contractPayload, documentId:newDocId, downloadURL:'' } : x);
+            d.documents.push({ id: newDocId, ...docPayload, storagePath: '', downloadURL: '' });
+            d.contracts = d.contracts.map(x => x.id === existing.id ? { ...x, ...contractPayload, documentId: newDocId, downloadURL: '' } : x);
             setLocal(d);
             latestData = local();
-            return { id: existing.id, ...contractPayload, documentId:newDocId, downloadURL:'' };
+            return { id: existing.id, ...contractPayload, documentId: newDocId, downloadURL: '' };
         } else {
             const d = local();
             const newDocId = uid(), newContractId = uid();
-            d.documents.push({ id: newDocId, ...docPayload, storagePath:'', downloadURL:'' });
-            d.contracts.push({ id: newContractId, ...contractPayload, documentId:newDocId, downloadURL:'' });
+            d.documents.push({ id: newDocId, ...docPayload, storagePath: '', downloadURL: '' });
+            d.contracts.push({ id: newContractId, ...contractPayload, documentId: newDocId, downloadURL: '' });
             setLocal(d);
             latestData = local();
-            return { id: newContractId, ...contractPayload, documentId:newDocId, downloadURL:'' };
+            return { id: newContractId, ...contractPayload, documentId: newDocId, downloadURL: '' };
         }
         latestData = local();
         return;
@@ -895,56 +897,56 @@ async function saveContractPdf(row, blob) {
     const { ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js');
     const path = existing?.storagePath || `users/${currentUser.uid}/debtors/${debtorId}/contracts/${fileName}`;
     const fileRef = ref(storage, path);
-    await uploadBytes(fileRef, blob, { contentType:'application/pdf' });
+    await uploadBytes(fileRef, blob, { contentType: 'application/pdf' });
     const downloadURL = await getDownloadURL(fileRef);
 
     const { collection, addDoc, doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
     if (existing?.id) {
         let documentId = existing.documentId || '';
         if (documentId) {
-            await updateDoc(doc(db, `users/${currentUser.uid}/documents/${documentId}`), { ...docPayload, storagePath:path, downloadURL, updatedAt: serverTimestamp() });
+            await updateDoc(doc(db, `users/${currentUser.uid}/documents/${documentId}`), { ...docPayload, storagePath: path, downloadURL, updatedAt: serverTimestamp() });
         } else {
-            const docRef = await addDoc(collection(db, `users/${currentUser.uid}/documents`), { ...docPayload, storagePath:path, downloadURL, createdAt: serverTimestamp() });
+            const docRef = await addDoc(collection(db, `users/${currentUser.uid}/documents`), { ...docPayload, storagePath: path, downloadURL, createdAt: serverTimestamp() });
             documentId = docRef.id;
         }
-        await updateDoc(doc(db, `users/${currentUser.uid}/contracts/${existing.id}`), { ...contractPayload, documentId, storagePath:path, downloadURL, updatedAt: serverTimestamp() });
-        syncSavedContractLocal(existing, existing.id, documentId, docPayload, contractPayload, { storagePath:path, downloadURL });
-        return { id: existing.id, ...contractPayload, documentId, storagePath:path, downloadURL };
+        await updateDoc(doc(db, `users/${currentUser.uid}/contracts/${existing.id}`), { ...contractPayload, documentId, storagePath: path, downloadURL, updatedAt: serverTimestamp() });
+        syncSavedContractLocal(existing, existing.id, documentId, docPayload, contractPayload, { storagePath: path, downloadURL });
+        return { id: existing.id, ...contractPayload, documentId, storagePath: path, downloadURL };
     } else {
-        const docRef = await addDoc(collection(db, `users/${currentUser.uid}/documents`), { ...docPayload, storagePath:path, downloadURL, createdAt: serverTimestamp() });
-        const contractRef = await addDoc(collection(db, `users/${currentUser.uid}/contracts`), { ...contractPayload, documentId: docRef.id, storagePath:path, downloadURL, createdAt: serverTimestamp() });
-        syncSavedContractLocal(null, contractRef.id, docRef.id, docPayload, contractPayload, { storagePath:path, downloadURL });
-        return { id: contractRef.id, ...contractPayload, documentId: docRef.id, storagePath:path, downloadURL };
+        const docRef = await addDoc(collection(db, `users/${currentUser.uid}/documents`), { ...docPayload, storagePath: path, downloadURL, createdAt: serverTimestamp() });
+        const contractRef = await addDoc(collection(db, `users/${currentUser.uid}/contracts`), { ...contractPayload, documentId: docRef.id, storagePath: path, downloadURL, createdAt: serverTimestamp() });
+        syncSavedContractLocal(null, contractRef.id, docRef.id, docPayload, contractPayload, { storagePath: path, downloadURL });
+        return { id: contractRef.id, ...contractPayload, documentId: docRef.id, storagePath: path, downloadURL };
     }
 }
 
 const CONTRACT_TEMPLATE_URL = './assets/img/loan-contract-template-a4.png';
 let contractTemplateImagePromise = null;
-function loadContractTemplateImage(){
+function loadContractTemplateImage() {
     if (!contractTemplateImagePromise) {
         contractTemplateImagePromise = new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = reject;
-            img.src = CONTRACT_TEMPLATE_URL + '?v=7.7.5-template-v2-readable';
+            img.src = CONTRACT_TEMPLATE_URL + '?v=7.7.7-template-v2-coordinate-map';
         });
     }
     return contractTemplateImagePromise;
 }
-function contractCanvasPoint(x, y){ return { x: x * (2480/1447), y: y * (3508/2048) }; }
+function contractCanvasPoint(x, y) { return { x: x * (2480 / 1447), y: y * (3508 / 2048) }; }
 const CONTRACT_CANVAS_FONT_FAMILY = '"THSarabunContract"';
 let contractFontReadyPromise = null;
-async function ensureContractCanvasFont(){
+async function ensureContractCanvasFont() {
     if (contractFontReadyPromise) return contractFontReadyPromise;
     contractFontReadyPromise = (async () => {
         try {
             if (window.FontFace && document.fonts) {
-                const normalUrl = './assets/fonts/THSarabun.ttf?v=7.7.5';
-                const boldUrl = './assets/fonts/THSarabun-Bold.ttf?v=7.7.5';
+                const normalUrl = './assets/fonts/THSarabun.ttf?v=7.7.7';
+                const boldUrl = './assets/fonts/THSarabun-Bold.ttf?v=7.7.7';
                 const alreadyLoaded = Array.from(document.fonts).some(f => f.family === 'THSarabunContract');
                 if (!alreadyLoaded) {
-                    const normalFace = new FontFace('THSarabunContract', `url(${normalUrl})`, { weight:'400', style:'normal' });
-                    const boldFace = new FontFace('THSarabunContract', `url(${boldUrl})`, { weight:'600', style:'normal' });
+                    const normalFace = new FontFace('THSarabunContract', `url(${normalUrl})`, { weight: '400', style: 'normal' });
+                    const boldFace = new FontFace('THSarabunContract', `url(${boldUrl})`, { weight: '600', style: 'normal' });
                     const loaded = await Promise.all([normalFace.load(), boldFace.load()]);
                     loaded.forEach(face => document.fonts.add(face));
                 }
@@ -958,17 +960,17 @@ async function ensureContractCanvasFont(){
     })();
     return contractFontReadyPromise;
 }
-const CONTRACT_FONT_RENDER_SCALE = 1.28; // เพิ่ม/ลดตรงนี้เพื่อปรับขนาดตัวหนังสือ PDF ทั้งระบบ
-function setupContractCanvasFont(ctx, size=40, bold=false){
+const CONTRACT_FONT_RENDER_SCALE = 1.25; // ปรับขนาดตัวอักษรทั้ง PDF ได้ที่นี่: 1.00 = ตามค่าที่ map กำหนด
+function setupContractCanvasFont(ctx, size = 40, bold = false) {
     // Contract PDF must always use the bundled TH Sarabun font.
     // Do not let canvas fall back to browser/default fonts, otherwise coordinates drift.
-    const scaledSize = Math.round(Number(size || 40) * CONTRACT_FONT_RENDER_SCALE);
-    ctx.font = `${bold ? '600 ' : '400 '}${scaledSize}px ${CONTRACT_CANVAS_FONT_FAMILY}`;
+    const px = Math.round(Number(size || 40) * CONTRACT_FONT_RENDER_SCALE);
+    ctx.font = `${bold ? '600 ' : '400 '}${px}px ${CONTRACT_CANVAS_FONT_FAMILY}`;
     ctx.textBaseline = 'alphabetic';
 }
-function drawContractText(ctx, text, x, y, opt={}){
+function drawContractText(ctx, text, x, y, opt = {}) {
     const p = contractCanvasPoint(x, y);
-    const maxWidth = opt.maxWidth ? opt.maxWidth * (2480/1447) : 9999;
+    const maxWidth = opt.maxWidth ? opt.maxWidth * (2480 / 1447) : 9999;
     let align = opt.align || 'left';
     let size = opt.size || 40;
     const minSize = opt.minSize || 30;
@@ -989,17 +991,17 @@ function drawContractText(ctx, text, x, y, opt={}){
         align = 'center';
     }
     ctx.textAlign = align;
-    const indent = opt.indent != null ? opt.indent * (2480/1447) : 12;
-    const tx = align === 'right' ? p.x + maxWidth - (opt.rightPad || 0) * (2480/1447) : (align === 'center' ? p.x + (maxWidth / 2) : p.x + indent);
+    const indent = opt.indent != null ? opt.indent * (2480 / 1447) : 12;
+    const tx = align === 'right' ? p.x + maxWidth - (opt.rightPad || 0) * (2480 / 1447) : (align === 'center' ? p.x + (maxWidth / 2) : p.x + indent);
     ctx.fillText(value, tx, p.y, maxWidth);
 }
-function drawContractWrap(ctx, text, x, y, maxWidth, lineHeight=26, maxLines=2, opt={}){
+function drawContractWrap(ctx, text, x, y, maxWidth, lineHeight = 26, maxLines = 2, opt = {}) {
     const words = String(text || '-').trim().split(/\s+/).filter(Boolean);
     const lines = [];
     let current = '';
     const size = opt.size || 38;
     setupContractCanvasFont(ctx, size, opt.bold === true);
-    const pxMax = maxWidth * (2480/1447);
+    const pxMax = maxWidth * (2480 / 1447);
     for (const word of words) {
         const test = current ? current + ' ' + word : word;
         if (ctx.measureText(test).width <= pxMax || !current) current = test;
@@ -1007,10 +1009,10 @@ function drawContractWrap(ctx, text, x, y, maxWidth, lineHeight=26, maxLines=2, 
         if (lines.length >= maxLines) break;
     }
     if (current && lines.length < maxLines) lines.push(current);
-    lines.forEach((line, i) => drawContractText(ctx, line, x, y + i*lineHeight, { maxWidth, size, minSize: opt.minSize || 24, align: opt.align || 'center' }));
+    lines.forEach((line, i) => drawContractText(ctx, line, x, y + i * lineHeight, { maxWidth, size, minSize: opt.minSize || 24, align: opt.align || 'center' }));
 }
 
-function drawContractWrapSegments(ctx, text, segments, opt={}){
+function drawContractWrapSegments(ctx, text, segments, opt = {}) {
     const size = opt.size || 34;
     const minSize = opt.minSize || 22;
     const words = String(text || '-').trim().split(/\s+/).filter(Boolean);
@@ -1018,7 +1020,7 @@ function drawContractWrapSegments(ctx, text, segments, opt={}){
     let current = '';
     let segIndex = 0;
     setupContractCanvasFont(ctx, size, opt.bold === true);
-    const maxPxFor = i => (segments[Math.min(i, segments.length - 1)].maxWidth || 9999) * (2480/1447);
+    const maxPxFor = i => (segments[Math.min(i, segments.length - 1)].maxWidth || 9999) * (2480 / 1447);
     for (const word of words) {
         const test = current ? current + ' ' + word : word;
         if (ctx.measureText(test).width <= maxPxFor(segIndex) || !current) {
@@ -1037,12 +1039,12 @@ function drawContractWrapSegments(ctx, text, segments, opt={}){
     });
 }
 
-function drawContractInlineWrap(ctx, text, firstX, firstY, firstMaxWidth, nextX, nextY, nextMaxWidth, lineHeight=34, opt={}){
+function drawContractInlineWrap(ctx, text, firstX, firstY, firstMaxWidth, nextX, nextY, nextMaxWidth, lineHeight = 34, opt = {}) {
     const words = String(text || '-').trim().split(/\s+/).filter(Boolean);
     const size = opt.size || 38;
     setupContractCanvasFont(ctx, size, opt.bold === true);
-    const firstPxMax = firstMaxWidth * (2480/1447);
-    const nextPxMax = nextMaxWidth * (2480/1447);
+    const firstPxMax = firstMaxWidth * (2480 / 1447);
+    const nextPxMax = nextMaxWidth * (2480 / 1447);
     const lines = [];
     let current = '';
     let currentMax = firstPxMax;
@@ -1060,23 +1062,22 @@ function drawContractInlineWrap(ctx, text, firstX, firstY, firstMaxWidth, nextX,
     if (current && lines.length < 2) lines.push(current);
     const align = opt.align || 'center';
     const nextAlign = opt.nextAlign || align;
-    if (lines[0]) drawContractText(ctx, lines[0], firstX, firstY, { maxWidth:firstMaxWidth, size, minSize: opt.minSize || 24, align, bold: opt.bold === true });
-    if (lines[1]) drawContractText(ctx, lines[1], nextX, nextY, { maxWidth:nextMaxWidth, size, minSize: opt.minSize || 24, align: nextAlign, bold: opt.bold === true });
+    if (lines[0]) drawContractText(ctx, lines[0], firstX, firstY, { maxWidth: firstMaxWidth, size, minSize: opt.minSize || 24, align, bold: opt.bold === true });
+    if (lines[1]) drawContractText(ctx, lines[1], nextX, nextY, { maxWidth: nextMaxWidth, size, minSize: opt.minSize || 24, align: nextAlign, bold: opt.bold === true });
 }
-function drawContractSignature(ctx, dataUrl, x, y, w, h){
+function drawContractSignature(ctx, dataUrl, x, y, w, h) {
     if (!dataUrl) return Promise.resolve();
     return new Promise(resolve => {
         const img = new Image();
         img.onload = () => {
             const p = contractCanvasPoint(x, y);
-            const boxW = w*(2480/1447), boxH = h*(3508/2048);
+            const boxW = w * (2480 / 1447), boxH = h * (3508 / 2048);
             const scale = Math.min(boxW / img.width, boxH / img.height);
             const drawW = img.width * scale, drawH = img.height * scale;
             const dx = p.x + (boxW - drawW) / 2;
             // Bottom-align cropped ink within the signature box so it sits close to the printed line.
             const dy = p.y + boxH - drawH;
-
-            // เปลี่ยนหมึกลายเซ็นใน PDF เป็นสีน้ำเงินเหมือนข้อมูลที่กรอก
+            // แปลงลายเซ็นให้เป็นสีน้ำเงินเดียวกับข้อความในฟอร์ม
             const sigCanvas = document.createElement('canvas');
             sigCanvas.width = img.width;
             sigCanvas.height = img.height;
@@ -1086,7 +1087,6 @@ function drawContractSignature(ctx, dataUrl, x, y, w, h){
             sigCtx.fillStyle = '#0000ff';
             sigCtx.fillRect(0, 0, sigCanvas.width, sigCanvas.height);
             sigCtx.globalCompositeOperation = 'source-over';
-
             ctx.drawImage(sigCanvas, dx, dy, drawW, drawH);
             resolve();
         };
@@ -1094,13 +1094,13 @@ function drawContractSignature(ctx, dataUrl, x, y, w, h){
         img.src = dataUrl;
     });
 }
-async function renderContractImageCanvas(row, debtor){
+async function renderContractImageCanvas(row, debtor) {
     await ensureContractCanvasFont();
     const template = await loadContractTemplateImage();
     const canvas = document.createElement('canvas');
     canvas.width = 2480; canvas.height = 3508;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
 
     const borrowerName = debtor.name || row.borrowerName || '-';
@@ -1122,51 +1122,94 @@ async function renderContractImageCanvas(row, debtor){
     const amountSatang = amountParts[1] || '00';
     const amountThai = bahtTextFallback(row.amount).replace(/บาทถ้วน$/, '').replace(/บาท$/, '') || '-';
 
-    // Template V2 final: coordinates are based on the 1447x2048 PNG master.
-    // All filled values are blue (#0000ff), normal weight, then flattened into one PNG image for mobile-safe PDF rendering.
-    const FS = 42;
-    const FS_SMALL = 40;
-    const FS_ID = 36;
-    const FS_SIG_NAME = 36;
-    const FS_INLINE_ID = 36;
+    // Template V2 coordinate map: แก้ตำแหน่ง/ขนาดที่นี่จุดเดียว
+    // พิกัด x/y ใช้สเกลเดียวกับ PNG master 1447x2048
+    const FS = 48;
+    const FS_SMALL = 46;
+    const FS_INLINE_ID = 44;
+    const FS_COLLATERAL = 44;
+    const FS_SIG_NAME = 43;
+    const F = {
+        header: {
+            contractNo: { x: 248, y: 166, maxWidth: 359, size: FS, minSize: 28, align: 'left' },
+            place: { x: 755, y: 166, maxWidth: 514, size: FS, minSize: 28, align: 'left' },
+            day: { x: 688, y: 217, maxWidth: 107, size: FS, minSize: 28, align: 'center' },
+            month: { x: 858, y: 217, maxWidth: 203, size: FS, minSize: 28, align: 'center' },
+            year: { x: 1116, y: 217, maxWidth: 154, size: FS, minSize: 28, align: 'center' }
+        },
+        borrower: {
+            name: { x: 435, y: 268, maxWidth: 520, size: FS, minSize: 32, align: 'center' },
+            age: { x: 1000, y: 268, maxWidth: 55, size: FS_SMALL, minSize: 30, align: 'center' },
+            houseNo: { x: 1178, y: 268, maxWidth: 105, size: FS_SMALL, minSize: 30, align: 'center' },
+            subDistrict: { x: 225, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' },
+            district: { x: 485, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'center' },
+            province: { x: 810, y: 320, maxWidth: 340, size: FS_SMALL, minSize: 30, align: 'center' }
+        },
+        lender: {
+            name: { x: 315, y: 371, maxWidth: 760, size: FS, minSize: 32, align: 'center' }
+        },
+        clause1: {
+            borrowerLine: { x: 405, y: 422, maxWidth: 730, size: FS_INLINE_ID, minSize: 30, align: 'left', indent: 0 },
+            lenderLine: { x: 182, y: 473, maxWidth: 900, size: FS_INLINE_ID, minSize: 30, align: 'left', indent: 0 },
+            amount: { x: 175, y: 525, maxWidth: 454, size: FS, minSize: 32, align: 'right', rightPad: 8 },
+            amountText: { x: 677, y: 525, maxWidth: 298, size: FS, minSize: 32, align: 'center' },
+            satang: { x: 1031, y: 525, maxWidth: 202, size: FS, minSize: 32, align: 'center' }
+        },
+        clause3: {
+            day: { x: 223, y: 935, maxWidth: 118, size: FS, minSize: 32, align: 'center' },
+            month: { x: 405, y: 935, maxWidth: 202, size: FS, minSize: 32, align: 'center' },
+            year: { x: 655, y: 935, maxWidth: 178, size: FS, minSize: 32, align: 'center' }
+        },
+        clause4: {
+            interest: { x: 545, y: 986, maxWidth: 645, size: FS, minSize: 32, align: 'center' }
+        },
+        signatures: {
+            borrowerName: { x: 700, y: 1494, maxWidth: 360, size: FS_SIG_NAME, minSize: 28, align: 'left' },
+            lenderName: { x: 650, y: 1545, maxWidth: 330, size: FS_SIG_NAME, minSize: 28, align: 'left' },
+            witness1Name: { x: 760, y: 1700, maxWidth: 300, size: FS_SIG_NAME, minSize: 28, align: 'left' },
+            witness2Name: { x: 760, y: 1752, maxWidth: 300, size: FS_SIG_NAME, minSize: 28, align: 'left' },
+            writerName: { x: 760, y: 1803, maxWidth: 300, size: FS_SIG_NAME, minSize: 28, align: 'left' }
+        }
+    };
+    const drawF = (value, field) => drawContractText(ctx, value, field.x, field.y, field);
 
     // Header
-    drawContractText(ctx, row.contractNo || nextContractNo(), 248, 166, { maxWidth:359, size:FS, minSize:22, align:'left' });
-    drawContractText(ctx, row.place || '-', 755, 166, { maxWidth:514, size:FS, minSize:22, align:'left' });
-    drawContractText(ctx, cdate.day, 688, 217, { maxWidth:107, size:FS, minSize:22, align:'center' });
-    drawContractText(ctx, cdate.month, 858, 217, { maxWidth:203, size:FS, minSize:20, align:'center' });
-    drawContractText(ctx, cdate.year, 1116, 217, { maxWidth:154, size:FS, minSize:22, align:'center' });
+    drawF(row.contractNo || nextContractNo(), F.header.contractNo);
+    drawF(row.place || '-', F.header.place);
+    drawF(cdate.day, F.header.day);
+    drawF(cdate.month, F.header.month);
+    drawF(cdate.year, F.header.year);
 
     // Borrower section
-    drawContractText(ctx, borrowerName, 435, 268, { maxWidth:520, size:FS, minSize:28, align:'center' });
-    drawContractText(ctx, borrowerAge || '-', 1000, 268, { maxWidth:55, size:FS_SMALL, minSize:28, align:'center' });
-    drawContractText(ctx, houseNo, 1175, 268, { maxWidth:105, size:FS_SMALL, minSize:26, align:'center' });
-    drawContractText(ctx, subDistrict || '-', 225, 320, { maxWidth:200, size:FS_SMALL, minSize:26, align:'center' });
-    drawContractText(ctx, district || '-', 485, 320, { maxWidth:260, size:FS_SMALL, minSize:26, align:'center' });
-    drawContractText(ctx, province || '-', 810, 320, { maxWidth:340, size:FS_SMALL, minSize:26, align:'center' });
+    drawF(borrowerName, F.borrower.name);
+    drawF(borrowerAge || '-', F.borrower.age);
+    drawF(houseNo, F.borrower.houseNo);
+    drawF(subDistrict || '-', F.borrower.subDistrict);
+    drawF(district || '-', F.borrower.district);
+    drawF(province || '-', F.borrower.province);
 
-    // Lender section. ID numbers are added as small blue annotations below the printed line without changing the template wording.
-    drawContractText(ctx, lenderName, 315, 371, { maxWidth:760, size:FS, minSize:28, align:'center' });
+    // Lender section
+    drawF(lenderName, F.lender.name);
 
-    // Clause 1
-    drawContractText(ctx, borrowerNameWithId, 285, 422, { maxWidth:785, size:FS_INLINE_ID, minSize:24, align:'left', indent:0 });
-    drawContractText(ctx, lenderNameWithId, 285, 473, { maxWidth:785, size:FS_INLINE_ID, minSize:24, align:'left', indent:0 });
-    drawContractText(ctx, amountInteger, 175, 525, { maxWidth:454, size:FS, minSize:28, align:'right', rightPad:8 });
-    drawContractText(ctx, amountThai, 677, 525, { maxWidth:298, size:FS, minSize:26, align:'center' });
-    drawContractText(ctx, amountSatang, 1031, 525, { maxWidth:202, size:FS, minSize:26, align:'center' });
+    // Clause 1: วางเป็นแถวคงที่ ไม่ใช้การเว้นวรรคยาว ทำให้ชื่อกับเลขบัตรไม่ห่างกันเกินจริง
+    drawF(borrowerNameWithId, F.clause1.borrowerLine);
+    drawF(lenderNameWithId, F.clause1.lenderLine);
+    drawF(amountInteger, F.clause1.amount);
+    drawF(amountThai, F.clause1.amountText);
+    drawF(amountSatang, F.clause1.satang);
 
     // Clause 2 - collateral can flow across almost three full lines.
     drawContractWrapSegments(ctx, collateral, [
-        { x:779, y:627, maxWidth:490, align:'left' },
-        { x:182, y:678, maxWidth:1088, align:'left' },
-        { x:182, y:730, maxWidth:1088, align:'left' }
-    ], { size:FS_SMALL, minSize:26, align:'left' });
+        { x: 779, y: 627, maxWidth: 490, align: 'left' },
+        { x: 182, y: 678, maxWidth: 1088, align: 'left' },
+        { x: 182, y: 730, maxWidth: 1088, align: 'left' }
+    ], { size: FS_COLLATERAL, minSize: 30, align: 'left' });
 
     // Clause 3 and 4
-    drawContractText(ctx, ddate.day || '-', 223, 935, { maxWidth:118, size:FS, minSize:28, align:'center' });
-    drawContractText(ctx, ddate.month || '-', 405, 935, { maxWidth:202, size:FS, minSize:26, align:'center' });
-    drawContractText(ctx, ddate.year || '-', 655, 935, { maxWidth:178, size:FS, minSize:28, align:'center' });
-    drawContractText(ctx, interest, 545, 986, { maxWidth:645, size:FS, minSize:26, align:'center' });
+    drawF(ddate.day || '-', F.clause3.day);
+    drawF(ddate.month || '-', F.clause3.month);
+    drawF(ddate.year || '-', F.clause3.year);
+    drawF(interest, F.clause4.interest);
 
     const signatures = row.signatures || {};
     for (const [key, box] of Object.entries(SIGNATURE_PDF_MAP)) {
@@ -1174,12 +1217,11 @@ async function renderContractImageCanvas(row, debtor){
     }
 
     // Signature names: same row as the ink, directly to the right of the signature.
-    // This avoids tiny text under the signature line and keeps every signer readable.
-    drawContractText(ctx, `(${borrowerName})`, 700, 1494, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${lenderName})`, 650, 1545, { maxWidth:330, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${row.witness1Name || '-'})`, 760, 1700, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${row.witness2Name || '-'})`, 760, 1752, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
-    drawContractText(ctx, `(${row.writerName || lenderName})`, 760, 1803, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawF(`(${borrowerName})`, F.signatures.borrowerName);
+    drawF(`(${lenderName})`, F.signatures.lenderName);
+    drawF(`(${row.witness1Name || '-'})`, F.signatures.witness1Name);
+    drawF(`(${row.witness2Name || '-'})`, F.signatures.witness2Name);
+    drawF(`(${row.writerName || lenderName})`, F.signatures.writerName);
     return canvas;
 }
 
@@ -1190,7 +1232,7 @@ async function generateContract() {
     const p = currentProfile();
     const row = readContractFormRow(true);
     if (!row.amount) return toast('กรุณากรอกจำนวนเงินกู้');
-    const interestNum = Number(String(row.interestRate || '').replace(/[^0-9.]/g,''));
+    const interestNum = Number(String(row.interestRate || '').replace(/[^0-9.]/g, ''));
     if (Number.isFinite(interestNum) && interestNum > 15) return toast('อัตราดอกเบี้ยเกิน 15% ต่อปี กรุณาแก้ไขก่อนสร้าง PDF');
     await saveSettings({ profile: { ...p, lenderName: row.lenderName, lenderIdCard: row.lenderIdCard, lenderAddress: row.lenderAddress } });
     try {
@@ -1243,7 +1285,7 @@ window.editContractDraft = id => {
     if (isContractLocked(row)) return toast('สัญญาที่ลงลายเซ็นครบแล้วถูกล็อก ไม่สามารถแก้ไขได้');
     editingContractNo = row.contractNo || ''; editingContractId = row.id || '';
     showContractForm(row.debtorId || '');
-    const map = { contractLenderName:'lenderName', contractLenderIdCard:'lenderIdCard', contractLenderAddress:'lenderAddress', contractAmount:'amount', contractDate:'contractDate', contractDueDate:'dueDate', contractInterestRate:'interestRate', contractPlace:'place', contractCollateral:'collateral', contractWitness1Name:'witness1Name', contractWitness2Name:'witness2Name', contractWriterName:'writerName' };
+    const map = { contractLenderName: 'lenderName', contractLenderIdCard: 'lenderIdCard', contractLenderAddress: 'lenderAddress', contractAmount: 'amount', contractDate: 'contractDate', contractDueDate: 'dueDate', contractInterestRate: 'interestRate', contractPlace: 'place', contractCollateral: 'collateral', contractWitness1Name: 'witness1Name', contractWitness2Name: 'witness2Name', contractWriterName: 'writerName' };
     Object.entries(map).forEach(([el, key]) => { if ($(el)) $(el).value = row[key] || ''; });
     if ($('contractDebtorId')) $('contractDebtorId').value = row.debtorId || '';
     setTimeout(() => restoreContractSignatures(row.signatures || {}), 180);
@@ -1255,7 +1297,7 @@ window.deleteContractDraft = async id => {
     if (isContractLocked(row)) return toast('ลบไม่ได้ เพราะสัญญาลงลายเซ็นครบและถูกล็อกแล้ว');
     if (contractSignedCount(row) > 0) return toast('ลบไม่ได้ เพราะมีลายเซ็นแล้ว แต่ยังสามารถแก้ไขได้');
     if (!confirm('ลบแบบร่างสัญญานี้ใช่หรือไม่?')) return;
-    if (row.documentId) await deleteDocument(row.documentId, { force:true, skipConfirm:true });
+    if (row.documentId) await deleteDocument(row.documentId, { force: true, skipConfirm: true });
     await deleteRow('contracts', id);
     toast('ลบแบบร่างสัญญาแล้ว');
     render();
@@ -1263,16 +1305,16 @@ window.deleteContractDraft = async id => {
 window.showContractForm = showContractForm;
 
 if ($('closePreviewBtn')) $('closePreviewBtn').onclick = () => { $('documentPreviewModal').classList.add('hidden'); document.body.classList.remove('modal-open'); };
-function renderAppFooter(){
-    const text = `Version ${APP_INFO.version} • พัฒนาโดย ${APP_INFO.authorized} • Copyright © ${APP_INFO.year}`;
+function renderAppFooter() {
+    const text = `Version ${APP_INFO.version} • พัฒนาโดย ${APP_INFO.authorized} • © ${APP_INFO.year}`;
     if ($('appFooter')) $('appFooter').textContent = text;
 }
-async function clearAppCaches(){
+async function clearAppCaches() {
     if (!('caches' in window)) return;
     const keys = await caches.keys();
     await Promise.all(keys.filter(k => /debt-collector/i.test(k)).map(k => caches.delete(k)));
 }
-async function forceAppUpdate(){
+async function forceAppUpdate() {
     try {
         if (newWorker) {
             newWorker.postMessage({ type: 'SKIP_WAITING' });
@@ -1294,7 +1336,7 @@ async function forceAppUpdate(){
 }
 const themeModes = ['light', 'dark', 'auto']; function getThemeMode() { return localStorage.getItem('themeMode') || 'auto' } function applyTheme() { const mode = getThemeMode(), resolved = mode === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode; document.documentElement.setAttribute('data-theme', resolved); document.body.setAttribute('data-theme', resolved); $('themeIcon').className = mode === 'auto' ? 'bi bi-circle-half' : resolved === 'dark' ? 'bi bi-moon-stars' : 'bi bi-sun' } $('themeBtn').onclick = () => { const cur = getThemeMode(), next = themeModes[(themeModes.indexOf(cur) + 1) % themeModes.length]; localStorage.setItem('themeMode', next); applyTheme(); toast(next === 'auto' ? 'โหมดอัตโนมัติ' : next === 'dark' ? 'โหมดกลางคืน' : 'โหมดกลางวัน') };
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; $('installBtn').classList.remove('hidden') }); $('installBtn').onclick = async () => { if (deferredPrompt) { deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $('installBtn').classList.add('hidden') } };
-async function setupSW() { if (!('serviceWorker' in navigator)) return; const reg = await navigator.serviceWorker.register('service-worker.js?v=' + encodeURIComponent(APP_VERSION)); if (reg.waiting) { newWorker = reg.waiting; $('updateBtn')?.classList.remove('hidden') } reg.addEventListener('updatefound', () => { const w = reg.installing; w?.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) { newWorker = w; $('updateBtn')?.classList.remove('hidden'); toast('มีเวอร์ชันใหม่พร้อมอัปเดต') } }) }); navigator.serviceWorker.addEventListener('controllerchange', () => location.reload()); setTimeout(() => reg.update().catch(()=>{}), 1500); } if ($('updateBtn')) $('updateBtn').onclick = forceAppUpdate; if ($('clearCacheBtn')) $('clearCacheBtn').onclick = async () => { await clearAppCaches(); toast('ล้าง Cache แล้ว') }; if ($('enablePushBtn')) $('enablePushBtn').onclick = async () => { if (!('Notification' in window)) return toast('Browser ไม่รองรับ Notification'); const p = await Notification.requestPermission(); toast(p === 'granted' ? 'เปิด Notification แล้ว' : 'ยังไม่ได้อนุญาต Notification') };
+async function setupSW() { if (!('serviceWorker' in navigator)) return; const reg = await navigator.serviceWorker.register('service-worker.js?v=' + encodeURIComponent(APP_VERSION)); if (reg.waiting) { newWorker = reg.waiting; $('updateBtn')?.classList.remove('hidden') } reg.addEventListener('updatefound', () => { const w = reg.installing; w?.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) { newWorker = w; $('updateBtn')?.classList.remove('hidden'); toast('มีเวอร์ชันใหม่พร้อมอัปเดต') } }) }); navigator.serviceWorker.addEventListener('controllerchange', () => location.reload()); setTimeout(() => reg.update().catch(() => { }), 1500); } if ($('updateBtn')) $('updateBtn').onclick = forceAppUpdate; if ($('clearCacheBtn')) $('clearCacheBtn').onclick = async () => { await clearAppCaches(); toast('ล้าง Cache แล้ว') }; if ($('enablePushBtn')) $('enablePushBtn').onclick = async () => { if (!('Notification' in window)) return toast('Browser ไม่รองรับ Notification'); const p = await Notification.requestPermission(); toast(p === 'granted' ? 'เปิด Notification แล้ว' : 'ยังไม่ได้อนุญาต Notification') };
 
 /* ===== v7.0 UI Refresh helpers ===== */
 const BUTTON_ICON_MAP = [
@@ -1304,7 +1346,7 @@ const BUTTON_ICON_MAP = [
     [/Import/, 'bi-upload'], [/ติดตั้ง/, 'bi-phone'], [/Notification/, 'bi-bell'], [/สมัคร/, 'bi-person-plus'],
     [/เข้าสู่ระบบ/, 'bi-box-arrow-in-right'], [/Demo/, 'bi-play-circle'], [/อ่านข้อมูล/, 'bi-card-text'], [/นำข้อมูล/, 'bi-arrow-right-circle']
 ];
-function decorateButtons(){
+function decorateButtons() {
     document.querySelectorAll('button, a.secondary, label.file').forEach(el => {
         if (el.dataset.v7Decorated) return;
         const text = (el.textContent || '').trim();
