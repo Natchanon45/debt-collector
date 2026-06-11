@@ -213,9 +213,20 @@
                     <label>ชื่อหนี้</label><input id="debtTitle" class="input">
                     <label>ยอดหนี้ตั้งต้น</label><input id="debtPrincipal" class="input money-input" inputmode="decimal"
                         autocomplete="off">
+                    <label>รูปแบบการชำระ</label><select id="debtPaymentType" class="input">
+                        <option value="single">จ่ายก้อนเดียวจบ</option>
+                        <option value="installment">ชำระเป็นงวด</option>
+                    </select>
+                    <div id="debtSingleBox">
+                        <label>วันครบกำหนดชำระ</label><input id="debtDueDate" class="input" type="date">
+                    </div>
+                    <div id="debtInstallmentBox" class="hidden">
+                        <label>จำนวนงวด</label><input id="debtInstallmentCount" class="input" type="number" min="2" step="1" placeholder="เช่น 3">
+                        <label>วันเริ่มชำระงวดแรก</label><input id="debtFirstDueDate" class="input" type="date">
+                        <label>อัตราดอกเบี้ยต่อปี (%)</label><input id="debtInterestRate" class="input money-input" inputmode="decimal" autocomplete="off" placeholder="ไม่เกิน 15% ต่อปี">
+                    </div>
                     <label>ยอดขั้นต่ำที่ต้องทวง</label><input id="debtMinCollect" class="input money-input"
-                        inputmode="decimal" autocomplete="off">
-                    <label>วันครบกำหนด</label><input id="debtDueDate" class="input" type="date">
+                        inputmode="decimal" autocomplete="off" placeholder="ถ้าไม่กรอก ระบบใช้ยอดต่องวด">
                     <button id="addDebtBtn" class="primary">เพิ่มก้อนหนี้</button>
                 </div>
 
@@ -305,7 +316,17 @@
                             <label>สถานที่ทำสัญญา</label><input id="contractPlace" class="input"
                                 placeholder="เช่น กรุงเทพมหานคร">
                             <label>วันที่ทำสัญญา</label><input id="contractDate" class="input" type="date">
-                            <label>วันครบกำหนดชำระ</label><input id="contractDueDate" class="input" type="date">
+                            <label>รูปแบบการชำระ</label><select id="contractPaymentType" class="input">
+                                <option value="single">จ่ายก้อนเดียวจบ</option>
+                                <option value="installment">ชำระเป็นงวด</option>
+                            </select>
+                            <div id="contractSingleBox">
+                                <label>วันครบกำหนดชำระ</label><input id="contractDueDate" class="input" type="date">
+                            </div>
+                            <div id="contractInstallmentBox" class="hidden">
+                                <label>จำนวนงวด</label><input id="contractInstallmentCount" class="input" type="number" min="2" step="1" placeholder="เช่น 3">
+                                <label>วันเริ่มชำระงวดแรก</label><input id="contractFirstPaymentDate" class="input" type="date">
+                            </div>
                         </div>
                         <div class="contract-section-box">
                             <h4><i class="bi bi-person-badge"></i> ข้อมูลผู้ให้กู้</h4>
@@ -415,7 +436,7 @@
                 </div>
             </section>
 
-            <footer id="appFooter" class="app-footer">Version 7.4.0 • พัฒนาโดย นายณัฐชนน ศรีเปล่ง • © 2026</footer>
+            <footer id="appFooter" class="app-footer">Version 7.9.1 • พัฒนาโดย นายณัฐชนน ศรีเปล่ง • © 2026</footer>
 
             <nav class="bottom-nav">
                 <button class="bottom-tab active" data-tab="dashboard"><i class="bi bi-house"></i><span>หน้าหลัก</span></button>
