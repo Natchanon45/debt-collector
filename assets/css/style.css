@@ -1793,16 +1793,35 @@ textarea.input:focus{
   }
 }
 
-@media(prefers-color-scheme: dark){
-  :root{
-    --field-border: rgba(96,165,250,.30);
-    --field-border-strong: rgba(96,165,250,.58);
-    --field-label-bg: rgba(96,165,250,.16);
-    --field-label-text: #bfdbfe;
-  }
-  .input,
-  select.input,
-  textarea.input{
-    background:rgba(15,23,42,.82) !important;
-  }
+/* ===== v7.8.0 Theme-safe Form Colors =====
+   Do not use prefers-color-scheme here.
+   Light mode must stay light even when macOS/browser appearance is dark.
+   Dark form colors are applied only when the app explicitly sets data-theme="dark". */
+[data-theme=dark]{
+  --field-border: rgba(96,165,250,.30);
+  --field-border-strong: rgba(96,165,250,.58);
+  --field-label-bg: rgba(96,165,250,.16);
+  --field-label-text: #bfdbfe;
+}
+
+[data-theme=dark] .input,
+[data-theme=dark] select.input,
+[data-theme=dark] textarea.input{
+  background:rgba(15,23,42,.82) !important;
+}
+
+[data-theme=light] .input,
+[data-theme=light] select.input,
+[data-theme=light] textarea.input,
+body:not([data-theme=dark]) .input,
+body:not([data-theme=dark]) select.input,
+body:not([data-theme=dark]) textarea.input{
+  background:#fff !important;
+  color:#111827 !important;
+}
+
+[data-theme=light] label:not(.dropzone):not(.file),
+body:not([data-theme=dark]) label:not(.dropzone):not(.file){
+  background:rgba(37,99,235,.10) !important;
+  color:#1d4ed8 !important;
 }

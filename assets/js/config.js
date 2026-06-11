@@ -1,5 +1,5 @@
 export const APP_INFO = {
-    version: '7.7.9',
+    version: '7.8.0',
     authorized: 'นายณัฐชนน ศรีเปล่ง',
     year: new Date().getFullYear()
 };
