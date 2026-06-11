@@ -1051,7 +1051,7 @@ function updateContractSmartUi() {
     if (interestHint) {
         const over = Number.isFinite(interest) && interest > 15;
         interestHint.classList.toggle('danger', over);
-        interestHint.innerHTML = over ? '⚠️ ดอกเบี้ยเกิน 15% ต่อปี กรุณาตรวจสอบก่อนสร้าง PDF' : 'สูงสุดตามกฎหมาย 15% ต่อปี';
+        interestHint.innerHTML = over ? '<i class="bi bi-exclamation-triangle"></i> ดอกเบี้ยเกิน 15% ต่อปี กรุณาตรวจสอบก่อนบันทึก' : 'สูงสุดตามกฎหมาย 15% ต่อปี';
     }
     if ($('contractSummaryBox')) {
         $('contractSummaryBox').innerHTML = `
