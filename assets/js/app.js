@@ -1,6 +1,6 @@
 import { firebaseConfig, OCR_FUNCTION_URL, TELEGRAM_TEST_FUNCTION_URL, VAPID_PUBLIC_KEY } from './firebase-config.js';
 const APP_INFO = {
-    version: '7.7.3',
+    version: '7.7.5',
     authorized: 'นายณัฐชนน ศรีเปล่ง',
     year: new Date().getFullYear()
 };
@@ -434,7 +434,7 @@ function resizeSignatureCanvas(canvas) {
     canvas.style.height = cssHeight + 'px';
     const ctx = canvas.getContext('2d');
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0000ff';
     if (old) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, cssWidth, cssHeight); img.src = old; }
 }
 function bindSignaturePad(id) {
@@ -926,7 +926,7 @@ function loadContractTemplateImage(){
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = reject;
-            img.src = CONTRACT_TEMPLATE_URL + '?v=7.7.3-template-v2-readable';
+            img.src = CONTRACT_TEMPLATE_URL + '?v=7.7.5-template-v2-readable';
         });
     }
     return contractTemplateImagePromise;
@@ -939,8 +939,8 @@ async function ensureContractCanvasFont(){
     contractFontReadyPromise = (async () => {
         try {
             if (window.FontFace && document.fonts) {
-                const normalUrl = './assets/fonts/THSarabun.ttf?v=7.7.3';
-                const boldUrl = './assets/fonts/THSarabun-Bold.ttf?v=7.7.3';
+                const normalUrl = './assets/fonts/THSarabun.ttf?v=7.7.5';
+                const boldUrl = './assets/fonts/THSarabun-Bold.ttf?v=7.7.5';
                 const alreadyLoaded = Array.from(document.fonts).some(f => f.family === 'THSarabunContract');
                 if (!alreadyLoaded) {
                     const normalFace = new FontFace('THSarabunContract', `url(${normalUrl})`, { weight:'400', style:'normal' });
@@ -958,10 +958,12 @@ async function ensureContractCanvasFont(){
     })();
     return contractFontReadyPromise;
 }
+const CONTRACT_FONT_RENDER_SCALE = 1.28; // เพิ่ม/ลดตรงนี้เพื่อปรับขนาดตัวหนังสือ PDF ทั้งระบบ
 function setupContractCanvasFont(ctx, size=40, bold=false){
     // Contract PDF must always use the bundled TH Sarabun font.
     // Do not let canvas fall back to browser/default fonts, otherwise coordinates drift.
-    ctx.font = `${bold ? '600 ' : '400 '}${size}px ${CONTRACT_CANVAS_FONT_FAMILY}`;
+    const scaledSize = Math.round(Number(size || 40) * CONTRACT_FONT_RENDER_SCALE);
+    ctx.font = `${bold ? '600 ' : '400 '}${scaledSize}px ${CONTRACT_CANVAS_FONT_FAMILY}`;
     ctx.textBaseline = 'alphabetic';
 }
 function drawContractText(ctx, text, x, y, opt={}){
@@ -1073,7 +1075,19 @@ function drawContractSignature(ctx, dataUrl, x, y, w, h){
             const dx = p.x + (boxW - drawW) / 2;
             // Bottom-align cropped ink within the signature box so it sits close to the printed line.
             const dy = p.y + boxH - drawH;
-            ctx.drawImage(img, dx, dy, drawW, drawH);
+
+            // เปลี่ยนหมึกลายเซ็นใน PDF เป็นสีน้ำเงินเหมือนข้อมูลที่กรอก
+            const sigCanvas = document.createElement('canvas');
+            sigCanvas.width = img.width;
+            sigCanvas.height = img.height;
+            const sigCtx = sigCanvas.getContext('2d');
+            sigCtx.drawImage(img, 0, 0);
+            sigCtx.globalCompositeOperation = 'source-in';
+            sigCtx.fillStyle = '#0000ff';
+            sigCtx.fillRect(0, 0, sigCanvas.width, sigCanvas.height);
+            sigCtx.globalCompositeOperation = 'source-over';
+
+            ctx.drawImage(sigCanvas, dx, dy, drawW, drawH);
             resolve();
         };
         img.onerror = () => resolve();
@@ -1101,8 +1115,8 @@ async function renderContractImageCanvas(row, debtor){
     const subDistrict = debtor.subDistrict || debtor.tambon || debtor.subdistrict || parsedAddress.subDistrict || '';
     const district = debtor.district || parsedAddress.district || '';
     const province = debtor.province || parsedAddress.province || '';
-    const borrowerNameWithId = fullId(debtor.idCard) ? `${borrowerName} เลขประจำตัวประชาชน ${fullId(debtor.idCard)}` : borrowerName;
-    const lenderNameWithId = fullId(row.lenderIdCard) ? `${lenderName} เลขประจำตัวประชาชน ${fullId(row.lenderIdCard)}` : lenderName;
+    const borrowerNameWithId = fullId(debtor.idCard) ? `${borrowerName} เลขประจำตัวประชาชน ${fullId(debtor.idCard)}`.replace(/\s+/g, ' ').trim() : borrowerName;
+    const lenderNameWithId = fullId(row.lenderIdCard) ? `${lenderName} เลขประจำตัวประชาชน ${fullId(row.lenderIdCard)}`.replace(/\s+/g, ' ').trim() : lenderName;
     const amountParts = money(row.amount).split('.');
     const amountInteger = amountParts[0] || '-';
     const amountSatang = amountParts[1] || '00';
@@ -1110,11 +1124,11 @@ async function renderContractImageCanvas(row, debtor){
 
     // Template V2 final: coordinates are based on the 1447x2048 PNG master.
     // All filled values are blue (#0000ff), normal weight, then flattened into one PNG image for mobile-safe PDF rendering.
-    const FS = 48;
-    const FS_SMALL = 46;
-    const FS_ID = 42;
-    const FS_SIG_NAME = 40;
-    const FS_INLINE_ID = 40;
+    const FS = 42;
+    const FS_SMALL = 40;
+    const FS_ID = 36;
+    const FS_SIG_NAME = 36;
+    const FS_INLINE_ID = 36;
 
     // Header
     drawContractText(ctx, row.contractNo || nextContractNo(), 248, 166, { maxWidth:359, size:FS, minSize:22, align:'left' });
@@ -1135,8 +1149,8 @@ async function renderContractImageCanvas(row, debtor){
     drawContractText(ctx, lenderName, 315, 371, { maxWidth:760, size:FS, minSize:28, align:'center' });
 
     // Clause 1
-    drawContractText(ctx, borrowerNameWithId, 310, 422, { maxWidth:805, size:FS_INLINE_ID, minSize:28, align:'left' });
-    drawContractText(ctx, lenderNameWithId, 205, 473, { maxWidth:900, size:FS_INLINE_ID, minSize:28, align:'left' });
+    drawContractText(ctx, borrowerNameWithId, 285, 422, { maxWidth:785, size:FS_INLINE_ID, minSize:24, align:'left', indent:0 });
+    drawContractText(ctx, lenderNameWithId, 285, 473, { maxWidth:785, size:FS_INLINE_ID, minSize:24, align:'left', indent:0 });
     drawContractText(ctx, amountInteger, 175, 525, { maxWidth:454, size:FS, minSize:28, align:'right', rightPad:8 });
     drawContractText(ctx, amountThai, 677, 525, { maxWidth:298, size:FS, minSize:26, align:'center' });
     drawContractText(ctx, amountSatang, 1031, 525, { maxWidth:202, size:FS, minSize:26, align:'center' });
@@ -1161,11 +1175,11 @@ async function renderContractImageCanvas(row, debtor){
 
     // Signature names: same row as the ink, directly to the right of the signature.
     // This avoids tiny text under the signature line and keeps every signer readable.
-    drawContractText(ctx, `(${borrowerName})`, 700, 1494, { maxWidth:390, size:FS_SIG_NAME, minSize:30, align:'left' });
-    drawContractText(ctx, `(${lenderName})`, 650, 1545, { maxWidth:360, size:FS_SIG_NAME, minSize:30, align:'left' });
-    drawContractText(ctx, `(${row.witness1Name || '-'})`, 760, 1700, { maxWidth:340, size:FS_SIG_NAME, minSize:30, align:'left' });
-    drawContractText(ctx, `(${row.witness2Name || '-'})`, 760, 1752, { maxWidth:340, size:FS_SIG_NAME, minSize:30, align:'left' });
-    drawContractText(ctx, `(${row.writerName || lenderName})`, 760, 1803, { maxWidth:340, size:FS_SIG_NAME, minSize:30, align:'left' });
+    drawContractText(ctx, `(${borrowerName})`, 700, 1494, { maxWidth:360, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${lenderName})`, 650, 1545, { maxWidth:330, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${row.witness1Name || '-'})`, 760, 1700, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${row.witness2Name || '-'})`, 760, 1752, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
+    drawContractText(ctx, `(${row.writerName || lenderName})`, 760, 1803, { maxWidth:300, size:FS_SIG_NAME, minSize:24, align:'left' });
     return canvas;
 }
 
