@@ -46,3 +46,12 @@ export function escapeHtml(v) {
         "'": '&#039;'
     }[m]));
 }
+export function formatDate(v) {
+    if (!v) return '-';
+    const raw = String(v);
+    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+    const d = new Date(raw.includes('T') ? raw : raw + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return raw;
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}

@@ -61,8 +61,14 @@
                         <div><span>ยอดคงเหลือ</span><b id="openDebtTotal">0.00</b></div>
                         <div><span>ขั้นต่ำต้องทวง</span><b id="minCollectTotal">0.00</b></div>
                         <div><span>ถึงกำหนดวันนี้</span><b id="dueTodayCount">0</b></div>
+                        <div><span>เลยกำหนด</span><b id="overdueCount">0</b></div>
                         <div><span>ติดตามวันนี้</span><b id="followupTodayCount">0</b></div>
                     </div>
+                </section>
+                <section class="dashboard-action-summary">
+                    <button class="dash-summary-card dash-summary-today" type="button" onclick="openDueBucket('today')"><span>ต้องติดตามวันนี้</span><strong id="dashDueTodayAction">0</strong></button>
+                    <button class="dash-summary-card dash-summary-overdue" type="button" onclick="openDueBucket('overdue')"><span>เลยกำหนด</span><strong id="dashOverdueAction">0</strong></button>
+                    <button class="dash-summary-card dash-summary-total" type="button" onclick="openDueBucket('all')"><span>ยอดค้างต้องทวง</span><strong id="dashDueAmountAction">0.00</strong></button>
                 </section>
                 <div class="card">
                     <h3><i class="bi bi-bar-chart"></i> Aging Report</h3>
@@ -73,9 +79,15 @@
                         <div><span>90+ วัน</span><b id="aging90">0.00</b></div>
                     </div>
                 </div>
-                <div class="card">
-                    <h3><i class="bi bi-exclamation-circle"></i> รายการที่ควรทวงก่อน</h3>
-                    <div id="priorityList" class="list"></div>
+                <div class="card followup-priority-card">
+                    <div class="card-head-row priority-head">
+                        <div>
+                            <h3><i class="bi bi-exclamation-circle"></i> รายการที่ต้องทวงก่อน</h3>
+                            <p class="note">แสดงเฉพาะงวดที่ถึงกำหนดชำระแล้ว และยังไม่ชำระเต็มจำนวน</p>
+                        </div>
+                        <button class="round-action" type="button" onclick="openAllDueFollowups()"><i class="bi bi-person-lines-fill"></i> ดูทั้งหมด</button>
+                    </div>
+                    <div id="priorityList" class="list dashboard-due-list"></div>
                 </div>
                 <div class="card">
                     <h3><i class="bi bi-calendar-check"></i> ต้องติดตามวันนี้</h3>
@@ -192,7 +204,7 @@
                     <div class="form-switch-row"><button class="segment active" data-tx="debt"><i
                                 class="bi bi-plus-circle"></i> เพิ่มหนี้</button><button class="segment"
                             data-tx="payment"><i class="bi bi-receipt"></i> ชำระ</button><button class="segment"
-                            data-tx="followup"><i class="bi bi-telephone"></i> ติดตาม</button></div>
+                            data-tx="followup"><i class="bi bi-telephone"></i> ติดตาม <span id="followupSegmentBadge" class="nav-badge hidden">0</span></button></div>
                 </div>
 
                 <div id="txDebtBox" class="card tx-box active">
@@ -223,13 +235,15 @@
 
                 <div id="txFollowupBox" class="card tx-box">
                     <h3><i class="bi bi-telephone"></i> การติดตาม CRM</h3>
-                    <label>ลูกหนี้</label><select id="followupDebtorId" class="input"></select>
-                    <label>ก้อนหนี้</label><select id="followupDebtId" class="input"></select>
+                    <label>กรองชื่อลูกหนี้</label><select id="followupDebtorId" class="input"></select>
+                    <label>กรองชื่อก้อนหนี้</label><select id="followupDebtFilter" class="input"></select>
+                    <label>เลือกงวดที่ต้องทวง</label><select id="followupDebtId" class="input"></select>
                     <label>วันที่ติดต่อ</label><input id="followupDate" class="input" type="date">
                     <label>สถานะ</label><select id="followupStatus" class="input">
                         <option>ยังไม่ติดต่อ</option>
                         <option>โทรแล้ว</option>
                         <option>นัดชำระแล้ว</option>
+                        <option>ส่งข้อความแล้ว</option>
                         <option>ส่งหนังสือแล้ว</option>
                         <option>ปิดบัญชีแล้ว</option>
                     </select>
@@ -240,10 +254,24 @@
                         <option>Email</option>
                         <option>พบตัว</option>
                     </select>
+                    <div class="quick-followup-row">
+                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('โทรแล้ว')"><i class="bi bi-telephone-outbound"></i> โทรแล้ว</button>
+                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('นัดชำระแล้ว')"><i class="bi bi-calendar-check"></i> นัดชำระแล้ว</button>
+                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('ส่งข้อความแล้ว')"><i class="bi bi-chat-dots"></i> ส่งข้อความแล้ว</button>
+                    </div>
                     <label>ผลการติดตาม</label><textarea id="followupResult" class="input"></textarea>
                     <label>นัดติดตามครั้งถัดไป</label><input id="nextFollowupDate" class="input" type="date">
                     <button id="addFollowupBtn" class="primary">บันทึกการติดตาม</button>
                     <hr class="soft-sep">
+                    <label>กรองสถานะประวัติ</label><select id="followupHistoryStatusFilter" class="input">
+                        <option value="">-- สถานะทั้งหมด --</option>
+                        <option>ยังไม่ติดต่อ</option>
+                        <option>โทรแล้ว</option>
+                        <option>นัดชำระแล้ว</option>
+                        <option>ส่งข้อความแล้ว</option>
+                        <option>ส่งหนังสือแล้ว</option>
+                        <option>ปิดบัญชีแล้ว</option>
+                    </select>
                     <div id="followupList" class="list"></div>
                 </div>
             </section>
@@ -393,7 +421,7 @@
                 <button class="bottom-tab active" data-tab="dashboard"><i class="bi bi-house"></i><span>หน้าหลัก</span></button>
                 <button class="bottom-tab" data-tab="customers"><i class="bi bi-people"></i><span>ลูกหนี้ทั้งหมด</span></button>
                 <button class="bottom-tab" data-tab="contracts"><i class="bi bi-file-earmark-text"></i><span>สัญญา</span></button>
-                <button class="bottom-tab" data-tab="transactions"><i class="bi bi-cash-coin"></i><span>ธุรกรรม</span></button>
+                <button class="bottom-tab" data-tab="transactions"><i class="bi bi-cash-coin"></i><span>ธุรกรรม</span><em id="bottomFollowupBadge" class="nav-badge hidden">0</em></button>
                 <button class="bottom-tab" data-tab="settings"><i class="bi bi-gear"></i><span>ตั้งค่า</span></button>
             </nav>
         </section>

@@ -1,6 +1,6 @@
 import { firebaseConfig, OCR_FUNCTION_URL, TELEGRAM_TEST_FUNCTION_URL, VAPID_PUBLIC_KEY } from './firebase-config.js';
 import { APP_INFO, APP_VERSION, LS, blank } from './config.js';
-import { $, uid, today, num, money, maskId, normalizeIdCard, fullNameOf, isoDate, safeFileName, fileIcon, escapeHtml } from './utils.js';
+import { $, uid, today, num, money, maskId, normalizeIdCard, fullNameOf, isoDate, safeFileName, fileIcon, escapeHtml, formatDate } from './utils.js';
 import { calc, calcAgeYears, addMonthsSafe, countContractMonths, roundMoney } from './calculate.js';
 import { applyTheme, initTheme } from './theme.js';
 
@@ -107,16 +107,23 @@ window.previewDocument = async (id) => {
 async function render() {
     const d = await getData(); latestData = d;
     const c = calc(d), due = c.debts.filter(x => x.isDue).sort((a, b) => b.daysOverdue - a.daysOverdue || b.remaining - a.remaining), followToday = d.followups.filter(f => String(f.nextFollowupDate || f.contactDate || '') <= today());
+    const dueToday = c.debts.filter(x => x.isDueToday);
+    const overdue = due.filter(x => Number(x.daysOverdue || 0) > 0);
     $('debtorCount').textContent = d.debtors.length;
     $('debtTotal').textContent = money(c.debts.reduce((s, x) => s + num(x.principal), 0));
     $('openDebtTotal').textContent = money(c.debts.reduce((s, x) => s + x.remaining, 0));
     $('dueTotal').textContent = money(due.reduce((s, x) => s + x.remaining, 0));
     $('minCollectTotal').textContent = money(due.reduce((s, x) => s + Math.min(num(x.minCollectAmount || x.remaining), x.remaining), 0));
-    $('dueTodayCount').textContent = c.debts.filter(x => x.isDueToday).length;
+    $('dueTodayCount').textContent = dueToday.length;
+    if ($('overdueCount')) $('overdueCount').textContent = overdue.length;
     $('followupTodayCount').textContent = followToday.length;
+    if ($('dashDueTodayAction')) $('dashDueTodayAction').textContent = dueToday.length;
+    if ($('dashOverdueAction')) $('dashOverdueAction').textContent = overdue.length;
+    if ($('dashDueAmountAction')) $('dashDueAmountAction').textContent = money(due.reduce((s, x) => s + x.remaining, 0));
+    updateFollowupBadges(due.length);
     renderAging(c.debts);
-    $('priorityList').innerHTML = due.length ? due.map(x => `<div class="item"><div><div class="item-title">${x.debtor?.name || '-'} · ${x.title}</div><div class="item-sub">ครบกำหนด ${x.dueDate} · เกิน ${x.daysOverdue} วัน · ขั้นต่ำ ${money(Math.min(num(x.minCollectAmount || x.remaining), x.remaining))}</div></div><div class="amount">${money(x.remaining)}</div></div>`).join('') : '<div class="empty">ยังไม่มีรายการถึงกำหนด</div>';
-    $('todayFollowupList').innerHTML = followToday.length ? followToday.map(f => `<div class="item"><div><div class="item-title">${c.debtors[f.debtorId]?.name || '-'} · ${f.status || f.channel}</div><div class="item-sub">${f.result || '-'} · นัด ${f.nextFollowupDate || '-'}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีรายการติดตามวันนี้</div>';
+    $('priorityList').innerHTML = due.length ? due.map(renderDashboardDueCard).join('') : '<div class="empty">ยังไม่มีรายการถึงกำหนด</div>';
+    $('todayFollowupList').innerHTML = followToday.length ? followToday.map(f => `<div class="item"><div><div class="item-title">${escapeHtml(c.debtors[f.debtorId]?.name || '-')} · ${escapeHtml(f.status || f.channel || '-')}</div><div class="item-sub">${escapeHtml(f.result || '-')} · นัด ${formatDate(f.nextFollowupDate)}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีรายการติดตามวันนี้</div>';
     $('debtorList').innerHTML = d.debtors.length ? d.debtors.map(x => {
         const remain = c.debts.filter(dd => dd.debtorId === x.id)
             .reduce((s, dd) => s + dd.remaining, 0);
@@ -179,6 +186,74 @@ async function render() {
     fillSettings(d.settings || {});
     if (typeof decorateButtons === 'function') setTimeout(() => { decorateButtons(); restoreUiChrome(); }, 0);
 }
+
+function dueStatusMeta(x = {}) {
+    const days = Number(x.daysOverdue || 0);
+    if (days > 0) return { cls: 'overdue', icon: 'bi-calendar-x', text: `เลยกำหนด ${days} วัน` };
+    if (String(x.dueDate || '') === today()) return { cls: 'today', icon: 'bi-calendar-event', text: 'ครบกำหนดวันนี้' };
+    return { cls: 'soon', icon: 'bi-calendar2-week', text: 'ถึงกำหนด' };
+}
+function renderDashboardDueCard(x) {
+    const meta = dueStatusMeta(x);
+    const debtorName = x.debtor?.name || '-';
+    const groupName = debtGroupName(x);
+    const no = debtInstallmentNo(x), count = debtInstallmentCount(x);
+    const period = no && count ? `${no}/${count}` : (no ? `${no}` : '-');
+    const minCollect = Math.min(num(x.minCollectAmount || x.remaining), x.remaining);
+    return `<div class="dashboard-due-card dashboard-due-${meta.cls} clickable-item" role="button" tabindex="0" title="แตะเพื่อไปบันทึกการติดตามงวดนี้" onclick="openFollowupForDebt('${x.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openFollowupForDebt('${x.id}')}">
+        <div class="due-card-left">
+            <div class="due-status"><i class="bi ${meta.icon}"></i> ${escapeHtml(meta.text)}</div>
+            <div class="due-debtor">${escapeHtml(debtorName)}</div>
+            <div class="due-title">${escapeHtml(groupName)}</div>
+            <div class="due-meta"><span><i class="bi bi-layers"></i> งวดที่ ${escapeHtml(period)}</span><span><i class="bi bi-calendar3"></i> ครบกำหนด ${formatDate(x.dueDate)}</span></div>
+            <div class="due-quick-actions" onclick="event.stopPropagation()">
+                <button type="button" title="บันทึกโทรแล้ว" onclick="quickFollowupForDebt('${x.id}','โทรแล้ว','โทรศัพท์')"><i class="bi bi-telephone-outbound"></i> โทรแล้ว</button>
+                <button type="button" title="บันทึกนัดชำระแล้ว" onclick="quickFollowupForDebt('${x.id}','นัดชำระแล้ว','โทรศัพท์')"><i class="bi bi-calendar-check"></i> นัดแล้ว</button>
+                <button type="button" title="บันทึกส่งข้อความแล้ว" onclick="quickFollowupForDebt('${x.id}','ส่งข้อความแล้ว','LINE')"><i class="bi bi-chat-dots"></i> ส่งข้อความ</button>
+            </div>
+        </div>
+        <div class="due-card-right">
+            <div class="due-amount">${money(minCollect)} บาท</div>
+            <div class="due-remaining">คงเหลือ ${money(x.remaining)} บาท</div>
+            <i class="bi bi-chevron-right due-arrow"></i>
+        </div>
+    </div>`;
+}
+window.openAllDueFollowups = () => { switchTab('transactions'); switchTransaction('followup'); setTimeout(() => $('txFollowupBox')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); };
+window.openDueBucket = (bucket = 'all') => {
+    switchTab('transactions');
+    switchTransaction('followup');
+    if ($('followupDebtorId')) $('followupDebtorId').value = '';
+    if ($('followupDebtFilter')) $('followupDebtFilter').value = '';
+    const d = latestData || local(), c = calc(d);
+    fillFollowupFilters(d, c);
+    const debts = dueDebtsForFollowup(c);
+    const chosen = debts.find(x => bucket === 'overdue' ? Number(x.daysOverdue || 0) > 0 : bucket === 'today' ? String(x.dueDate || '') === today() : true);
+    if (chosen) openFollowupForDebt(chosen.id);
+    else setTimeout(() => $('txFollowupBox')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+};
+function updateFollowupBadges(count = 0) {
+    ['bottomFollowupBadge', 'followupSegmentBadge'].forEach(id => {
+        const el = $(id);
+        if (!el) return;
+        el.textContent = count > 99 ? '99+' : String(count || 0);
+        el.classList.toggle('hidden', !count);
+    });
+}
+window.setFollowupQuick = (status) => {
+    if ($('followupStatus')) $('followupStatus').value = status;
+    if ($('followupChannel')) $('followupChannel').value = status === 'ส่งข้อความแล้ว' ? 'LINE' : 'โทรศัพท์';
+    if ($('followupResult') && !$('followupResult').value.trim()) $('followupResult').value = status;
+};
+window.quickFollowupForDebt = async (debtId, status, channel) => {
+    const d = latestData || local();
+    const c = calc(d);
+    const debt = c.debtsById[debtId];
+    if (!debt || debt.remaining <= 0 || String(debt.dueDate || '') > today()) return toast('งวดนี้ยังไม่ถึงกำหนด หรือปิดแล้ว');
+    await add('followups', { debtorId: debt.debtorId, debtId: debt.id, contactDate: today(), status, channel, result: `บันทึกจาก Dashboard: ${status}`, nextFollowupDate: '' });
+    toast(`บันทึก${status}แล้ว`);
+    render();
+};
 function renderAging(debts) { const b = { a: 0, b: 0, c: 0, d: 0 }; debts.filter(x => x.remaining > 0 && x.isDue).forEach(x => { if (x.daysOverdue <= 30) b.a += x.remaining; else if (x.daysOverdue <= 60) b.b += x.remaining; else if (x.daysOverdue <= 90) b.c += x.remaining; else b.d += x.remaining }); $('aging030').textContent = money(b.a); $('aging3160').textContent = money(b.b); $('aging6190').textContent = money(b.c); $('aging90').textContent = money(b.d) }
 function debtInstallmentNo(x = {}) {
     const explicit = Number(x.installmentNo || x.installment || x.periodNo || 0);
@@ -216,7 +291,7 @@ function paymentDebtLabel(x) {
     const no = debtInstallmentNo(x), count = debtInstallmentCount(x);
     const period = no && count ? `งวด ${no}/${count}` : (no ? `งวด ${no}` : '');
     const title = period ? debtGroupName(x) : (x.title || debtGroupName(x));
-    return `${x.debtor?.name || '-'} · ${title}${period ? ' · ' + period : ''} · ครบกำหนด ${x.dueDate || '-'} · คงเหลือ ${money(x.remaining)}`;
+    return `${x.debtor?.name || '-'} · ${title}${period ? ' · ' + period : ''} · ครบกำหนด ${formatDate(x.dueDate)} · คงเหลือ ${money(x.remaining)}`;
 }
 function fillPaymentFilters(d, c) {
     const keepDebtor = $('paymentDebtorFilter')?.value || '';
@@ -252,13 +327,77 @@ function bindPaymentFilters() {
         el.dataset.paymentFilterBound = '1';
     });
 }
+
+function dueDebtsForFollowup(c) {
+    return c.debts
+        .filter(x => x.remaining > 0 && String(x.dueDate || '') <= today())
+        .sort(sortDebtsForPayment);
+}
+function followupFilteredDebts(c) {
+    const debtorId = $('followupDebtorId')?.value || '';
+    const group = $('followupDebtFilter')?.value || '';
+    return dueDebtsForFollowup(c)
+        .filter(x => !debtorId || x.debtorId === debtorId)
+        .filter(x => !group || debtGroupName(x) === group)
+        .sort(sortDebtsForPayment);
+}
+function fillFollowupFilters(d, c) {
+    const keepDebtor = $('followupDebtorId')?.value || '';
+    const keepGroup = $('followupDebtFilter')?.value || '';
+    const keepDebt = $('followupDebtId')?.value || '';
+    const dueDebts = dueDebtsForFollowup(c);
+    const debtorIds = [...new Set(dueDebts.map(x => x.debtorId).filter(Boolean))];
+    if ($('followupDebtorId')) {
+        $('followupDebtorId').innerHTML = '<option value="">-- ลูกหนี้ที่ถึงกำหนดทั้งหมด --</option>' + debtorIds.map(id => `<option value="${id}">${escapeHtml(c.debtors[id]?.name || '-')}</option>`).join('');
+        $('followupDebtorId').value = debtorIds.includes(keepDebtor) ? keepDebtor : '';
+    }
+    const groupDebts = dueDebts.filter(x => !$('followupDebtorId')?.value || x.debtorId === $('followupDebtorId').value);
+    const groups = [...new Set(groupDebts.map(debtGroupName))];
+    if ($('followupDebtFilter')) {
+        $('followupDebtFilter').innerHTML = '<option value="">-- ชื่อก้อนหนี้ทั้งหมด --</option>' + groups.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+        $('followupDebtFilter').value = groups.includes(keepGroup) ? keepGroup : '';
+    }
+    const debts = followupFilteredDebts(c);
+    if ($('followupDebtId')) {
+        $('followupDebtId').innerHTML = '<option value="">-- เลือกงวดที่ต้องทวง --</option>' + debts.map(x => `<option value="${x.id}">${escapeHtml(paymentDebtLabel(x))}</option>`).join('');
+        $('followupDebtId').value = debts.some(x => x.id === keepDebt) ? keepDebt : '';
+    }
+}
+function bindFollowupFilters() {
+    ['followupDebtorId', 'followupDebtFilter', 'followupHistoryStatusFilter'].forEach(id => {
+        const el = $(id); if (!el || el.dataset.followupFilterBound) return;
+        el.addEventListener('change', () => {
+            if (id === 'followupDebtorId' && $('followupDebtFilter')) $('followupDebtFilter').value = '';
+            const d = latestData || local(), c = calc(d);
+            fillFollowupFilters(d, c);
+            fillLists(d, c);
+        });
+        el.dataset.followupFilterBound = '1';
+    });
+}
+window.openFollowupForDebt = (debtId) => {
+    const d = latestData || local();
+    const c = calc(d);
+    const debt = c.debtsById[debtId];
+    if (!debt || debt.remaining <= 0 || String(debt.dueDate || '') > today()) return toast('งวดนี้ยังไม่ถึงกำหนด หรือปิดแล้ว');
+    switchTab('transactions');
+    switchTransaction('followup');
+    if ($('followupDebtorId')) $('followupDebtorId').value = debt.debtorId || '';
+    fillFollowupFilters(d, c);
+    if ($('followupDebtFilter')) $('followupDebtFilter').value = debtGroupName(debt);
+    fillFollowupFilters(d, c);
+    if ($('followupDebtId')) $('followupDebtId').value = debt.id;
+    if ($('followupDate') && !$('followupDate').value) $('followupDate').value = today();
+    fillLists(d, c);
+    setTimeout(() => ($('followupResult') || $('txFollowupBox'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+};
 function fillSelects(d, c) {
     const debtorOpts = '<option value="">-- เลือกลูกหนี้ --</option>' + d.debtors.map(x => `<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('');
-    ['followupDebtorId', 'documentDebtorId', 'transactionDebtorId', 'contractDebtorId'].forEach(id => { if ($(id)) $(id).innerHTML = debtorOpts });
+    ['documentDebtorId', 'transactionDebtorId', 'contractDebtorId'].forEach(id => { if ($(id)) $(id).innerHTML = debtorOpts });
     fillPaymentFilters(d, c);
-    const debtOpts = '<option value="">-- เลือกก้อนหนี้ --</option>' + c.debts.filter(x => x.remaining > 0).sort(sortDebtsForPayment).map(x => `<option value="${x.id}">${escapeHtml(paymentDebtLabel(x))}</option>`).join('');
-    if ($('followupDebtId')) $('followupDebtId').innerHTML = '<option value="">-- ไม่ระบุก้อนหนี้ --</option>' + debtOpts.replace('<option value="">-- เลือกก้อนหนี้ --</option>', '');
+    fillFollowupFilters(d, c);
     bindPaymentFilters();
+    bindFollowupFilters();
 }
 function fillLists(d, c) {
     const debtorFilter = $('paymentDebtorFilter')?.value || '';
@@ -267,9 +406,20 @@ function fillLists(d, c) {
         const debt = c.debtsById[p.debtId] || {};
         return (!debtorFilter || debt.debtorId === debtorFilter) && (!groupFilter || debtGroupName(debt) === groupFilter);
     }).sort((a, b) => String(b.paidDate || '').localeCompare(String(a.paidDate || '')));
-    $('paymentList').innerHTML = paymentRows.length ? paymentRows.map(p => { const debt = c.debtsById[p.debtId] || {}; return `<div class="item"><div><div class="item-title">${money(p.amount)}</div><div class="item-sub">${escapeHtml(p.paidDate || '-')} · ${escapeHtml(debt.debtor?.name || '-')} · ${escapeHtml(debt.title || '-')} · ${escapeHtml(p.note || '')}</div></div></div>` }).join('') : '<div class="empty">ยังไม่มีประวัติชำระตามตัวกรองนี้</div>';
-    $('followupList').innerHTML = d.followups.length ? d.followups.map(f => `<div class="item"><div><div class="item-title">${escapeHtml(c.debtors[f.debtorId]?.name || '-')} · ${escapeHtml(f.status || '-')}</div><div class="item-sub">${escapeHtml(f.contactDate || '-')} · ${escapeHtml(f.channel || '-')} · นัด ${escapeHtml(f.nextFollowupDate || '-')}</div><div class="item-sub">${escapeHtml(f.result || '')}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติติดตาม</div>';
-    $('documentList').innerHTML = d.documents.length ? d.documents.map(doc => { const isImg = String(doc.mimeType || '').startsWith('image/'); const thumb = isImg && doc.downloadURL ? `<img loading="lazy" decoding="async" src="${doc.downloadURL}" alt="">` : `<i class="bi ${fileIcon(doc.mimeType, doc.fileName)}"></i>`; return `<div class="item doc-card"><div class="doc-thumb">${thumb}</div><div><div class="item-title">${escapeHtml(doc.type)} · ${escapeHtml(doc.fileName)}</div><div class="item-sub">${escapeHtml(c.debtors[doc.debtorId]?.name || '-')} · ${escapeHtml(doc.createdDate || '-')} · ${doc.size ? money(doc.size / 1024) + ' KB' : ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="previewDocument('${doc.id}')"><i class="bi bi-box-arrow-up-right"></i></button><button class="icon-action icon-delete" type="button" title="ลบเอกสาร" aria-label="ลบเอกสาร" onclick="deleteDocument('${doc.id}')"><i class="bi bi-trash"></i></button></div></div>` }).join('') : '<div class="empty">ยังไม่มีเอกสาร</div>';
+    $('paymentList').innerHTML = paymentRows.length ? paymentRows.map(p => { const debt = c.debtsById[p.debtId] || {}; return `<div class="item"><div><div class="item-title">${money(p.amount)}</div><div class="item-sub">${formatDate(p.paidDate)} · ${escapeHtml(debt.debtor?.name || '-')} · ${escapeHtml(debt.title || '-')} · ${escapeHtml(p.note || '')}</div></div></div>` }).join('') : '<div class="empty">ยังไม่มีประวัติชำระตามตัวกรองนี้</div>';
+    const followDebtorFilter = $('followupDebtorId')?.value || '';
+    const followGroupFilter = $('followupDebtFilter')?.value || '';
+    const followDebtFilter = $('followupDebtId')?.value || '';
+    const followStatusFilter = $('followupHistoryStatusFilter')?.value || '';
+    const followupRows = d.followups.filter(f => {
+        const debt = c.debtsById[f.debtId] || {};
+        return (!followDebtorFilter || f.debtorId === followDebtorFilter)
+            && (!followGroupFilter || debtGroupName(debt) === followGroupFilter)
+            && (!followDebtFilter || f.debtId === followDebtFilter)
+            && (!followStatusFilter || f.status === followStatusFilter);
+    }).sort((a, b) => String(b.contactDate || '').localeCompare(String(a.contactDate || '')));
+    $('followupList').innerHTML = followupRows.length ? followupRows.map(f => { const debt = c.debtsById[f.debtId] || {}; return `<div class="item"><div><div class="item-title">${escapeHtml(c.debtors[f.debtorId]?.name || '-')} · ${escapeHtml(f.status || '-')}</div><div class="item-sub">${escapeHtml(debt.title || debtGroupName(debt) || '-')} · ${formatDate(f.contactDate)} · ${escapeHtml(f.channel || '-')} · นัด ${formatDate(f.nextFollowupDate)}</div><div class="item-sub">${escapeHtml(f.result || '')}</div></div></div>` }).join('') : '<div class="empty">ยังไม่มีประวัติติดตามตามตัวกรองนี้</div>';
+    $('documentList').innerHTML = d.documents.length ? d.documents.map(doc => { const isImg = String(doc.mimeType || '').startsWith('image/'); const thumb = isImg && doc.downloadURL ? `<img loading="lazy" decoding="async" src="${doc.downloadURL}" alt="">` : `<i class="bi ${fileIcon(doc.mimeType, doc.fileName)}"></i>`; return `<div class="item doc-card"><div class="doc-thumb">${thumb}</div><div><div class="item-title">${escapeHtml(doc.type)} · ${escapeHtml(doc.fileName)}</div><div class="item-sub">${escapeHtml(c.debtors[doc.debtorId]?.name || '-')} · ${formatDate(doc.createdDate)} · ${doc.size ? money(doc.size / 1024) + ' KB' : ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="previewDocument('${doc.id}')"><i class="bi bi-box-arrow-up-right"></i></button><button class="icon-action icon-delete" type="button" title="ลบเอกสาร" aria-label="ลบเอกสาร" onclick="deleteDocument('${doc.id}')"><i class="bi bi-trash"></i></button></div></div>` }).join('') : '<div class="empty">ยังไม่มีเอกสาร</div>';
 }
 function fillSettings(s) {
     if ($('notifyEmail')) $('notifyEmail').value = s.notifyEmail || '';
@@ -293,7 +443,16 @@ $('saveEditDebtorBtn').onclick = async () => { const id = $('editDebtorId').valu
 $('cancelEditDebtorBtn').onclick = () => $('editDebtorCard').classList.add('hidden');
 $('addDebtBtn').onclick = async () => { const debtorId = $('transactionDebtorId').value, principal = num($('debtPrincipal').value); if (!debtorId) return toast('เลือกลูกหนี้ก่อน'); if (principal <= 0) return toast('กรอกยอดหนี้'); await add('debts', { debtorId, title: $('debtTitle').value || 'ก้อนหนี้', principal, minCollectAmount: num($('debtMinCollect').value) || principal, dueDate: $('debtDueDate').value || today(), status: 'open' });['debtTitle', 'debtPrincipal', 'debtMinCollect', 'debtDueDate'].forEach(id => $(id).value = ''); toast('เพิ่มก้อนหนี้สำเร็จ'); switchTab('transactions'); switchTransaction('debt'); render() };
 $('addPaymentBtn').onclick = async () => { if (!$('paymentDebtId').value) return toast('เลือกก้อนหนี้'); const amount = num($('paymentAmount').value); if (amount <= 0) return toast('กรอกจำนวนเงิน'); await add('payments', { debtId: $('paymentDebtId').value, amount, paidDate: $('paymentDate').value || today(), note: $('paymentNote').value }); $('paymentAmount').value = ''; $('paymentNote').value = ''; toast('บันทึกชำระแล้ว'); switchTab('transactions'); switchTransaction('payment'); render() };
-$('addFollowupBtn').onclick = async () => { if (!$('followupDebtorId').value) return toast('เลือกลูกหนี้'); await add('followups', { debtorId: $('followupDebtorId').value, debtId: $('followupDebtId').value, contactDate: $('followupDate').value || today(), status: $('followupStatus').value, channel: $('followupChannel').value, result: $('followupResult').value, nextFollowupDate: $('nextFollowupDate').value }); toast('บันทึกการติดตามแล้ว'); switchTab('transactions'); switchTransaction('followup'); render() };
+$('addFollowupBtn').onclick = async () => {
+    const c = calc(latestData || local());
+    const debt = c.debtsById[$('followupDebtId').value] || null;
+    const debtorId = debt?.debtorId || $('followupDebtorId').value;
+    if (!debtorId) return toast('เลือกลูกหนี้ที่ถึงกำหนดก่อน');
+    if (!debt) return toast('เลือกงวดที่ต้องทวงก่อน');
+    await add('followups', { debtorId, debtId: debt.id, contactDate: $('followupDate').value || today(), status: $('followupStatus').value, channel: $('followupChannel').value, result: $('followupResult').value, nextFollowupDate: $('nextFollowupDate').value });
+    ['followupResult', 'nextFollowupDate'].forEach(id => { if ($(id)) $(id).value = ''; });
+    toast('บันทึกการติดตามแล้ว'); switchTab('transactions'); switchTransaction('followup'); render()
+};
 $('addDocumentBtn').onclick = async () => {
     if (!$('documentDebtorId').value) return toast('เลือกลูกหนี้');
     const files = [...$('documentFile').files];
@@ -486,7 +645,7 @@ document.addEventListener('click', e => {
     }
 }); $('demoBtn').onclick = () => { demoMode = true; currentUser = { uid: 'demo' }; $('authView').classList.remove('active'); $('appView').classList.add('active'); setUserDisplay('Demo Mode'); toast('Demo Mode'); render() };
 async function initFirebase() { if (!firebaseReady) return; const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'); const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'); const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const { getStorage } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); storage = getStorage(app); $('loginBtn').onclick = async () => { try { await signInWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('registerBtn').onclick = async () => { try { await createUserWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('logoutBtn').onclick = async () => { await signOut(auth); location.reload() }; onAuthStateChanged(auth, u => { if (u) { currentUser = u; demoMode = false; $('authView').classList.remove('active'); $('appView').classList.add('active'); setUserDisplay(u.email || u.displayName || 'ผู้ใช้ Firebase'); render() } else { setUserDisplay('') } }) } if (!firebaseReady) { $('loginBtn').onclick = $('demoBtn').onclick; $('registerBtn').onclick = $('demoBtn').onclick }
-$('exportJsonBtn').onclick = async () => download(JSON.stringify({ data: await getData() }, null, 2), 'debt-backup.json', 'application/json'); $('exportTxtBtn').onclick = async () => download('DEBT_BACKUP\n' + JSON.stringify({ data: await getData() }, null, 2), 'debt-backup.txt', 'text/plain'); function download(c, n, t) { let a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([c], { type: t })); a.download = n; a.click() } $('importFile').onchange = async e => { let f = e.target.files[0]; if (!f) return; let txt = (await f.text()).replace(/^DEBT_BACKUP\s*/, '').trim(); setLocal(JSON.parse(txt).data || JSON.parse(txt)); demoMode = true; toast('Import เข้า Demo'); render() };
+const exportPayload = async () => ({ exportedAt: new Date().toISOString(), exportedDate: formatDate(today()), data: await getData() }); $('exportJsonBtn').onclick = async () => { const payload = await exportPayload(); download(JSON.stringify(payload, null, 2), `debt-backup-${payload.exportedDate.replace(/\//g, '-')}.json`, 'application/json') }; $('exportTxtBtn').onclick = async () => { const payload = await exportPayload(); download('DEBT_BACKUP\n' + JSON.stringify(payload, null, 2), `debt-backup-${payload.exportedDate.replace(/\//g, '-')}.txt`, 'text/plain') }; function download(c, n, t) { let a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([c], { type: t })); a.download = n; a.click() } $('importFile').onchange = async e => { let f = e.target.files[0]; if (!f) return; let txt = (await f.text()).replace(/^DEBT_BACKUP\s*/, '').trim(); setLocal(JSON.parse(txt).data || JSON.parse(txt)); demoMode = true; toast('Import เข้า Demo'); render() };
 
 if ($('userMenuBtn')) $('userMenuBtn').onclick = (e) => { e.stopPropagation(); $('userDropdown').classList.toggle('hidden') };
 if ($('openProfileBtn')) $('openProfileBtn').onclick = () => { switchTab('settings'); $('userDropdown').classList.add('hidden'); $('userProfileCard')?.scrollIntoView({ behavior: 'smooth' }) };
@@ -676,8 +835,8 @@ function updateContractSmartUi() {
                 <div><span>อายุ</span><strong>${escapeHtml(age || '-')} ปี</strong></div>
                 <div><span>เงินกู้</span><strong>${money(row.amount)}</strong></div>
                 <div><span>ดอกเบี้ย</span><strong>${escapeHtml(row.interestRate || '-')}% ต่อปี</strong></div>
-                <div><span>ทำสัญญา</span><strong>${thaiDate(row.contractDate)}</strong></div>
-                <div><span>ครบกำหนด</span><strong>${thaiDate(row.dueDate)}</strong></div>
+                <div><span>ทำสัญญา</span><strong>${formatDate(row.contractDate)}</strong></div>
+                <div><span>ครบกำหนด</span><strong>${formatDate(row.dueDate)}</strong></div>
             </div>`;
     }
 }
@@ -721,7 +880,7 @@ function renderContractList(d, c) {
         const debtStatus = x.autoDebtCreated ? ' · สร้างก้อนหนี้แล้ว' : '';
         const status = complete ? `${signed}/${required} : ลงลายเซ็นครบแล้ว / ล็อกสัญญาแล้ว${debtStatus}` : `${signed}/${required} : ยังแก้ไขได้อยู่`;
         const canDelete = signed === 0 && !complete;
-        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${c.debtors[x.debtorId]?.name || x.borrowerName || '-'} · ${money(x.amount)}</div><div class="item-sub">${status} · วันที่ ${thaiDate(x.contractDate || x.createdDate)} · ครบกำหนด ${thaiDate(x.dueDate)} · ${x.fileName || ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิด PDF" aria-label="เปิด PDF" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
+        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${c.debtors[x.debtorId]?.name || x.borrowerName || '-'} · ${money(x.amount)}</div><div class="item-sub">${status} · วันที่ ${formatDate(x.contractDate || x.createdDate)} · ครบกำหนด ${formatDate(x.dueDate)} · ${x.fileName || ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิด PDF" aria-label="เปิด PDF" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
     }).join('') : '<div class="empty">ยังไม่มีสัญญากู้ยืม</div>';
 }
 function bahtTextFallback(n) {
@@ -774,7 +933,7 @@ const TH_MONTHS_SHORT = TH_MONTHS_FULL;
 function thaiDate(v) {
     if (!v) return '-';
     const d = new Date(String(v).includes('T') ? v : String(v) + 'T00:00:00');
-    if (isNaN(d)) return v;
+    if (Number.isNaN(d.getTime())) return v;
     return `${d.getDate()} ${TH_MONTHS_FULL[d.getMonth()]} ${d.getFullYear() + 543}`;
 }
 function debtorAgeForContract(debtor = {}, atValue = today()) {
@@ -1428,7 +1587,11 @@ function restoreBottomNavIcons() {
         const cfg = tabMap[btn.dataset.tab];
         if (!cfg) return;
         const [icon, label] = cfg;
-        btn.innerHTML = `<i class="bi ${icon}" aria-hidden="true"></i><span>${label}</span>`;
+        const badgeId = btn.dataset.tab === 'transactions' ? 'bottomFollowupBadge' : '';
+        const oldBadge = badgeId ? document.getElementById(badgeId) : null;
+        const oldText = oldBadge?.textContent || '0';
+        const oldHidden = oldBadge ? oldBadge.classList.contains('hidden') : true;
+        btn.innerHTML = `<i class="bi ${icon}" aria-hidden="true"></i><span>${label}</span>${badgeId ? `<em id="${badgeId}" class="nav-badge ${oldHidden ? 'hidden' : ''}">${oldText}</em>` : ''}`;
         btn.setAttribute('aria-label', label);
         btn.setAttribute('title', label);
     });
@@ -1450,6 +1613,7 @@ function restoreIconButtons() {
 function restoreUiChrome() {
     restoreBottomNavIcons();
     restoreIconButtons();
+    if (latestData) updateFollowupBadges(calc(latestData).debts.filter(x => x.isDue).length);
 }
 
 window.addEventListener('DOMContentLoaded', () => { decorateButtons(); restoreUiChrome(); });
