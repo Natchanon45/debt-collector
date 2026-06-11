@@ -180,8 +180,97 @@ async function render() {
     if (typeof decorateButtons === 'function') setTimeout(() => { decorateButtons(); restoreUiChrome(); }, 0);
 }
 function renderAging(debts) { const b = { a: 0, b: 0, c: 0, d: 0 }; debts.filter(x => x.remaining > 0 && x.isDue).forEach(x => { if (x.daysOverdue <= 30) b.a += x.remaining; else if (x.daysOverdue <= 60) b.b += x.remaining; else if (x.daysOverdue <= 90) b.c += x.remaining; else b.d += x.remaining }); $('aging030').textContent = money(b.a); $('aging3160').textContent = money(b.b); $('aging6190').textContent = money(b.c); $('aging90').textContent = money(b.d) }
-function fillSelects(d, c) { const debtorOpts = '<option value="">-- เลือกลูกหนี้ --</option>' + d.debtors.map(x => `<option value="${x.id}">${x.name}</option>`).join('');['followupDebtorId', 'documentDebtorId', 'transactionDebtorId', 'contractDebtorId'].forEach(id => { if ($(id)) $(id).innerHTML = debtorOpts }); const debtOpts = '<option value="">-- เลือกก้อนหนี้ --</option>' + c.debts.filter(x => x.remaining > 0).map(x => `<option value="${x.id}">${x.debtor?.name || '-'} · ${x.title} · ${money(x.remaining)}</option>`).join(''); $('paymentDebtId').innerHTML = debtOpts; $('followupDebtId').innerHTML = '<option value="">-- ไม่ระบุก้อนหนี้ --</option>' + debtOpts.replace('<option value="">-- เลือกก้อนหนี้ --</option>', '') }
-function fillLists(d, c) { $('paymentList').innerHTML = d.payments.length ? d.payments.map(p => `<div class="item"><div><div class="item-title">${money(p.amount)}</div><div class="item-sub">${p.paidDate} · ${c.debtsById[p.debtId]?.title || '-'} · ${p.note || ''}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติชำระ</div>'; $('followupList').innerHTML = d.followups.length ? d.followups.map(f => `<div class="item"><div><div class="item-title">${c.debtors[f.debtorId]?.name || '-'} · ${f.status || '-'}</div><div class="item-sub">${f.contactDate} · ${f.channel || '-'} · นัด ${f.nextFollowupDate || '-'}</div><div class="item-sub">${f.result || ''}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติติดตาม</div>'; $('documentList').innerHTML = d.documents.length ? d.documents.map(doc => { const isImg = String(doc.mimeType || '').startsWith('image/'); const thumb = isImg && doc.downloadURL ? `<img loading="lazy" decoding="async" src="${doc.downloadURL}" alt="">` : `<i class="bi ${fileIcon(doc.mimeType, doc.fileName)}"></i>`; return `<div class="item doc-card"><div class="doc-thumb">${thumb}</div><div><div class="item-title">${doc.type} · ${doc.fileName}</div><div class="item-sub">${c.debtors[doc.debtorId]?.name || '-'} · ${doc.createdDate || '-'} · ${doc.size ? money(doc.size / 1024) + ' KB' : ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="previewDocument('${doc.id}')"><i class="bi bi-box-arrow-up-right"></i></button><button class="icon-action icon-delete" type="button" title="ลบเอกสาร" aria-label="ลบเอกสาร" onclick="deleteDocument('${doc.id}')"><i class="bi bi-trash"></i></button></div></div>` }).join('') : '<div class="empty">ยังไม่มีเอกสาร</div>' }
+function debtInstallmentNo(x = {}) {
+    const explicit = Number(x.installmentNo || x.installment || x.periodNo || 0);
+    if (explicit > 0) return explicit;
+    const m = String(x.title || '').match(/(\d+)\s*\/\s*(\d+)/);
+    return m ? Number(m[1]) : 0;
+}
+function debtInstallmentCount(x = {}) {
+    const explicit = Number(x.installmentCount || x.periodCount || 0);
+    if (explicit > 0) return explicit;
+    const m = String(x.title || '').match(/(\d+)\s*\/\s*(\d+)/);
+    return m ? Number(m[2]) : 0;
+}
+function debtGroupName(x = {}) {
+    if (x.debtGroupTitle) return String(x.debtGroupTitle);
+    if (x.contractNo) return `สัญญาเลขที่ ${x.contractNo}`;
+    return String(x.title || 'ก้อนหนี้').replace(/\s*งวด(ที่)?\s*\d+\s*\/\s*\d+.*$/i, '').trim() || 'ก้อนหนี้';
+}
+function sortDebtsForPayment(a, b) {
+    return String(a.debtor?.name || '').localeCompare(String(b.debtor?.name || ''), 'th')
+        || debtGroupName(a).localeCompare(debtGroupName(b), 'th')
+        || (debtInstallmentNo(a) - debtInstallmentNo(b))
+        || String(a.dueDate || '').localeCompare(String(b.dueDate || ''));
+}
+function paymentFilteredDebts(c) {
+    const debtorId = $('paymentDebtorFilter')?.value || '';
+    const group = $('paymentDebtFilter')?.value || '';
+    return c.debts
+        .filter(x => x.remaining > 0)
+        .filter(x => !debtorId || x.debtorId === debtorId)
+        .filter(x => !group || debtGroupName(x) === group)
+        .sort(sortDebtsForPayment);
+}
+function paymentDebtLabel(x) {
+    const no = debtInstallmentNo(x), count = debtInstallmentCount(x);
+    const period = no && count ? `งวด ${no}/${count}` : (no ? `งวด ${no}` : '');
+    const title = period ? debtGroupName(x) : (x.title || debtGroupName(x));
+    return `${x.debtor?.name || '-'} · ${title}${period ? ' · ' + period : ''} · ครบกำหนด ${x.dueDate || '-'} · คงเหลือ ${money(x.remaining)}`;
+}
+function fillPaymentFilters(d, c) {
+    const keepDebtor = $('paymentDebtorFilter')?.value || '';
+    const keepGroup = $('paymentDebtFilter')?.value || '';
+    const keepDebt = $('paymentDebtId')?.value || '';
+    const openDebts = c.debts.filter(x => x.remaining > 0).sort(sortDebtsForPayment);
+    const debtorIds = [...new Set(openDebts.map(x => x.debtorId).filter(Boolean))];
+    if ($('paymentDebtorFilter')) {
+        $('paymentDebtorFilter').innerHTML = '<option value="">-- ลูกหนี้ทั้งหมด --</option>' + debtorIds.map(id => `<option value="${id}">${escapeHtml(c.debtors[id]?.name || '-')}</option>`).join('');
+        $('paymentDebtorFilter').value = debtorIds.includes(keepDebtor) ? keepDebtor : '';
+    }
+    const groupDebts = openDebts.filter(x => !$('paymentDebtorFilter')?.value || x.debtorId === $('paymentDebtorFilter').value);
+    const groups = [...new Set(groupDebts.map(debtGroupName))];
+    if ($('paymentDebtFilter')) {
+        $('paymentDebtFilter').innerHTML = '<option value="">-- ชื่อก้อนหนี้ทั้งหมด --</option>' + groups.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+        $('paymentDebtFilter').value = groups.includes(keepGroup) ? keepGroup : '';
+    }
+    const debts = paymentFilteredDebts(c);
+    if ($('paymentDebtId')) {
+        $('paymentDebtId').innerHTML = '<option value="">-- เลือกงวดที่ต้องทวง --</option>' + debts.map(x => `<option value="${x.id}">${escapeHtml(paymentDebtLabel(x))}</option>`).join('');
+        $('paymentDebtId').value = debts.some(x => x.id === keepDebt) ? keepDebt : '';
+    }
+}
+function bindPaymentFilters() {
+    ['paymentDebtorFilter', 'paymentDebtFilter'].forEach(id => {
+        const el = $(id); if (!el || el.dataset.paymentFilterBound) return;
+        el.addEventListener('change', () => {
+            if (id === 'paymentDebtorFilter' && $('paymentDebtFilter')) $('paymentDebtFilter').value = '';
+            const d = latestData || local(), c = calc(d);
+            fillPaymentFilters(d, c);
+            fillLists(d, c);
+        });
+        el.dataset.paymentFilterBound = '1';
+    });
+}
+function fillSelects(d, c) {
+    const debtorOpts = '<option value="">-- เลือกลูกหนี้ --</option>' + d.debtors.map(x => `<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('');
+    ['followupDebtorId', 'documentDebtorId', 'transactionDebtorId', 'contractDebtorId'].forEach(id => { if ($(id)) $(id).innerHTML = debtorOpts });
+    fillPaymentFilters(d, c);
+    const debtOpts = '<option value="">-- เลือกก้อนหนี้ --</option>' + c.debts.filter(x => x.remaining > 0).sort(sortDebtsForPayment).map(x => `<option value="${x.id}">${escapeHtml(paymentDebtLabel(x))}</option>`).join('');
+    if ($('followupDebtId')) $('followupDebtId').innerHTML = '<option value="">-- ไม่ระบุก้อนหนี้ --</option>' + debtOpts.replace('<option value="">-- เลือกก้อนหนี้ --</option>', '');
+    bindPaymentFilters();
+}
+function fillLists(d, c) {
+    const debtorFilter = $('paymentDebtorFilter')?.value || '';
+    const groupFilter = $('paymentDebtFilter')?.value || '';
+    const paymentRows = d.payments.filter(p => {
+        const debt = c.debtsById[p.debtId] || {};
+        return (!debtorFilter || debt.debtorId === debtorFilter) && (!groupFilter || debtGroupName(debt) === groupFilter);
+    }).sort((a, b) => String(b.paidDate || '').localeCompare(String(a.paidDate || '')));
+    $('paymentList').innerHTML = paymentRows.length ? paymentRows.map(p => { const debt = c.debtsById[p.debtId] || {}; return `<div class="item"><div><div class="item-title">${money(p.amount)}</div><div class="item-sub">${escapeHtml(p.paidDate || '-')} · ${escapeHtml(debt.debtor?.name || '-')} · ${escapeHtml(debt.title || '-')} · ${escapeHtml(p.note || '')}</div></div></div>` }).join('') : '<div class="empty">ยังไม่มีประวัติชำระตามตัวกรองนี้</div>';
+    $('followupList').innerHTML = d.followups.length ? d.followups.map(f => `<div class="item"><div><div class="item-title">${escapeHtml(c.debtors[f.debtorId]?.name || '-')} · ${escapeHtml(f.status || '-')}</div><div class="item-sub">${escapeHtml(f.contactDate || '-')} · ${escapeHtml(f.channel || '-')} · นัด ${escapeHtml(f.nextFollowupDate || '-')}</div><div class="item-sub">${escapeHtml(f.result || '')}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีประวัติติดตาม</div>';
+    $('documentList').innerHTML = d.documents.length ? d.documents.map(doc => { const isImg = String(doc.mimeType || '').startsWith('image/'); const thumb = isImg && doc.downloadURL ? `<img loading="lazy" decoding="async" src="${doc.downloadURL}" alt="">` : `<i class="bi ${fileIcon(doc.mimeType, doc.fileName)}"></i>`; return `<div class="item doc-card"><div class="doc-thumb">${thumb}</div><div><div class="item-title">${escapeHtml(doc.type)} · ${escapeHtml(doc.fileName)}</div><div class="item-sub">${escapeHtml(c.debtors[doc.debtorId]?.name || '-')} · ${escapeHtml(doc.createdDate || '-')} · ${doc.size ? money(doc.size / 1024) + ' KB' : ''}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="previewDocument('${doc.id}')"><i class="bi bi-box-arrow-up-right"></i></button><button class="icon-action icon-delete" type="button" title="ลบเอกสาร" aria-label="ลบเอกสาร" onclick="deleteDocument('${doc.id}')"><i class="bi bi-trash"></i></button></div></div>` }).join('') : '<div class="empty">ยังไม่มีเอกสาร</div>';
+}
 function fillSettings(s) {
     if ($('notifyEmail')) $('notifyEmail').value = s.notifyEmail || '';
     if ($('telegramChatId')) $('telegramChatId').value = s.telegramChatId || '';
@@ -768,6 +857,8 @@ function buildContractDebtInstallments(contract) {
     const rows = [];
     let remaining = principal;
     let principalAssigned = 0;
+    const runningNo = contract.contractNo || contract.id || nextContractNo();
+    const baseDebtTitle = `สัญญาเลขที่ ${runningNo}`;
     for (let i = 1; i <= months; i++) {
         const principalPart = i === months ? roundMoney(principal - principalAssigned) : roundMoney(principal / months);
         const interestAmount = roundMoney(remaining * monthlyRate);
@@ -775,7 +866,8 @@ function buildContractDebtInstallments(contract) {
         const dueDate = i === months && contract.dueDate ? contract.dueDate : addMonthsSafe(contract.contractDate, i);
         rows.push({
             debtorId: contract.debtorId,
-            title: `สัญญา ${contract.contractNo || ''} งวดที่ ${i}/${months}`.trim(),
+            title: `${baseDebtTitle} งวดที่ ${i}/${months}`,
+            debtGroupTitle: baseDebtTitle,
             principal: totalDue,
             minCollectAmount: totalDue,
             dueDate,
