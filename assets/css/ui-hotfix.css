@@ -1,23 +1,68 @@
 /* UI hotfix: keep icon action buttons and bottom menu compact after modular split */
 .mini.icon-action,
 .doc-actions .icon-action,
-.icon-actions .icon-action{
-  width:38px!important;height:38px!important;min-width:38px!important;
-  padding:0!important;border-radius:999px!important;display:inline-flex!important;
-  align-items:center!important;justify-content:center!important;gap:0!important;
-  font-size:0!important;line-height:1!important;white-space:nowrap!important;
+.icon-actions .icon-action {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    font-size: 0 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
 }
+
 .mini.icon-action i,
 .doc-actions .icon-action i,
-.icon-actions .icon-action i{font-size:16px!important;line-height:1!important;margin:0!important;}
-.bottom-nav{
-  position:fixed!important;left:0!important;right:0!important;bottom:0!important;z-index:9999!important;
-  display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
+.icon-actions .icon-action i {
+    font-size: 16px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
 }
-.bottom-tab{
-  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
-  gap:4px!important;min-width:0!important;border:0!important;background:transparent!important;
+
+.bottom-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 9999 !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
 }
-.bottom-tab i{display:block!important;font-size:20px!important;line-height:1!important;color:currentColor!important;}
-.bottom-tab span{display:block!important;font-size:10px!important;line-height:1!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important;}
-.bottom-tab.active{color:#15803d!important;font-weight:900!important;}
+
+.bottom-tab {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+}
+
+.bottom-tab i {
+    display: block !important;
+    font-size: 20px !important;
+    line-height: 1 !important;
+    color: currentColor !important;
+}
+
+.bottom-tab span {
+    display: block !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+}
+
+.bottom-tab.active {
+    color: #15803d !important;
+    font-weight: 100 !important;
+}
