@@ -926,23 +926,30 @@ function loadContractTemplateImage(){
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = reject;
-            img.src = CONTRACT_TEMPLATE_URL + '?v=phase14-template-v2-readable';
+            img.src = CONTRACT_TEMPLATE_URL + '?v=7.7.2-template-v2-readable';
         });
     }
     return contractTemplateImagePromise;
 }
 function contractCanvasPoint(x, y){ return { x: x * (2480/1447), y: y * (3508/2048) }; }
-const CONTRACT_CANVAS_FONT_FAMILY = '"Sarabun", "TH Sarabun New", "Noto Sans Thai", Tahoma, sans-serif';
+const CONTRACT_CANVAS_FONT_FAMILY = '"THSarabunContract"';
 let contractFontReadyPromise = null;
 async function ensureContractCanvasFont(){
     if (contractFontReadyPromise) return contractFontReadyPromise;
     contractFontReadyPromise = (async () => {
         try {
-            if (document.fonts?.load) {
-                await Promise.all([
-                    document.fonts.load('400 42px Sarabun'),
-                    document.fonts.load('600 42px Sarabun')
-                ]);
+            if (window.FontFace && document.fonts) {
+                const normalUrl = './assets/fonts/THSarabun.ttf?v=7.7.2';
+                const boldUrl = './assets/fonts/THSarabun-Bold.ttf?v=7.7.2';
+                const alreadyLoaded = Array.from(document.fonts).some(f => f.family === 'THSarabunContract');
+                if (!alreadyLoaded) {
+                    const normalFace = new FontFace('THSarabunContract', `url(${normalUrl})`, { weight:'400', style:'normal' });
+                    const boldFace = new FontFace('THSarabunContract', `url(${boldUrl})`, { weight:'600', style:'normal' });
+                    const loaded = await Promise.all([normalFace.load(), boldFace.load()]);
+                    loaded.forEach(face => document.fonts.add(face));
+                }
+                await document.fonts.load('400 42px "THSarabunContract"');
+                await document.fonts.load('600 42px "THSarabunContract"');
                 await document.fonts.ready;
             }
         } catch (e) {
@@ -952,6 +959,8 @@ async function ensureContractCanvasFont(){
     return contractFontReadyPromise;
 }
 function setupContractCanvasFont(ctx, size=40, bold=false){
+    // Contract PDF must always use the bundled TH Sarabun font.
+    // Do not let canvas fall back to browser/default fonts, otherwise coordinates drift.
     ctx.font = `${bold ? '600 ' : '400 '}${size}px ${CONTRACT_CANVAS_FONT_FAMILY}`;
     ctx.textBaseline = 'alphabetic';
 }
@@ -1105,7 +1114,7 @@ async function renderContractImageCanvas(row, debtor){
     const FS_SMALL = 40;
     const FS_ID = 36;
     const FS_SIG_NAME = 34;
-    const FS_INLINE_ID = 34;
+    const FS_INLINE_ID = 32;
 
     // Header
     drawContractText(ctx, row.contractNo || nextContractNo(), 248, 166, { maxWidth:359, size:FS, minSize:22, align:'left' });
@@ -1126,8 +1135,8 @@ async function renderContractImageCanvas(row, debtor){
     drawContractText(ctx, lenderName, 315, 371, { maxWidth:760, size:FS, minSize:28, align:'center' });
 
     // Clause 1
-    drawContractText(ctx, borrowerNameWithId, 381, 422, { maxWidth:600, size:FS_INLINE_ID, minSize:20, align:'center' });
-    drawContractText(ctx, lenderNameWithId, 175, 473, { maxWidth:956, size:FS_INLINE_ID, minSize:20, align:'center' });
+    drawContractText(ctx, borrowerNameWithId, 381, 422, { maxWidth:575, size:FS_INLINE_ID, minSize:20, align:'center' });
+    drawContractText(ctx, lenderNameWithId, 205, 473, { maxWidth:900, size:FS_INLINE_ID, minSize:20, align:'center' });
     drawContractText(ctx, amountInteger, 175, 525, { maxWidth:454, size:FS, minSize:28, align:'right', rightPad:8 });
     drawContractText(ctx, amountThai, 677, 525, { maxWidth:298, size:FS, minSize:26, align:'center' });
     drawContractText(ctx, amountSatang, 1031, 525, { maxWidth:202, size:FS, minSize:26, align:'center' });

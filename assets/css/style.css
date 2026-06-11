@@ -1,3 +1,19 @@
+
+/* v7.7.2: Local contract font. Canvas/PDF overlay must use this bundled file, not browser fallback. */
+@font-face{
+  font-family:'THSarabunContract';
+  src:url('../fonts/THSarabun.ttf?v=7.7.2') format('truetype');
+  font-weight:400;
+  font-style:normal;
+  font-display:block;
+}
+@font-face{
+  font-family:'THSarabunContract';
+  src:url('../fonts/THSarabun-Bold.ttf?v=7.7.2') format('truetype');
+  font-weight:600;
+  font-style:normal;
+  font-display:block;
+}
 :root {
     --green: #16a34a;
     --green2: #22c55e;
