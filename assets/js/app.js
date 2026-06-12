@@ -1704,14 +1704,14 @@ async function renderContractImageCanvas(row, debtor) {
             contractNo: { x: 248, y: 166, maxWidth: 359, size: FS, minSize: 28, align: 'left' },
             place: { x: 755, y: 166, maxWidth: 514, size: FS, minSize: 28, align: 'left' },
             day: { x: 688, y: 217, maxWidth: 107, size: FS, minSize: 28, align: 'center' },
-            month: mobileField({ x: 868, y: 217, maxWidth: 203, size: FS, minSize: 28, align: 'center' }, { x: 875, maxWidth: 203, align: 'left', indent: 0 }),
+            month: mobileField({ x: 880, y: 217, maxWidth: 203, size: FS, minSize: 28, align: 'center' }, { x: 880, maxWidth: 203, align: 'left', indent: 0 }),
             year: { x: 1116, y: 217, maxWidth: 154, size: FS, minSize: 28, align: 'center' }
         },
         borrower: {
             name: { x: 485, y: 268, maxWidth: 470, size: FS, minSize: 32, align: 'left', indent: 0 },
             age: { x: 1000 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 55, size: FS_SMALL, minSize: 30, align: 'center' },
             houseNo: { x: 1178 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 105, size: FS_SMALL, minSize: 30, align: 'center' },
-            subDistrict: mobileField({ x: 230 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' }, { x: 230, maxWidth: 200, align: 'left', indent: 0 }),
+            subDistrict: mobileField({ x: 250 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' }, { x: 250, maxWidth: 200, align: 'left', indent: 0 }),
             district: { x: 485 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'center' },
             province: { x: 810 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 340, size: FS_SMALL, minSize: 30, align: 'center' }
         },
@@ -1727,9 +1727,9 @@ async function renderContractImageCanvas(row, debtor) {
             // Starts after the first printed "บาท" label and auto-shrinks to fit before the next "บาท" label.
             amountText: { x: 685, y: 525, maxWidth: 340, size: 30, minSize: 18, align: 'left', indent: 0 },
             // If there are satang, write Thai satang text right-aligned close to the printed "สต." label.
-            satang: mobileField({ x: 1031, y: 525, maxWidth: 202, size: 30, minSize: 18, align: 'right', rightPad: 0 }, { x: 880, maxWidth: 230, align: 'right', rightPad: 0 }),
+            satang: mobileField({ x: 1031, y: 525, maxWidth: 202, size: 30, minSize: 18, align: 'right', rightPad: 0 }, { x: 880, maxWidth: 230, align: 'right', rightPad: 0 }), // ตัวหนังสือ
             // If the amount is .00, "ถ้วน" starts immediately after the second printed "บาท" label.
-            satangFull: { x: 1033, y: 525, maxWidth: 145, size: 30, minSize: 18, align: 'left', indent: 0 }
+            satangFull: { x: 1033, y: 525, maxWidth: 145, size: 30, minSize: 18, align: 'left', indent: 0 } // ถ้วน
         },
         clause3: {
             day: { x: 223, y: 935, maxWidth: 118, size: FS, minSize: 32, align: 'center' },
