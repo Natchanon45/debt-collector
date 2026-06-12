@@ -294,12 +294,12 @@ textarea.input {
 
 .item {
     display: flex;
-    justify-content: space-between;
-    gap: 12px;
+    flex-direction: column;
+    gap: 10px;
     padding: 12px;
     border-radius: 18px;
     background: var(--card2);
-    border: 1px solid var(--border)
+    border: 1px solid var(--border);
 }
 
 .item-title {
@@ -310,6 +310,15 @@ textarea.input {
     font-size: 12px;
     color: var(--muted);
     font-weight: 800
+}
+
+.item-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
 }
 
 .amount {
@@ -678,13 +687,6 @@ body {
 
 #logoutBtn i {
     color: var(--danger)
-}
-
-.item-actions {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    justify-content: flex-end
 }
 
 .mini-danger {
@@ -1103,14 +1105,6 @@ input.input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     }
 }
 
-.item-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: center;
-    justify-content: center;
-}
-
 .icon-action {
     width: 36px;
     height: 36px;
@@ -1291,14 +1285,6 @@ input.input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 
 .bottom-tab.active i {
     color: #fff !important
-}
-
-.item-actions {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: flex-end
 }
 
 .icon-action i {
@@ -2392,11 +2378,6 @@ label.file i {
     padding: 0 !important;
     display: inline-grid !important;
     place-items: center !important;
-    font-size: 0 !important;
-    border: 0 !important;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, .12) !important;
-    background: rgba(15, 23, 42, .08) !important;
-    color: var(--text) !important;
 }
 
 .mini.icon-mini i {

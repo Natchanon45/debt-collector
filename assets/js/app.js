@@ -64,7 +64,7 @@ async function deleteDocument(docId, opts = {}) {
     if (!doc) return toast('ไม่พบเอกสาร');
     const linkedContract = (latestData?.contracts || []).find(c => c.documentId === docId);
     if (linkedContract && !opts.force) {
-        return toast('เอกสารนี้ผูกกับสัญญา กรุณาลบ/แก้ไขจากหน้าสัญญา เพื่อป้องกันเปิด PDF ไม่ได้');
+        return toast('เอกสารนี้ผูกกับสัญญา กรุณาลบ/แก้ไขจากหน้าสัญญา เพื่อป้องกันเปิดเอกสารไม่ได้');
     }
     if (!opts.skipConfirm && !confirm(`ลบเอกสาร ${doc.fileName || ''} ใช่หรือไม่?`)) return;
     if (!demoMode && doc.storagePath) {
@@ -126,7 +126,6 @@ async function render() {
     $('todayFollowupList').innerHTML = followToday.length ? followToday.map(f => `<div class="item"><div><div class="item-title">${escapeHtml(c.debtors[f.debtorId]?.name || '-')} · ${escapeHtml(f.status || f.channel || '-')}</div><div class="item-sub">${escapeHtml(f.result || '-')} · นัด ${formatDate(f.nextFollowupDate)}</div></div></div>`).join('') : '<div class="empty">ยังไม่มีรายการติดตามวันนี้</div>';
     $('debtorList').innerHTML = d.debtors.length ? d.debtors.map(x => {
         const remain = debtRemainingForDebtor(c, x.id);
-
         return `
   <div class="item">
     <div>
@@ -140,26 +139,25 @@ async function render() {
     </div>
 
     <div class="item-actions">
-
       <button
-        class="mini icon-action"
+        class="mini icon-mini"
         title="เอกสารลูกค้า"
         onclick="openDebtorDocuments('${x.id}')">
-        <i class="bi bi-folder2-open"></i>
+        <i class="bi bi-folder2-open"></i> 
       </button>
 
       <button
-        class="mini icon-action"
+        class="mini icon-mini"
         title="เพิ่มหนี้"
         onclick="openDebtForm('${x.id}','${String(x.name).replace(/'/g, "\\'")}')">
         <i class="bi bi-plus-circle"></i>
       </button>
 
       <button
-        class="mini icon-action"
+        class="mini icon-mini"
         title="แก้ไขข้อมูล"
         onclick="openEditDebtor('${x.id}')">
-        <i class="bi bi-pencil-square"></i>
+        <i class="bi bi-pencil-square "></i>
       </button>
 
       ${canDeleteDebtor(x.id, d)
