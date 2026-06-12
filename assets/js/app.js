@@ -908,9 +908,10 @@ const contractSigState = {};
 let editingContractNo = '';
 let editingContractId = '';
 const SIG_IDS = ['sigLender', 'sigBorrower', 'sigWitness1', 'sigWitness2', 'sigWriter'];
+const SIGNATURE_CANVAS_RATIO = 2; // v8.0.1: fixed ratio so PC/Mobile signatures render consistently
 function resizeSignatureCanvas(canvas) {
     if (!canvas) return;
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const ratio = SIGNATURE_CANVAS_RATIO;
     const rect = canvas.getBoundingClientRect();
     const old = canvas.dataset.hasInk === '1' ? canvas.toDataURL('image/png') : '';
     const cssWidth = Math.max(280, Math.floor(rect.width || canvas.clientWidth || 320));
@@ -998,8 +999,8 @@ function restoreSignatureCanvas(id, dataUrl) {
     const ctx = c.getContext('2d');
     const img = new Image();
     img.onload = () => {
-        const cssW = c.width / Math.max(window.devicePixelRatio || 1, 1);
-        const cssH = c.height / Math.max(window.devicePixelRatio || 1, 1);
+        const cssW = c.width / SIGNATURE_CANVAS_RATIO;
+        const cssH = c.height / SIGNATURE_CANVAS_RATIO;
         const scale = Math.min((cssW * .82) / img.width, (cssH * .70) / img.height, 1);
         const w = img.width * scale, h = img.height * scale;
         ctx.drawImage(img, (cssW - w) / 2, (cssH - h) / 2, w, h);
@@ -1414,6 +1415,8 @@ async function ensureContractCanvasFont() {
                 await document.fonts.load('400 42px "THSarabunContract"');
                 await document.fonts.load('600 42px "THSarabunContract"');
                 await document.fonts.ready;
+                // v8.0.1: force one paint cycle after font is ready to prevent mobile fallback-font PDF rendering
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
             }
         } catch (e) {
             console.warn('Contract font load warning', e);
@@ -1697,7 +1700,7 @@ async function generateContract() {
     if (Number.isFinite(interestNum) && interestNum > 15) return toast('อัตราดอกเบี้ยเกิน 15% ต่อปี กรุณาแก้ไขก่อนสร้าง PDF');
     await saveSettings({ profile: { ...p, lenderName: row.lenderName, lenderIdCard: row.lenderIdCard, lenderAddress: row.lenderAddress } });
     try {
-        toast('กำลังสร้าง PDF...');
+        toast('กำลังสร้างเอกสาร...');
         const canvas = await renderContractImageCanvas(row, debtor);
         const { jsPDF } = window.jspdf; const pdf = new jsPDF('p', 'mm', 'a4');
         const img = canvas.toDataURL('image/png');
@@ -1726,7 +1729,7 @@ window.openContractPdf = async id => {
         return;
     }
     try {
-        toast('กำลังสร้าง Preview สัญญาจากข้อมูลที่บันทึกไว้...');
+        toast('กำลังสร้างแบบร่าง จากข้อมูลที่บันทึกไว้...');
         const debtor = debtorForContract(row.debtorId || '');
         const canvas = await renderContractImageCanvas(row, debtor);
         const { jsPDF } = window.jspdf;
