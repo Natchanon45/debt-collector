@@ -13,6 +13,7 @@
         href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;800;900&family=Sarabun:wght@400;600;700&display=swap"
         rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/navigation.css">
     <link rel="stylesheet" href="assets/css/followup.css">
@@ -27,7 +28,8 @@
         <div class="header-actions">
             <button id="themeBtn" class="icon-btn" title="เปลี่ยนโหมด"><i id="themeIcon"
                     class="bi bi-circle-half"></i></button>
-            <button id="updateBtn" class="icon-btn hidden" title="อัปเดตแอป"><i class="bi bi-arrow-clockwise"></i></button>
+            <button id="updateBtn" class="icon-btn hidden" title="อัปเดตแอป"><i
+                    class="bi bi-arrow-clockwise"></i></button>
             <div id="userMenuWrap" class="user-menu-wrap hidden">
                 <button id="userMenuBtn" class="user-avatar" title="บัญชีผู้ใช้"><i class="bi bi-person"></i></button>
                 <ul id="userDropdown" class="user-dropdown hidden">
@@ -68,9 +70,15 @@
                     </div>
                 </section>
                 <section class="dashboard-action-summary">
-                    <button class="dash-summary-card dash-summary-today" type="button" onclick="openDueBucket('today')"><span>ต้องติดตามวันนี้</span><strong id="dashDueTodayAction">0</strong></button>
-                    <button class="dash-summary-card dash-summary-overdue" type="button" onclick="openDueBucket('overdue')"><span>เลยกำหนด</span><strong id="dashOverdueAction">0</strong></button>
-                    <button class="dash-summary-card dash-summary-total" type="button" onclick="openDueBucket('all')"><span>ยอดค้างต้องทวง</span><strong id="dashDueAmountAction">0.00</strong></button>
+                    <button class="dash-summary-card dash-summary-today" type="button"
+                        onclick="openDueBucket('today')"><span>ต้องติดตามวันนี้</span><strong
+                            id="dashDueTodayAction">0</strong></button>
+                    <button class="dash-summary-card dash-summary-overdue" type="button"
+                        onclick="openDueBucket('overdue')"><span>เลยกำหนด</span><strong
+                            id="dashOverdueAction">0</strong></button>
+                    <button class="dash-summary-card dash-summary-total" type="button"
+                        onclick="openDueBucket('all')"><span>ยอดค้างต้องทวง</span><strong
+                            id="dashDueAmountAction">0.00</strong></button>
                 </section>
                 <div class="card">
                     <h3><i class="bi bi-bar-chart"></i> Aging Report</h3>
@@ -87,7 +95,8 @@
                             <h3><i class="bi bi-exclamation-circle"></i> รายการที่ต้องทวงก่อน</h3>
                             <p class="note">แสดงเฉพาะงวดที่ถึงกำหนดชำระแล้ว และยังไม่ชำระเต็มจำนวน</p>
                         </div>
-                        <button class="round-action" type="button" onclick="openAllDueFollowups()"><i class="bi bi-person-lines-fill"></i> ดูทั้งหมด</button>
+                        <button class="round-action" type="button" onclick="openAllDueFollowups()"><i
+                                class="bi bi-person-lines-fill"></i> ดูทั้งหมด</button>
                     </div>
                     <div id="priorityList" class="list dashboard-due-list"></div>
                 </div>
@@ -113,7 +122,8 @@
                                 class="mini mini-danger">ปิด</button>
                         </div>
                         <div class="form-switch-row"><button id="manualCustomerBtn"
-                                class="segment active">กรอกเอง</button><button id="ocrCustomerBtn" class="segment">แสกนบัตร</button></div>
+                                class="segment active">กรอกเอง</button><button id="ocrCustomerBtn"
+                                class="segment">แสกนบัตร</button></div>
                     </div>
 
                     <div id="ocrCustomerBox" class="hidden">
@@ -154,7 +164,8 @@
                         <label>เลขบัตรประชาชน</label><input id="debtorIdCard" class="input" type="tel"
                             inputmode="numeric" autocomplete="off" maxlength="13">
                         <label>วันเดือนปีเกิด</label><input id="debtorBirthDate" class="input" type="date">
-                        <label>บ้านเลขที่ / ที่อยู่ย่อ</label><textarea id="debtorAddress" class="input" placeholder="เช่น 123/45 หมู่ 6"></textarea>
+                        <label>บ้านเลขที่ / ที่อยู่ย่อ</label><textarea id="debtorAddress" class="input"
+                            placeholder="เช่น 123/45 หมู่ 6"></textarea>
                         <label>ตำบล / แขวง</label><input id="debtorSubDistrict" class="input">
                         <label>อำเภอ / เขต</label><input id="debtorDistrict" class="input">
                         <label>จังหวัด</label><input id="debtorProvince" class="input">
@@ -172,7 +183,8 @@
                     <label>เลขบัตรประชาชน</label><input id="editDebtorIdCard" class="input" type="tel"
                         inputmode="numeric" autocomplete="off" maxlength="13">
                     <label>วันเดือนปีเกิด</label><input id="editDebtorBirthDate" class="input" type="date">
-                    <label>บ้านเลขที่ / ที่อยู่ย่อ</label><textarea id="editDebtorAddress" class="input" placeholder="เช่น 123/45 หมู่ 6"></textarea>
+                    <label>บ้านเลขที่ / ที่อยู่ย่อ</label><textarea id="editDebtorAddress" class="input"
+                        placeholder="เช่น 123/45 หมู่ 6"></textarea>
                     <label>ตำบล / แขวง</label><input id="editDebtorSubDistrict" class="input">
                     <label>อำเภอ / เขต</label><input id="editDebtorDistrict" class="input">
                     <label>จังหวัด</label><input id="editDebtorProvince" class="input">
@@ -206,7 +218,8 @@
                     <div class="form-switch-row"><button class="segment active" data-tx="debt"><i
                                 class="bi bi-plus-circle"></i> เพิ่มหนี้</button><button class="segment"
                             data-tx="payment"><i class="bi bi-receipt"></i> ชำระ</button><button class="segment"
-                            data-tx="followup"><i class="bi bi-telephone"></i> ติดตาม <span id="followupSegmentBadge" class="nav-badge hidden">0</span></button></div>
+                            data-tx="followup"><i class="bi bi-telephone"></i> ติดตาม <span id="followupSegmentBadge"
+                                class="nav-badge hidden">0</span></button></div>
                 </div>
 
                 <div id="txDebtBox" class="card tx-box active">
@@ -223,9 +236,11 @@
                         <label>วันครบกำหนดชำระ</label><input id="debtDueDate" class="input" type="date">
                     </div>
                     <div id="debtInstallmentBox" class="hidden">
-                        <label>จำนวนงวด</label><input id="debtInstallmentCount" class="input" type="number" min="2" step="1" placeholder="เช่น 3">
+                        <label>จำนวนงวด</label><input id="debtInstallmentCount" class="input" type="number" min="2"
+                            step="1" placeholder="เช่น 3">
                         <label>วันเริ่มชำระงวดแรก</label><input id="debtFirstDueDate" class="input" type="date">
-                        <label>อัตราดอกเบี้ยต่อปี (%)</label><input id="debtInterestRate" class="input money-input" inputmode="decimal" autocomplete="off" placeholder="ไม่เกิน 15% ต่อปี">
+                        <label>อัตราดอกเบี้ยต่อปี (%)</label><input id="debtInterestRate" class="input money-input"
+                            inputmode="decimal" autocomplete="off" placeholder="ไม่เกิน 15% ต่อปี">
                     </div>
                     <label>ยอดขั้นต่ำที่ต้องทวง</label><input id="debtMinCollect" class="input money-input"
                         inputmode="decimal" autocomplete="off" placeholder="ถ้าไม่กรอก ระบบใช้ยอดต่องวด">
@@ -270,10 +285,14 @@
                         <option>นัดหมาย</option>
                     </select>
                     <div class="quick-followup-row">
-                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('โทรแล้ว')"><i class="bi bi-telephone-outbound"></i> โทรแล้ว</button>
-                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('นัดชำระแล้ว')"><i class="bi bi-calendar-check"></i> นัดชำระแล้ว</button>
-                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('ส่งข้อความแล้ว')"><i class="bi bi-chat-dots"></i> ส่งข้อความแล้ว</button>
-                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('ติดต่อไม่ได้')"><i class="bi bi-telephone-x"></i> ติดต่อไม่ได้</button>
+                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('โทรแล้ว')"><i
+                                class="bi bi-telephone-outbound"></i> โทรแล้ว</button>
+                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('นัดชำระแล้ว')"><i
+                                class="bi bi-calendar-check"></i> นัดชำระแล้ว</button>
+                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('ส่งข้อความแล้ว')"><i
+                                class="bi bi-chat-dots"></i> ส่งข้อความแล้ว</button>
+                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('ติดต่อไม่ได้')"><i
+                                class="bi bi-telephone-x"></i> ติดต่อไม่ได้</button>
                     </div>
                     <label>ผลการติดตาม</label><textarea id="followupResult" class="input"></textarea>
                     <label>นัดติดตามครั้งถัดไป</label><input id="nextFollowupDate" class="input" type="date">
@@ -330,8 +349,10 @@
                                 <label>วันครบกำหนดชำระ</label><input id="contractDueDate" class="input" type="date">
                             </div>
                             <div id="contractInstallmentBox" class="hidden">
-                                <label>จำนวนงวด</label><input id="contractInstallmentCount" class="input" type="number" min="2" step="1" placeholder="เช่น 3">
-                                <label>วันเริ่มชำระงวดแรก</label><input id="contractFirstPaymentDate" class="input" type="date">
+                                <label>จำนวนงวด</label><input id="contractInstallmentCount" class="input" type="number"
+                                    min="2" step="1" placeholder="เช่น 3">
+                                <label>วันเริ่มชำระงวดแรก</label><input id="contractFirstPaymentDate" class="input"
+                                    type="date">
                             </div>
                         </div>
                         <div class="contract-section-box">
@@ -426,7 +447,8 @@
                         class="secondary">ทดสอบ Telegram</button>
                 </div>
                 <div class="card">
-                    <h3><i class="bi bi-phone"></i> PWA Production</h3><button id="enablePushBtn" class="primary"><i class="bi bi-bell"></i> เปิด
+                    <h3><i class="bi bi-phone"></i> PWA Production</h3><button id="enablePushBtn" class="primary"><i
+                            class="bi bi-bell"></i> เปิด
                         Push Notification</button><button id="installBtn"
                         class="secondary hidden">ติดตั้งแอพ</button><button id="clearCacheBtn" class="danger">ล้าง
                         Offline Cache</button>
@@ -445,10 +467,15 @@
             <footer id="appFooter" class="app-footer">Version 8.0.0 • พัฒนาโดย นายณัฐชนน ศรีเปล่ง • © 2026</footer>
 
             <nav class="bottom-nav">
-                <button class="bottom-tab active" data-tab="dashboard"><i class="bi bi-house"></i><span>หน้าหลัก</span></button>
-                <button class="bottom-tab" data-tab="customers"><i class="bi bi-people"></i><span>ลูกหนี้ทั้งหมด</span></button>
-                <button class="bottom-tab" data-tab="contracts"><i class="bi bi-file-earmark-text"></i><span>สัญญา</span></button>
-                <button class="bottom-tab" data-tab="transactions"><i class="bi bi-cash-coin"></i><span>ธุรกรรม</span><em id="bottomFollowupBadge" class="nav-badge hidden">0</em></button>
+                <button class="bottom-tab active" data-tab="dashboard"><i
+                        class="bi bi-house"></i><span>หน้าหลัก</span></button>
+                <button class="bottom-tab" data-tab="customers"><i
+                        class="bi bi-people"></i><span>ลูกหนี้ทั้งหมด</span></button>
+                <button class="bottom-tab" data-tab="contracts"><i
+                        class="bi bi-file-earmark-text"></i><span>สัญญา</span></button>
+                <button class="bottom-tab" data-tab="transactions"><i
+                        class="bi bi-cash-coin"></i><span>ธุรกรรม</span><em id="bottomFollowupBadge"
+                        class="nav-badge hidden">0</em></button>
                 <button class="bottom-tab" data-tab="settings"><i class="bi bi-gear"></i><span>ตั้งค่า</span></button>
             </nav>
         </section>

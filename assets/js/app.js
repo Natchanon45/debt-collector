@@ -19,6 +19,49 @@ function toast(m, type = 'info') {
     clearTimeout(window.t);
     window.t = setTimeout(() => el.classList.remove('show'), 3200);
 }
+
+async function confirmAction(options = {}) {
+    const title = options.title || 'ยืนยันการดำเนินการ';
+    const text = options.text || '';
+    const html = options.html || '';
+    const confirmButtonText = options.confirmButtonText || 'ยืนยัน';
+    const cancelButtonText = options.cancelButtonText || 'ยกเลิก';
+    const icon = options.icon || 'warning';
+    if (window.Swal?.fire) {
+        const swalOptions = {
+            icon,
+            title,
+            showCancelButton: true,
+            confirmButtonText,
+            cancelButtonText,
+            confirmButtonColor: options.confirmButtonColor || '#16a34a',
+            cancelButtonColor: options.cancelButtonColor || '#64748b',
+            reverseButtons: true,
+            heightAuto: false
+        };
+        if (html) swalOptions.html = html;
+        else swalOptions.text = text;
+        if (options.requireCheckbox) {
+            swalOptions.input = 'checkbox';
+            swalOptions.inputValue = 0;
+            swalOptions.inputPlaceholder = options.checkboxText || 'ฉันเข้าใจแล้ว และต้องการดำเนินการต่อ';
+            swalOptions.inputValidator = (result) => !result ? (options.checkboxError || 'กรุณายืนยันก่อนดำเนินการ') : undefined;
+        }
+        const result = await window.Swal.fire(swalOptions);
+        return result.isConfirmed === true;
+    }
+    return window.confirm(`${title}${text ? '\n' + text : ''}`);
+}
+async function alertAction(options = {}) {
+    const title = options.title || '';
+    const text = options.text || '';
+    const icon = options.icon || 'success';
+    if (window.Swal?.fire) {
+        await window.Swal.fire({ icon, title, text, confirmButtonText: options.confirmButtonText || 'ตกลง', confirmButtonColor: options.confirmButtonColor || '#16a34a', heightAuto: false });
+        return;
+    }
+    toast(title || text);
+}
 function getProfileName() {
     const p = (latestData?.settings?.profile) || latestData?.settings || {};
     return p.alias || p.displayName || currentUser?.displayName || currentUser?.email || 'ผู้ใช้งาน';
@@ -66,7 +109,7 @@ async function deleteDocument(docId, opts = {}) {
     if (linkedContract && !opts.force) {
         return toast('เอกสารนี้ผูกกับสัญญา กรุณาลบ/แก้ไขจากหน้าสัญญา เพื่อป้องกันเปิดเอกสารไม่ได้');
     }
-    if (!opts.skipConfirm && !confirm(`ลบเอกสาร ${doc.fileName || ''} ใช่หรือไม่?`)) return;
+    if (!opts.skipConfirm) { const ok = await confirmAction({ title: 'ยืนยันการลบเอกสาร', text: `ลบเอกสาร ${doc.fileName || ''} ใช่หรือไม่?`, confirmButtonText: 'ลบเอกสาร', confirmButtonColor: '#dc2626' }); if (!ok) return; }
     if (!demoMode && doc.storagePath) {
         try { const { ref, deleteObject } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); await deleteObject(ref(storage, doc.storagePath)); } catch (e) { console.warn('Storage delete warning', e) }
     }
@@ -569,7 +612,7 @@ function fillSettings(s) {
 window.openDebtForm = (id, name) => { if ($('transactionDebtorId')) $('transactionDebtorId').value = id; switchTransaction('debt'); switchTab('transactions') };
 window.openDebtorDocuments = id => { if ($('documentDebtorId')) $('documentDebtorId').value = id; if (latestData) fillLists(latestData, calc(latestData)); switchTab('customers'); $('documentDebtorId')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); toast('เลือกเอกสารของลูกหนี้แล้ว'); };
 window.openEditDebtor = id => { const d = (latestData?.debtors || []).find(x => x.id === id); if (!d) return;['Name', 'Phone', 'LineId', 'IdCard', 'BirthDate', 'Address', 'SubDistrict', 'District', 'Province'].forEach(k => { const el = $('editDebtor' + k); if (el) el.value = d[k.charAt(0).toLowerCase() + k.slice(1)] || '' }); $('editDebtorId').value = id; $('editDebtorCard').classList.remove('hidden'); switchTab('customers') };
-window.deleteDebtor = async id => { if (!canDeleteDebtor(id)) return toast('ลบไม่ได้ เพราะลูกหนี้ถูกนำไปใช้งานแล้ว'); const debtor = (latestData?.debtors || []).find(x => x.id === id); if (!confirm(`ลบลูกหนี้ ${debtor?.name || ''} ใช่หรือไม่?`)) return; await deleteRow('debtors', id); toast('ลบลูกหนี้แล้ว'); render() };
+window.deleteDebtor = async id => { if (!canDeleteDebtor(id)) return toast('ลบไม่ได้ เพราะลูกหนี้ถูกนำไปใช้งานแล้ว'); const debtor = (latestData?.debtors || []).find(x => x.id === id); const ok = await confirmAction({ title: 'ยืนยันการลบลูกหนี้', text: `ลบลูกหนี้ ${debtor?.name || ''} ใช่หรือไม่?`, confirmButtonText: 'ลบลูกหนี้', confirmButtonColor: '#dc2626' }); if (!ok) return; await deleteRow('debtors', id); toast('ลบลูกหนี้แล้ว'); render() };
 $('addDebtorBtn').onclick = async () => { const name = $('debtorName').value.trim(); if (!name) return toast('กรุณากรอกชื่อลูกหนี้'); if (isDuplicateIdCard($('debtorIdCard').value)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', { name, phone: $('debtorPhone').value.trim(), lineId: $('debtorLineId').value.trim(), idCard: $('debtorIdCard').value.trim(), birthDate: $('debtorBirthDate')?.value || '', address: $('debtorAddress').value.trim(), subDistrict: $('debtorSubDistrict')?.value.trim() || '', district: $('debtorDistrict').value.trim(), province: $('debtorProvince').value.trim() });['debtorName', 'debtorPhone', 'debtorLineId', 'debtorIdCard', 'debtorBirthDate', 'debtorAddress', 'debtorSubDistrict', 'debtorDistrict', 'debtorProvince'].forEach(id => { if ($(id)) $(id).value = '' }); toast('เพิ่มลูกหนี้สำเร็จ'); hideCustomerForm(); switchTab('customers'); render() };
 $('saveEditDebtorBtn').onclick = async () => { const id = $('editDebtorId').value; if (!id) return; if (isDuplicateIdCard($('editDebtorIdCard').value, id)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await updateRow('debtors', id, { name: $('editDebtorName').value.trim(), phone: $('editDebtorPhone').value.trim(), lineId: $('editDebtorLineId').value.trim(), idCard: $('editDebtorIdCard').value.trim(), birthDate: $('editDebtorBirthDate')?.value || '', address: $('editDebtorAddress').value.trim(), subDistrict: $('editDebtorSubDistrict')?.value.trim() || '', district: $('editDebtorDistrict').value.trim(), province: $('editDebtorProvince').value.trim() }); $('editDebtorCard').classList.add('hidden'); toast('แก้ไขข้อมูลลูกหนี้แล้ว'); render() };
 $('cancelEditDebtorBtn').onclick = () => $('editDebtorCard').classList.add('hidden');
@@ -892,8 +935,30 @@ document.addEventListener('click', e => {
         const targetTab = nav.dataset.tab;
         if (targetTab && $('tab-' + targetTab)) switchTab(targetTab);
     }
-}); $('demoBtn').onclick = () => { demoMode = true; currentUser = { uid: 'demo' }; $('authView').classList.remove('active'); $('appView').classList.add('active'); setUserDisplay('Demo Mode'); toast('Demo Mode'); render() };
-async function initFirebase() { if (!firebaseReady) return; const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'); const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'); const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const { getStorage } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); storage = getStorage(app); $('loginBtn').onclick = async () => { try { await signInWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('registerBtn').onclick = async () => { try { await createUserWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('logoutBtn').onclick = async () => { await signOut(auth); location.reload() }; onAuthStateChanged(auth, u => { if (u) { currentUser = u; demoMode = false; $('authView').classList.remove('active'); $('appView').classList.add('active'); setUserDisplay(u.email || u.displayName || 'ผู้ใช้ Firebase'); render() } else { setUserDisplay('') } }) } if (!firebaseReady) { $('loginBtn').onclick = $('demoBtn').onclick; $('registerBtn').onclick = $('demoBtn').onclick }
+}); $('demoBtn').onclick = async () => {
+    demoMode = true;
+    currentUser = null;
+    latestData = null;
+    try { if (auth?.currentUser) await auth.signOut(); } catch (e) { console.warn('Demo signOut skipped', e); }
+    currentUser = { uid: 'demo', email: 'demo@local' };
+    $('authView').classList.remove('active');
+    $('appView').classList.add('active');
+    setUserDisplay('Demo Mode');
+    toast('Demo Mode');
+    await render();
+};
+async function initFirebase() { if (!firebaseReady) return; const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'); const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'); const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const { getStorage } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); storage = getStorage(app); $('loginBtn').onclick = async () => { try { await signInWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('registerBtn').onclick = async () => { try { await createUserWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('logoutBtn').onclick = async () => { await signOut(auth); location.reload() }; onAuthStateChanged(auth, u => {
+        if (demoMode) {
+            currentUser = { uid: 'demo', email: 'demo@local' };
+            $('authView').classList.remove('active');
+            $('appView').classList.add('active');
+            setUserDisplay('Demo Mode');
+            render();
+            return;
+        }
+        if (u) { currentUser = u; demoMode = false; $('authView').classList.remove('active'); $('appView').classList.add('active'); setUserDisplay(u.email || u.displayName || 'ผู้ใช้ Firebase'); render() }
+        else { currentUser = null; setUserDisplay(''); $('authView').classList.add('active'); $('appView').classList.remove('active') }
+    }) } if (!firebaseReady) { $('loginBtn').onclick = $('demoBtn').onclick; $('registerBtn').onclick = $('demoBtn').onclick }
 const exportPayload = async () => ({ exportedAt: new Date().toISOString(), exportedDate: formatDate(today()), data: await getData() }); $('exportJsonBtn').onclick = async () => { const payload = await exportPayload(); download(JSON.stringify(payload, null, 2), `debt-backup-${payload.exportedDate.replace(/\//g, '-')}.json`, 'application/json') }; $('exportTxtBtn').onclick = async () => { const payload = await exportPayload(); download('DEBT_BACKUP\n' + JSON.stringify(payload, null, 2), `debt-backup-${payload.exportedDate.replace(/\//g, '-')}.txt`, 'text/plain') }; function download(c, n, t) { let a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([c], { type: t })); a.download = n; a.click() } $('importFile').onchange = async e => { let f = e.target.files[0]; if (!f) return; let txt = (await f.text()).replace(/^DEBT_BACKUP\s*/, '').trim(); setLocal(JSON.parse(txt).data || JSON.parse(txt)); demoMode = true; toast('Import เข้า Demo'); render() };
 
 if ($('userMenuBtn')) $('userMenuBtn').onclick = (e) => { e.stopPropagation(); $('userDropdown').classList.toggle('hidden') };
@@ -949,15 +1014,17 @@ function hasSignature(id) { return $(id)?.dataset.hasInk === '1'; }
 function getSignatureData(id) { const c = $(id); return c && hasSignature(id) ? c.toDataURL('image/png') : ''; }
 const SIGNATURE_KEYS = { sigBorrower: 'borrower', sigLender: 'lender', sigWitness1: 'witness1', sigWitness2: 'witness2', sigWriter: 'writer' };
 const SIGNATURE_IDS_BY_KEY = Object.fromEntries(Object.entries(SIGNATURE_KEYS).map(([id, key]) => [key, id]));
+// v8.0.12: keep every signature ink box on the same X axis for a cleaner PDF layout.
+const SIGNATURE_PDF_X = 610;
 const SIGNATURE_PDF_MAP = {
     // Template V2.2 coordinates (1447x2048 master scale).
     // Ink is drawn on the same row as the printed signature line.
     // Names are drawn immediately to the right of the ink, still before the role label.
-    borrower: { id: 'sigBorrower', x: 585, y: 1458, w: 118, h: 40 },
-    lender: { id: 'sigLender', x: 505, y: 1509, w: 118, h: 40 },
-    witness1: { id: 'sigWitness1', x: 610, y: 1663, w: 118, h: 40 },
-    witness2: { id: 'sigWitness2', x: 610, y: 1715, w: 118, h: 40 },
-    writer: { id: 'sigWriter', x: 610, y: 1766, w: 118, h: 40 }
+    borrower: { id: 'sigBorrower', x: SIGNATURE_PDF_X, y: 1458, w: 118, h: 40 },
+    lender: { id: 'sigLender', x: SIGNATURE_PDF_X, y: 1509, w: 118, h: 40 },
+    witness1: { id: 'sigWitness1', x: SIGNATURE_PDF_X, y: 1663, w: 118, h: 40 },
+    witness2: { id: 'sigWitness2', x: SIGNATURE_PDF_X, y: 1715, w: 118, h: 40 },
+    writer: { id: 'sigWriter', x: SIGNATURE_PDF_X, y: 1766, w: 118, h: 40 }
 };
 function initContractPads() { SIG_IDS.forEach(bindSignaturePad); }
 function cropSignatureCanvas(canvas, padding = 12) {
@@ -1033,7 +1100,7 @@ function contractSignedCount(row = {}) {
 }
 function contractRequiredSignatureCount(row = {}) { return contractRequiredSignatureKeys(row).length; }
 function isContractFullySigned(row = {}) { return contractSignedCount(row) >= contractRequiredSignatureCount(row); }
-function isContractLocked(row = {}) { return row.status === 'locked' || row.locked === true || isContractFullySigned(row); }
+function isContractLocked(row = {}) { return row.status === 'locked' || row.locked === true; }
 
 function readContractFormRow(includeSignatures = false) {
     const debtor = debtorForContract($('contractDebtorId')?.value || '');
@@ -1073,8 +1140,8 @@ function readContractFormRow(includeSignatures = false) {
     }
     row.requiredSignatureCount = contractRequiredSignatureCount(row);
     row.signatureCount = contractSignedCount(row);
-    row.status = isContractFullySigned(row) ? 'locked' : (row.signatureCount ? 'partial' : 'draft');
-    row.locked = isContractFullySigned(row);
+    row.status = row.signatureCount ? (isContractFullySigned(row) ? 'ready_to_lock' : 'partial') : 'draft';
+    row.locked = false;
     return row;
 }
 function updateContractSmartUi() {
@@ -1140,12 +1207,13 @@ function renderContractList(d, c) {
     if (!$('contractList')) return;
     const list = (d.contracts || []).sort((a, b) => String(b.createdDate || '').localeCompare(String(a.createdDate || '')));
     $('contractList').innerHTML = list.length ? list.map(x => {
-        const signed = contractSignedCount(x), required = contractRequiredSignatureCount(x), complete = isContractLocked(x);
+        const signed = contractSignedCount(x), required = contractRequiredSignatureCount(x), complete = isContractLocked(x), fullySigned = isContractFullySigned(x);
         const debtStatus = x.autoDebtCreated ? ' · สร้างก้อนหนี้แล้ว' : '';
-        const status = complete ? `${signed}/${required} : ลงลายเซ็นครบแล้ว / ล็อกสัญญาแล้ว${debtStatus}` : `${signed}/${required} : ยังแก้ไขได้อยู่`;
+        const status = complete ? `${signed}/${required} : ล็อกสัญญาแล้ว${debtStatus}` : (fullySigned ? `${signed}/${required} : ลงลายเซ็นครบแล้ว / รอล็อกเอกสาร` : `${signed}/${required} : ยังแก้ไขได้อยู่`);
         const canDelete = signed === 0 && !complete;
+        const canLock = fullySigned && !complete;
         const displayAmount = contractDisplayAmount(x, c);
-        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${escapeHtml(c.debtors[x.debtorId]?.name || x.borrowerName || '-')} · ${money(displayAmount)}</div><div class="item-sub">${status} · วันที่ ${formatDate(x.contractDate || x.createdDate)} · ครบกำหนด ${formatDate(x.dueDate)} · ${escapeHtml(x.fileName || '')}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิด PDF" aria-label="เปิด PDF" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
+        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${escapeHtml(c.debtors[x.debtorId]?.name || x.borrowerName || '-')} · ${money(displayAmount)}</div><div class="item-sub">${status} · วันที่ ${formatDate(x.contractDate || x.createdDate)} · ครบกำหนด ${formatDate(x.dueDate)} · ${escapeHtml(x.fileName || '')}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิด PDF" aria-label="เปิด PDF" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${canLock ? `<button class="icon-action icon-lock" type="button" title="ล็อกเอกสาร" aria-label="ล็อกเอกสาร" onclick="lockContractDocument('${x.id}')"><i class="bi bi-lock-fill"></i></button>` : ''}${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
     }).join('') : '<div class="empty">ยังไม่มีสัญญากู้ยืม</div>';
 }
 function bahtTextFallback(n) {
@@ -1183,6 +1251,33 @@ function bahtTextFallback(n) {
     const satangNum = Number(satang);
     return satangNum ? b + readInt(satang) + 'สตางค์' : b + 'ถ้วน';
 }
+
+function contractAmountTextParts(n) {
+    const value = Number(String(n ?? 0).replace(/,/g, ''));
+    const safeValue = Number.isFinite(value) ? value : 0;
+    const fixed = safeValue.toFixed(2);
+    const [baht, satang] = fixed.split('.');
+    const full = bahtTextFallback(safeValue);
+    const satangNum = Number(satang || '0');
+    const marker = 'บาท';
+    const p = full.indexOf(marker);
+    let bahtText = '';
+    let satangText = '';
+    if (p >= 0) {
+        bahtText = full.slice(0, p).trim(); // ไม่ใส่คำว่า บาท เพราะฟอร์มมีคำว่า บาท อยู่แล้ว
+        const afterBaht = full.slice(p + marker.length).trim();
+        satangText = satangNum > 0 ? afterBaht.replace(/สตางค์$/, '').trim() : 'ถ้วน';
+    } else {
+        bahtText = full.replace(/บาทถ้วน$/, '').replace(/บาท$/, '').trim();
+        satangText = satangNum > 0 ? '' : 'ถ้วน';
+    }
+    return {
+        number: safeValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+        bahtText: bahtText || '-',
+        satangText: satangText || (satangNum > 0 ? '-' : 'ถ้วน')
+    };
+}
+
 function nextContractNo() {
     const d = new Date();
     const prefix = String(d.getFullYear()) + String(d.getMonth() + 1).padStart(2, '0');
@@ -1314,7 +1409,7 @@ async function ensureAutoDebtForLockedContract(contract) {
     if (latestData?.contracts) {
         latestData.contracts = latestData.contracts.map(x => x.id === contract.id ? { ...x, status: 'locked', locked: true, autoDebtCreated: true, debtGeneratedDate: today(), installmentCount: installments.length, totalDebtAmount } : x);
     }
-    toast(`ลงลายเซ็นครบแล้ว ระบบล็อกสัญญาและสร้างก้อนหนี้ ${installments.length} งวดแล้ว`);
+    toast(`ล็อกเอกสารแล้ว และสร้างก้อนหนี้ ${installments.length} งวดแล้ว`);
     return true;
 }
 
@@ -1581,10 +1676,10 @@ async function renderContractImageCanvas(row, debtor) {
     const province = debtor.province || parsedAddress.province || '';
     const borrowerNameWithId = fullId(debtor.idCard) ? `${borrowerName} เลขประจำตัวประชาชน ${fullId(debtor.idCard)}`.replace(/\s+/g, ' ').trim() : borrowerName;
     const lenderNameWithId = fullId(row.lenderIdCard) ? `${lenderName} เลขประจำตัวประชาชน ${fullId(row.lenderIdCard)}`.replace(/\s+/g, ' ').trim() : lenderName;
-    const amountParts = money(row.amount).split('.');
-    const amountInteger = amountParts[0] || '-';
-    const amountSatang = amountParts[1] || '00';
-    const amountThai = bahtTextFallback(row.amount).replace(/บาทถ้วน$/, '').replace(/บาท$/, '') || '-';
+    const amountParts = contractAmountTextParts(row.amount);
+    const amountInteger = amountParts.number || '-';
+    const amountSatang = amountParts.satangText || '';
+    const amountThai = amountParts.bahtText || '-';
 
     // Template V2 coordinate map: แก้ตำแหน่ง/ขนาดที่นี่จุดเดียว
     // พิกัด x/y ใช้สเกลเดียวกับ PNG master 1447x2048
@@ -1595,10 +1690,10 @@ async function renderContractImageCanvas(row, debtor) {
     const FS_SIG_NAME = 43;
     // v8.0.2: compensate template-field visual centering for mobile canvas/font rendering.
     // Coordinates are in the 1447x2048 template coordinate map.
-    // v8.0.4: Mobile canvas text metrics still rendered these fields too far right.
-    // Use fixed negative offsets in the template coordinate map; do not depend on devicePixelRatio.
-    const PDF_FIELD_RIGHT_NUDGE = -18;
-    const PDF_MONTH_RIGHT_NUDGE = -22;
+    // v8.0.5: top borrower/lender name fields must start immediately after the printed form text.
+    // Do not center these fields, because mobile Canvas text metrics can visually push centered Thai text to the right.
+    const PDF_FIELD_RIGHT_NUDGE = -12;
+    const PDF_MONTH_RIGHT_NUDGE = 0;
     const F = {
         header: {
             contractNo: { x: 248, y: 166, maxWidth: 359, size: FS, minSize: 28, align: 'left' },
@@ -1608,7 +1703,7 @@ async function renderContractImageCanvas(row, debtor) {
             year: { x: 1116, y: 217, maxWidth: 154, size: FS, minSize: 28, align: 'center' }
         },
         borrower: {
-            name: { x: 435 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 520, size: FS, minSize: 32, align: 'center' },
+            name: { x: 485, y: 268, maxWidth: 470, size: FS, minSize: 32, align: 'left', indent: 0 },
             age: { x: 1000 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 55, size: FS_SMALL, minSize: 30, align: 'center' },
             houseNo: { x: 1178 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 105, size: FS_SMALL, minSize: 30, align: 'center' },
             subDistrict: { x: 225 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' },
@@ -1616,14 +1711,20 @@ async function renderContractImageCanvas(row, debtor) {
             province: { x: 810 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 340, size: FS_SMALL, minSize: 30, align: 'center' }
         },
         lender: {
-            name: { x: 315 + PDF_FIELD_RIGHT_NUDGE, y: 371, maxWidth: 760, size: FS, minSize: 32, align: 'center' }
+            name: { x: 370, y: 371, maxWidth: 705, size: FS, minSize: 32, align: 'left', indent: 0 }
         },
         clause1: {
             borrowerLine: { x: 405, y: 422, maxWidth: 730, size: FS_INLINE_ID, minSize: 30, align: 'left', indent: 0 },
             lenderLine: { x: 182, y: 473, maxWidth: 900, size: FS_INLINE_ID, minSize: 30, align: 'left', indent: 0 },
-            amount: { x: 175, y: 525, maxWidth: 454, size: FS, minSize: 32, align: 'right', rightPad: 8 },
-            amountText: { x: 677, y: 525, maxWidth: 298, size: FS, minSize: 32, align: 'center' },
-            satang: { x: 1031, y: 525, maxWidth: 202, size: FS, minSize: 32, align: 'center' }
+            // v8.0.11: number + Thai amount + satang/full text are on the SAME printed money line.
+            // Do not use a second-line Y for the Thai amount text. Only X changes by field.
+            amount: { x: 175, y: 525, maxWidth: 450, size: FS, minSize: 32, align: 'right', rightPad: 4 },
+            // Starts after the first printed "บาท" label and auto-shrinks to fit before the next "บาท" label.
+            amountText: { x: 685, y: 525, maxWidth: 340, size: 30, minSize: 18, align: 'left', indent: 0 },
+            // If there are satang, write Thai satang text right-aligned close to the printed "สต." label.
+            satang: { x: 1031, y: 525, maxWidth: 202, size: 30, minSize: 18, align: 'right', rightPad: 0 },
+            // If the amount is .00, "ถ้วน" starts immediately after the second printed "บาท" label.
+            satangFull: { x: 1033, y: 525, maxWidth: 145, size: 30, minSize: 18, align: 'left', indent: 0 }
         },
         clause3: {
             day: { x: 223, y: 935, maxWidth: 118, size: FS, minSize: 32, align: 'center' },
@@ -1634,8 +1735,8 @@ async function renderContractImageCanvas(row, debtor) {
             interest: { x: 545, y: 986, maxWidth: 645, size: FS, minSize: 32, align: 'center' }
         },
         signatures: {
-            borrowerName: { x: 700, y: 1494, maxWidth: 360, size: FS_SIG_NAME, minSize: 28, align: 'left' },
-            lenderName: { x: 650, y: 1545, maxWidth: 330, size: FS_SIG_NAME, minSize: 28, align: 'left' },
+            borrowerName: { x: 760, y: 1494, maxWidth: 300, size: FS_SIG_NAME, minSize: 28, align: 'left' },
+            lenderName: { x: 760, y: 1545, maxWidth: 300, size: FS_SIG_NAME, minSize: 28, align: 'left' },
             witness1Name: { x: 760, y: 1700, maxWidth: 300, size: FS_SIG_NAME, minSize: 28, align: 'left' },
             witness2Name: { x: 760, y: 1752, maxWidth: 300, size: FS_SIG_NAME, minSize: 28, align: 'left' },
             writerName: { x: 760, y: 1803, maxWidth: 300, size: FS_SIG_NAME, minSize: 28, align: 'left' }
@@ -1666,7 +1767,7 @@ async function renderContractImageCanvas(row, debtor) {
     drawF(lenderNameWithId, F.clause1.lenderLine);
     drawF(amountInteger, F.clause1.amount);
     drawF(amountThai, F.clause1.amountText);
-    drawF(amountSatang, F.clause1.satang);
+    drawF(amountSatang, amountSatang === 'ถ้วน' ? F.clause1.satangFull : F.clause1.satang);
 
     // Clause 2 - collateral can flow across almost three full lines.
     drawContractWrapSegments(ctx, collateral, [
@@ -1687,11 +1788,11 @@ async function renderContractImageCanvas(row, debtor) {
     }
 
     // Signature names: same row as the ink, directly to the right of the signature.
-    drawF(`(${borrowerName})`, F.signatures.borrowerName);
-    drawF(`(${lenderName})`, F.signatures.lenderName);
-    drawF(`(${row.witness1Name || '-'})`, F.signatures.witness1Name);
-    drawF(`(${row.witness2Name || '-'})`, F.signatures.witness2Name);
-    drawF(`(${row.writerName || lenderName})`, F.signatures.writerName);
+    drawF(`( ${borrowerName} )`, F.signatures.borrowerName);
+    drawF(`( ${lenderName} )`, F.signatures.lenderName);
+    drawF(`( ${row.witness1Name || '-'} )`, F.signatures.witness1Name);
+    drawF(`( ${row.witness2Name || '-'} )`, F.signatures.witness2Name);
+    drawF(`( ${row.writerName || lenderName} )`, F.signatures.writerName);
     return canvas;
 }
 
@@ -1713,7 +1814,6 @@ async function generateContract() {
         pdf.addImage(img, 'PNG', 0, 0, 210, 297);
         const blob = pdf.output('blob');
         const savedContract = await saveContractPdf(row, blob);
-        await ensureAutoDebtForLockedContract(savedContract);
         toast(editingContractId ? 'บันทึกแก้ไขสัญญาแล้ว' : 'สร้างและบันทึกสัญญาแล้ว'); editingContractId = ''; editingContractNo = ''; $('contractFormCard').classList.add('hidden'); render(); switchTab('contracts');
     } catch (e) { console.error(e); toast('สร้างสัญญาไม่สำเร็จ: ' + e.message); }
 }
@@ -1724,6 +1824,36 @@ bindContractSmartUi();
 document.querySelectorAll('[data-clear-sig]').forEach(b => b.onclick = () => clearSignature(b.dataset.clearSig));
 window.addEventListener('resize', () => { if (!$('contractFormCard')?.classList.contains('hidden')) SIG_IDS.forEach(id => resizeSignatureCanvas($(id))); });
 
+
+
+window.lockContractDocument = async id => {
+    const row = (latestData?.contracts || []).find(x => x.id === id);
+    if (!row) return toast('ไม่พบสัญญา');
+    if (isContractLocked(row)) return toast('เอกสารถูกล็อกแล้ว');
+    if (!isContractFullySigned(row)) return toast('ล็อกไม่ได้ กรุณาลงลายเซ็นให้ครบก่อน');
+    const ok = await confirmAction({
+        title: 'ยืนยันการล็อกเอกสาร',
+        html: `<div style="line-height:1.7;text-align:center">
+            คุณต้องการยืนยันการล็อกเอกสารหรือไม่<br>
+            <span style="color:#dc2626;font-weight:900">หลังดำเนินการนี้ จะไม่สามารถแก้ไขข้อมูลใดๆ ได้อีก</span><br>
+            กรุณาตรวจสอบความถูกต้องก่อนยืนยัน
+        </div>`,
+        requireCheckbox: true,
+        checkboxText: 'ฉันเข้าใจแล้ว และต้องการล็อกเอกสาร',
+        checkboxError: 'กรุณายืนยันก่อนล็อกเอกสาร',
+        confirmButtonText: 'ยืนยันการล็อก',
+        cancelButtonText: 'ยกเลิก',
+        confirmButtonColor: '#dc2626'
+    });
+    if (!ok) return toast('ยกเลิกการล็อกเอกสาร');
+    await updateRow('contracts', id, { status: 'locked', locked: true, lockedDate: today(), updatedDate: today() });
+    latestData = await getData();
+    const lockedRow = (latestData.contracts || []).find(x => x.id === id) || { ...row, status: 'locked', locked: true };
+    await ensureAutoDebtForLockedContract(lockedRow);
+    latestData = await getData();
+    await alertAction({ icon: 'success', title: 'ล็อกเอกสารสำเร็จ', text: 'เอกสารถูกล็อกเรียบร้อยแล้ว ไม่สามารถแก้ไขข้อมูลใดๆ ได้อีก' });
+    render();
+};
 
 window.openContractPdf = async id => {
     const row = (latestData?.contracts || []).find(x => x.id === id);
@@ -1767,7 +1897,7 @@ window.deleteContractDraft = async id => {
     if (!row) return toast('ไม่พบสัญญา');
     if (isContractLocked(row)) return toast('ลบไม่ได้ เพราะสัญญาลงลายเซ็นครบและถูกล็อกแล้ว');
     if (contractSignedCount(row) > 0) return toast('ลบไม่ได้ เพราะมีลายเซ็นแล้ว แต่ยังสามารถแก้ไขได้');
-    if (!confirm('ลบแบบร่างสัญญานี้ใช่หรือไม่?')) return;
+    const ok = await confirmAction({ title: 'ยืนยันการลบแบบร่างสัญญา', text: 'ลบแบบร่างสัญญานี้ใช่หรือไม่?', confirmButtonText: 'ลบแบบร่าง', confirmButtonColor: '#dc2626' }); if (!ok) return;
     if (row.documentId) await deleteDocument(row.documentId, { force: true, skipConfirm: true });
     await deleteRow('contracts', id);
     toast('ลบแบบร่างสัญญาแล้ว');

@@ -2364,6 +2364,8 @@ label.file i {
 .round-action,
 .segment,
 .file {
+    position: relative;
+    margin: 2px 0;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -3394,4 +3396,39 @@ textarea,
 .print-area,
 .print-area * {
     font-family: 'THSarabunContract', 'TH Sarabun New', 'Sarabun', Tahoma, sans-serif !important;
+}
+
+/* v8.0.6 Contract manual lock action */
+.icon-lock {
+    background: rgba(22, 163, 74, .16) !important;
+    color: #15803d !important;
+}
+
+
+/* ===== v8.0.12 Hotfix: amount text alignment + balanced lock icon ===== */
+.icon-lock i {
+    font-size: 18px !important;
+    line-height: 1 !important;
+    transform: scaleX(1.18) scaleY(.96) !important;
+    transform-origin: center center !important;
+}
+
+.icon-lock {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+}
+
+@media(max-width:560px) {
+    .icon-lock {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        min-height: 38px !important;
+    }
+
+    .icon-lock i {
+        font-size: 17px !important;
+    }
 }
