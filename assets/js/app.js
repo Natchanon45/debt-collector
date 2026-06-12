@@ -1483,7 +1483,7 @@ function drawContractWrapSegments(ctx, text, segments, opt = {}) {
     const lines = [];
     let current = '';
     let segIndex = 0;
-    setupContractCanvasFont(ctx, size, opt.bold === true);
+    setupContractCanvasFont(ctx, size, opt.bold !== false);
     const maxPxFor = i => (segments[Math.min(i, segments.length - 1)].maxWidth || 9999) * (2480 / 1447);
     for (const word of words) {
         const test = current ? current + ' ' + word : word;
@@ -1499,14 +1499,14 @@ function drawContractWrapSegments(ctx, text, segments, opt = {}) {
     if (current && lines.length < segments.length) lines.push(current);
     lines.forEach((line, i) => {
         const seg = segments[i];
-        drawContractText(ctx, line, seg.x, seg.y, { maxWidth: seg.maxWidth, size, minSize, align: seg.align || opt.align || 'left', bold: opt.bold === true });
+        drawContractText(ctx, line, seg.x, seg.y, { maxWidth: seg.maxWidth, size, minSize, align: seg.align || opt.align || 'left', bold: opt.bold !== false });
     });
 }
 
 function drawContractInlineWrap(ctx, text, firstX, firstY, firstMaxWidth, nextX, nextY, nextMaxWidth, lineHeight = 34, opt = {}) {
     const words = String(text || '-').trim().split(/\s+/).filter(Boolean);
     const size = opt.size || 38;
-    setupContractCanvasFont(ctx, size, opt.bold === true);
+    setupContractCanvasFont(ctx, size, opt.bold !== false);
     const firstPxMax = firstMaxWidth * (2480 / 1447);
     const nextPxMax = nextMaxWidth * (2480 / 1447);
     const lines = [];
@@ -1593,10 +1593,10 @@ async function renderContractImageCanvas(row, debtor) {
     const FS_INLINE_ID = 44;
     const FS_COLLATERAL = 44;
     const FS_SIG_NAME = 43;
-    // v8.0.2: compensate template-field visual centering for mobile canvas/font rendering.
-    // Coordinates are in the 1447x2048 template coordinate map.
-    const PDF_FIELD_RIGHT_NUDGE = 12;
-    const PDF_MONTH_RIGHT_NUDGE = 8;
+    // v8.0.3: use the original template coordinates for every device.
+    // Do not compensate by device; mobile drift was caused by extra nudge values.
+    const PDF_FIELD_RIGHT_NUDGE = 0; // v8.0.3: no device-specific nudge; fixed coordinates must match PC and Mobile
+    const PDF_MONTH_RIGHT_NUDGE = 0;
     const F = {
         header: {
             contractNo: { x: 248, y: 166, maxWidth: 359, size: FS, minSize: 28, align: 'left' },
@@ -1671,7 +1671,7 @@ async function renderContractImageCanvas(row, debtor) {
         { x: 779, y: 627, maxWidth: 490, align: 'left' },
         { x: 182, y: 678, maxWidth: 1088, align: 'left' },
         { x: 182, y: 730, maxWidth: 1088, align: 'left' }
-    ], { size: FS_COLLATERAL, minSize: 30, align: 'left' });
+    ], { size: FS_COLLATERAL, minSize: 30, align: 'left', bold: true });
 
     // Clause 3 and 4
     drawF(ddate.day || '-', F.clause3.day);
