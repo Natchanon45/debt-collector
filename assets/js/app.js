@@ -1692,8 +1692,13 @@ async function renderContractImageCanvas(row, debtor) {
     // Coordinates are in the 1447x2048 template coordinate map.
     // v8.0.5: top borrower/lender name fields must start immediately after the printed form text.
     // Do not center these fields, because mobile Canvas text metrics can visually push centered Thai text to the right.
+    const isPdfMobileRender = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
     const PDF_FIELD_RIGHT_NUDGE = -12;
-    const PDF_MONTH_RIGHT_NUDGE = 0;
+    // v8.0.14: Mobile Canvas text metrics push some centered Thai fields to the right.
+    // Keep PC-stable coordinates unchanged, and only compensate when rendering on Mobile.
+    const PDF_MONTH_RIGHT_NUDGE = isPdfMobileRender ? -15 : 0;
+    const PDF_SUBDISTRICT_MOBILE_NUDGE = isPdfMobileRender ? -15 : 0;
+    const PDF_SATANG_MOBILE_NUDGE = isPdfMobileRender ? -25 : 0;
     const F = {
         header: {
             contractNo: { x: 248, y: 166, maxWidth: 359, size: FS, minSize: 28, align: 'left' },
@@ -1706,7 +1711,7 @@ async function renderContractImageCanvas(row, debtor) {
             name: { x: 485, y: 268, maxWidth: 470, size: FS, minSize: 32, align: 'left', indent: 0 },
             age: { x: 1000 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 55, size: FS_SMALL, minSize: 30, align: 'center' },
             houseNo: { x: 1178 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 105, size: FS_SMALL, minSize: 30, align: 'center' },
-            subDistrict: { x: 225 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' },
+            subDistrict: { x: 225 + PDF_FIELD_RIGHT_NUDGE + PDF_SUBDISTRICT_MOBILE_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' },
             district: { x: 485 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'center' },
             province: { x: 810 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 340, size: FS_SMALL, minSize: 30, align: 'center' }
         },
@@ -1722,7 +1727,7 @@ async function renderContractImageCanvas(row, debtor) {
             // Starts after the first printed "บาท" label and auto-shrinks to fit before the next "บาท" label.
             amountText: { x: 685, y: 525, maxWidth: 340, size: 30, minSize: 18, align: 'left', indent: 0 },
             // If there are satang, write Thai satang text right-aligned close to the printed "สต." label.
-            satang: { x: 1031, y: 525, maxWidth: 202, size: 30, minSize: 18, align: 'right', rightPad: 0 },
+            satang: { x: 1031 + PDF_SATANG_MOBILE_NUDGE, y: 525, maxWidth: 202, size: 30, minSize: 18, align: 'right', rightPad: 0 },
             // If the amount is .00, "ถ้วน" starts immediately after the second printed "บาท" label.
             satangFull: { x: 1033, y: 525, maxWidth: 145, size: 30, minSize: 18, align: 'left', indent: 0 }
         },
