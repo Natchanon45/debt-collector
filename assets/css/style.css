@@ -2869,7 +2869,7 @@ label:not(.dropzone):not(.file) {
     padding: 4px 9px !important;
     border-radius: 999px !important;
     background: var(--field-label-bg) !important;
-    color: var(--field-label-text) !important;
+    /* color: var(--field-label-text) !important; */
     font-size: 12px !important;
     line-height: 1.25 !important;
     font-weight: 500 !important;
