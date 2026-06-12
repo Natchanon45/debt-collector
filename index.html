@@ -14,6 +14,8 @@
         rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/navigation.css">
+    <link rel="stylesheet" href="assets/css/followup.css">
 </head>
 
 <body>
@@ -256,6 +258,7 @@
                         <option>นัดชำระแล้ว</option>
                         <option>ส่งข้อความแล้ว</option>
                         <option>ส่งหนังสือแล้ว</option>
+                        <option>ไม่สามารถติดต่อได้</option>
                         <option>ปิดบัญชีแล้ว</option>
                     </select>
                     <label>ช่องทาง</label><select id="followupChannel" class="input">
@@ -264,11 +267,13 @@
                         <option>SMS</option>
                         <option>Email</option>
                         <option>พบตัว</option>
+                        <option>นัดหมาย</option>
                     </select>
                     <div class="quick-followup-row">
                         <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('โทรแล้ว')"><i class="bi bi-telephone-outbound"></i> โทรแล้ว</button>
                         <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('นัดชำระแล้ว')"><i class="bi bi-calendar-check"></i> นัดชำระแล้ว</button>
                         <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('ส่งข้อความแล้ว')"><i class="bi bi-chat-dots"></i> ส่งข้อความแล้ว</button>
+                        <button type="button" class="quick-followup-btn" onclick="setFollowupQuick('ติดต่อไม่ได้')"><i class="bi bi-telephone-x"></i> ติดต่อไม่ได้</button>
                     </div>
                     <label>ผลการติดตาม</label><textarea id="followupResult" class="input"></textarea>
                     <label>นัดติดตามครั้งถัดไป</label><input id="nextFollowupDate" class="input" type="date">
@@ -281,6 +286,7 @@
                         <option>นัดชำระแล้ว</option>
                         <option>ส่งข้อความแล้ว</option>
                         <option>ส่งหนังสือแล้ว</option>
+                        <option>ไม่สามารถติดต่อได้</option>
                         <option>ปิดบัญชีแล้ว</option>
                     </select>
                     <div id="followupList" class="list"></div>
@@ -436,7 +442,7 @@
                 </div>
             </section>
 
-            <footer id="appFooter" class="app-footer">Version 7.9.4 • พัฒนาโดย นายณัฐชนน ศรีเปล่ง • © 2026</footer>
+            <footer id="appFooter" class="app-footer">Version 8.0.0 • พัฒนาโดย นายณัฐชนน ศรีเปล่ง • © 2026</footer>
 
             <nav class="bottom-nav">
                 <button class="bottom-tab active" data-tab="dashboard"><i class="bi bi-house"></i><span>หน้าหลัก</span></button>

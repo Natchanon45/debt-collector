@@ -508,20 +508,20 @@ body {
     grid-template-columns: repeat(4, 1fr);
     gap: 6px;
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-    background: rgba(255, 255, 255, .94);
-    border-top: 1px solid var(--border);
+    /* background: rgba(255, 255, 255, .94); */
+    /* border-top: 1px solid var(--border); */
     backdrop-filter: blur(18px)
 }
 
 [data-theme=dark] .bottom-nav {
-    background: rgba(24, 33, 27, .94)
+    /* background: rgba(24, 33, 27, .94) */
 }
 
 .bottom-tab {
     min-height: 58px;
     border: 0;
     border-radius: 18px;
-    background: transparent;
+    /* background: transparent; */
     color: var(--muted);
     display: flex;
     flex-direction: column;
@@ -537,7 +537,7 @@ body {
 }
 
 .bottom-tab.active {
-    background: rgba(34, 197, 94, .13);
+    /* background: rgba(34, 197, 94, .13); */
     color: var(--green)
 }
 
@@ -1243,14 +1243,14 @@ input.input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
     gap: 2px !important;
     padding: 5px 6px calc(5px + env(safe-area-inset-bottom)) !important;
-    background: transparent !important;
+    /* background: transparent !important; */
     border-top: 0 !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
 }
 
 [data-theme=dark] .bottom-nav {
-    background: transparent !important
+    /* background: transparent !important */
 }
 
 .bottom-tab {
@@ -1258,8 +1258,8 @@ input.input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     min-height: 50px !important;
     border-radius: 14px !important;
     padding: 5px 1px !important;
-    background: rgba(255, 255, 255, .82) !important;
-    border: 1px solid var(--border) !important;
+    /* background: rgba(255, 255, 255, .82) !important; */
+    /* border: 1px solid var(--border) !important; */
     box-shadow: 0 8px 18px rgba(15, 23, 42, .06) !important;
     font-size: 9.5px !important;
 }
@@ -1384,20 +1384,20 @@ body {
     max-width: none !important;
     margin: 0 !important;
     padding: 6px 6px calc(6px + env(safe-area-inset-bottom)) !important;
-    background: rgba(255, 255, 255, .96) !important;
-    border-top: 1px solid var(--border) !important;
-    box-shadow: 0 -8px 24px rgba(15, 23, 42, .08) !important;
+    /* background: rgba(255, 255, 255, .96) !important; */
+    /* border-top: 1px solid var(--border) !important; */
+    /* box-shadow: 0 -8px 24px rgba(15, 23, 42, .08) !important; */
     z-index: 1000 !important;
     backdrop-filter: blur(14px) !important;
 }
 
 [data-theme=dark] .bottom-nav {
-    background: rgba(15, 23, 42, .96) !important
+    /* background: rgba(15, 23, 42, .96) !important */
 }
 
 .bottom-tab {
     border: 0 !important;
-    background: transparent !important;
+    /* background: transparent !important; */
     box-shadow: none !important;
     border-radius: 0 !important;
     min-height: 54px !important;
@@ -1556,21 +1556,21 @@ body {
     margin: 0 !important;
     padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
     border-radius: 20px 20px 0 0 !important;
-    background: rgba(255, 255, 255, .96) !important;
+    /* background: rgba(255, 255, 255, .96) !important; */
     border: 1px solid rgba(148, 163, 184, .32) !important;
     box-shadow: 0 -12px 32px rgba(15, 23, 42, .12) !important;
     backdrop-filter: blur(14px) !important;
 }
 
 [data-theme=dark] .bottom-nav {
-    background: rgba(15, 23, 42, .96) !important;
+    /* background: rgba(15, 23, 42, .96) !important; */
     border-color: rgba(148, 163, 184, .22) !important
 }
 
 .bottom-tab {
     appearance: none !important;
     border: 0 !important;
-    background: transparent !important;
+    /* background: transparent !important; */
     box-shadow: none !important;
     min-width: 0 !important;
     width: 100% !important;
@@ -1744,8 +1744,8 @@ body {
     gap: 0 !important;
     margin: 0 auto !important;
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
-    background: rgba(255, 255, 255, .96) !important;
-    border: 1px solid rgba(148, 163, 184, .28) !important;
+    /* background: rgba(255, 255, 255, .96) !important; */
+    /* border: 1px solid rgba(148, 163, 184, .28) !important; */
     border-bottom: 0 !important;
     border-radius: 18px 18px 0 0 !important;
     box-shadow: 0 -10px 28px rgba(15, 23, 42, .10) !important;
@@ -1765,7 +1765,7 @@ body {
     -webkit-appearance: none !important;
     border: 0 !important;
     outline: 0 !important;
-    background: transparent !important;
+    /* background: transparent !important; */
     box-shadow: none !important;
     border-radius: 0 !important;
     min-width: 0 !important;
@@ -1944,8 +1944,8 @@ body {
     gap: 0 !important;
     padding: 6px 8px !important;
     border-radius: 22px !important;
-    background: rgba(255, 255, 255, .96) !important;
-    border: 1px solid rgba(15, 23, 42, .10) !important;
+    /* background: rgba(255, 255, 255, .96) !important; */
+    /* border: 1px solid rgba(15, 23, 42, .10) !important; */
     box-shadow: 0 12px 32px rgba(15, 23, 42, .14) !important;
 }
 
@@ -1991,8 +1991,8 @@ body {
 }
 
 [data-theme=dark] .bottom-nav {
-    background: rgba(15, 23, 42, .96) !important;
-    border-color: rgba(148, 163, 184, .22) !important;
+    /* background: rgba(15, 23, 42, .96) !important;
+    border-color: rgba(148, 163, 184, .22) !important; */
 }
 
 .contract-fill {
@@ -2425,8 +2425,8 @@ label.file i {
     border-radius: 24px 24px 0 0 !important;
     border: 1px solid rgba(15, 23, 42, .10) !important;
     border-bottom: 0 !important;
-    background: rgba(255, 255, 255, .96) !important;
-    box-shadow: 0 -14px 32px rgba(15, 23, 42, .12) !important;
+    /* background: rgba(255, 255, 255, .96) !important;
+    box-shadow: 0 -14px 32px rgba(15, 23, 42, .12) !important; */
     backdrop-filter: blur(18px) !important;
     -webkit-backdrop-filter: blur(18px) !important;
 }
@@ -2479,8 +2479,8 @@ label.file i {
 }
 
 [data-theme=dark] .bottom-nav {
-    background: rgba(15, 23, 42, .96) !important;
-    border-color: rgba(148, 163, 184, .22) !important;
+    /* background: rgba(15, 23, 42, .96) !important;
+    border-color: rgba(148, 163, 184, .22) !important; */
 }
 
 body.modal-open .bottom-nav {

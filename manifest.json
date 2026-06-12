@@ -1,6 +1,6 @@
 {
   "name": "Debt Collector",
-  "short_name": "Debt",
+  "short_name": "DebtC",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,0 +1,136 @@
+/* v8.0.0 Bottom navigation: icon + text only, no button-card styling */
+:root{
+    --nav-green:#16a34a;
+    --nav-green-active:#22c55e;
+    --nav-bg-light:rgba(255,255,255,.94);
+    --nav-bg-dark:rgba(12,18,14,.92);
+}
+
+.bottom-nav{
+    position:fixed !important;
+    left:50% !important;
+    right:auto !important;
+    bottom:0 !important;
+    transform:translateX(-50%) !important;
+    z-index:80 !important;
+    width:100% !important;
+    max-width:760px !important;
+    display:grid !important;
+    grid-template-columns:repeat(5,1fr) !important;
+    gap:0 !important;
+    padding:6px 6px calc(7px + env(safe-area-inset-bottom)) !important;
+    background:var(--nav-bg-light) !important;
+    border-top:1px solid rgba(22,163,74,.16) !important;
+    box-shadow:0 -8px 24px rgba(15,23,42,.08) !important;
+    backdrop-filter:blur(18px) !important;
+    -webkit-backdrop-filter:blur(18px) !important;
+}
+
+[data-theme="dark"] .bottom-nav{
+    background:var(--nav-bg-dark) !important;
+    border-top-color:rgba(34,197,94,.22) !important;
+    box-shadow:0 -8px 24px rgba(0,0,0,.28) !important;
+}
+
+.bottom-tab{
+    appearance:none !important;
+    -webkit-appearance:none !important;
+    position:relative !important;
+    min-width:0 !important;
+    min-height:58px !important;
+    height:auto !important;
+    padding:5px 2px 3px !important;
+    margin:0 !important;
+    border:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    outline:0 !important;
+    color:var(--nav-green) !important;
+    font-family:'Noto Sans Thai',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif !important;
+    font-size:11px !important;
+    /* font-weight:800 !important; */
+    line-height:1.35 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:2px !important;
+    overflow:visible !important;
+    text-align:center !important;
+    white-space:normal !important;
+    cursor:pointer !important;
+}
+
+.bottom-tab i{
+    display:block !important;
+    width:auto !important;
+    height:auto !important;
+    margin:0 !important;
+    color:inherit !important;
+    font-size:21px !important;
+    line-height:1 !important;
+}
+
+.bottom-tab span{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    padding:0 !important;
+    margin:0 !important;
+    color:inherit !important;
+    font-family:inherit !important;
+    font-size:11px !important;
+    /* font-weight:800 !important; */
+    line-height:1.45 !important;
+    letter-spacing:0 !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    white-space:normal !important;
+    word-break:keep-all !important;
+    transform:none !important;
+}
+
+.bottom-tab.active{
+    color:var(--nav-green-active) !important;
+    background:transparent !important;
+    box-shadow:none !important;
+}
+
+.bottom-tab.active i{
+    transform:translateY(-1px) scale(1.06) !important;
+    filter:drop-shadow(0 4px 7px rgba(34,197,94,.24)) !important;
+}
+
+.bottom-tab:active{
+    transform:translateY(1px) !important;
+}
+
+.nav-badge{
+    /* position:absolute !important; */
+    top:3px !important;
+    right:18% !important;
+    min-width:18px !important;
+    height:18px !important;
+    padding:0 5px !important;
+    border-radius:999px !important;
+    background:#ef4444 !important;
+    color:#fff !important;
+    font-family:'Noto Sans Thai',system-ui,sans-serif !important;
+    font-size:10px !important;
+    font-weight:900 !important;
+    line-height:18px !important;
+    text-align:center !important;
+    box-shadow:0 3px 8px rgba(239,68,68,.35) !important;
+}
+
+.nav-badge.hidden{display:none !important;}
+
+@media(max-width:420px){
+    .bottom-nav{padding-left:3px !important;padding-right:3px !important;}
+    .bottom-tab{font-size:10px !important;min-height:60px !important;padding-left:1px !important;padding-right:1px !important;}
+    .bottom-tab i{font-size:20px !important;}
+    .bottom-tab span{font-size:10px !important;line-height:1.55 !important;}
+}

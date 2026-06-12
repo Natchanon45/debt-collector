@@ -240,9 +240,27 @@ function updateFollowupBadges(count = 0) {
     });
 }
 window.setFollowupQuick = (status) => {
-    if ($('followupStatus')) $('followupStatus').value = status;
-    if ($('followupChannel')) $('followupChannel').value = status === 'ส่งข้อความแล้ว' ? 'LINE' : 'โทรศัพท์';
-    if ($('followupResult') && !$('followupResult').value.trim()) $('followupResult').value = status;
+    const channelMap = {
+        'โทรแล้ว': 'โทรศัพท์',
+        'ส่งข้อความแล้ว': 'LINE',
+        'นัดชำระแล้ว': 'นัดหมาย',
+        'ติดต่อไม่ได้': 'โทรศัพท์',
+        'ไม่สามารถติดต่อได้': 'โทรศัพท์'
+    };
+    const resultMap = {
+        'โทรแล้ว': 'โทรแล้ว',
+        'ส่งข้อความแล้ว': 'ส่งข้อความทาง LINE แล้ว',
+        'นัดชำระแล้ว': 'นัดชำระแล้ว',
+        'ติดต่อไม่ได้': 'ไม่สามารถติดต่อได้',
+        'ไม่สามารถติดต่อได้': 'ไม่สามารถติดต่อได้'
+    };
+
+    const normalizedStatus = status === 'ติดต่อไม่ได้' ? 'ไม่สามารถติดต่อได้' : status;
+    if ($('followupStatus')) $('followupStatus').value = normalizedStatus;
+    if ($('followupChannel')) $('followupChannel').value = channelMap[status] || channelMap[normalizedStatus] || '';
+    if ($('followupResult')) {
+        $('followupResult').value = resultMap[status] || resultMap[normalizedStatus] || normalizedStatus;
+    }
 };
 window.quickFollowupForDebt = async (debtId, status, channel) => {
     const d = latestData || local();
