@@ -745,16 +745,16 @@ function parseThaiDateToIso(text = '') {
         let d = Number(m[1]), mo = Number(m[2]), y = Number(m[3]);
         if (y < 100) y += 2500;
         if (y > 2400) y -= 543;
-        if (d && mo && y) return `${String(y).padStart(4,'0')}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if (d && mo && y) return `${String(y).padStart(4, '0')}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     }
-    const months = { 'ม.ค.':1,'มกราคม':1,'ก.พ.':2,'กุมภาพันธ์':2,'มี.ค.':3,'มีนาคม':3,'เม.ย.':4,'เมษายน':4,'พ.ค.':5,'พฤษภาคม':5,'มิ.ย.':6,'มิถุนายน':6,'ก.ค.':7,'กรกฎาคม':7,'ส.ค.':8,'สิงหาคม':8,'ก.ย.':9,'กันยายน':9,'ต.ค.':10,'ตุลาคม':10,'พ.ย.':11,'พฤศจิกายน':11,'ธ.ค.':12,'ธันวาคม':12 };
+    const months = { 'ม.ค.': 1, 'มกราคม': 1, 'ก.พ.': 2, 'กุมภาพันธ์': 2, 'มี.ค.': 3, 'มีนาคม': 3, 'เม.ย.': 4, 'เมษายน': 4, 'พ.ค.': 5, 'พฤษภาคม': 5, 'มิ.ย.': 6, 'มิถุนายน': 6, 'ก.ค.': 7, 'กรกฎาคม': 7, 'ส.ค.': 8, 'สิงหาคม': 8, 'ก.ย.': 9, 'กันยายน': 9, 'ต.ค.': 10, 'ตุลาคม': 10, 'พ.ย.': 11, 'พฤศจิกายน': 11, 'ธ.ค.': 12, 'ธันวาคม': 12 };
     const monthKeys = Object.keys(months).join('|').replace(/\./g, '\\.');
     m = raw.match(new RegExp(`(\\d{1,2})\\s*(${monthKeys})\\s*(\\d{2,4})`));
     if (m) {
-        let d = Number(m[1]), mo = months[m[2].replace(/\\./g,'.')] || months[m[2]], y = Number(m[3]);
+        let d = Number(m[1]), mo = months[m[2].replace(/\\./g, '.')] || months[m[2]], y = Number(m[3]);
         if (y < 100) y += 2500;
         if (y > 2400) y -= 543;
-        if (d && mo && y) return `${String(y).padStart(4,'0')}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if (d && mo && y) return `${String(y).padStart(4, '0')}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     }
     return '';
 }
@@ -947,7 +947,8 @@ document.addEventListener('click', e => {
     toast('Demo Mode');
     await render();
 };
-async function initFirebase() { if (!firebaseReady) return; const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'); const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'); const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const { getStorage } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); storage = getStorage(app); $('loginBtn').onclick = async () => { try { await signInWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('registerBtn').onclick = async () => { try { await createUserWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('logoutBtn').onclick = async () => { await signOut(auth); location.reload() }; onAuthStateChanged(auth, u => {
+async function initFirebase() {
+    if (!firebaseReady) return; const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'); const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'); const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const { getStorage } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); storage = getStorage(app); $('loginBtn').onclick = async () => { try { await signInWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('registerBtn').onclick = async () => { try { await createUserWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('logoutBtn').onclick = async () => { await signOut(auth); location.reload() }; onAuthStateChanged(auth, u => {
         if (demoMode) {
             currentUser = { uid: 'demo', email: 'demo@local' };
             $('authView').classList.remove('active');
@@ -958,7 +959,8 @@ async function initFirebase() { if (!firebaseReady) return; const { initializeAp
         }
         if (u) { currentUser = u; demoMode = false; $('authView').classList.remove('active'); $('appView').classList.add('active'); setUserDisplay(u.email || u.displayName || 'ผู้ใช้ Firebase'); render() }
         else { currentUser = null; setUserDisplay(''); $('authView').classList.add('active'); $('appView').classList.remove('active') }
-    }) } if (!firebaseReady) { $('loginBtn').onclick = $('demoBtn').onclick; $('registerBtn').onclick = $('demoBtn').onclick }
+    })
+} if (!firebaseReady) { $('loginBtn').onclick = $('demoBtn').onclick; $('registerBtn').onclick = $('demoBtn').onclick }
 const exportPayload = async () => ({ exportedAt: new Date().toISOString(), exportedDate: formatDate(today()), data: await getData() }); $('exportJsonBtn').onclick = async () => { const payload = await exportPayload(); download(JSON.stringify(payload, null, 2), `debt-backup-${payload.exportedDate.replace(/\//g, '-')}.json`, 'application/json') }; $('exportTxtBtn').onclick = async () => { const payload = await exportPayload(); download('DEBT_BACKUP\n' + JSON.stringify(payload, null, 2), `debt-backup-${payload.exportedDate.replace(/\//g, '-')}.txt`, 'text/plain') }; function download(c, n, t) { let a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([c], { type: t })); a.download = n; a.click() } $('importFile').onchange = async e => { let f = e.target.files[0]; if (!f) return; let txt = (await f.text()).replace(/^DEBT_BACKUP\s*/, '').trim(); setLocal(JSON.parse(txt).data || JSON.parse(txt)); demoMode = true; toast('Import เข้า Demo'); render() };
 
 if ($('userMenuBtn')) $('userMenuBtn').onclick = (e) => { e.stopPropagation(); $('userDropdown').classList.toggle('hidden') };
@@ -1249,7 +1251,7 @@ function bahtTextFallback(n) {
     const [baht, satang] = fixed.split('.');
     const b = readMillion(baht) + 'บาท';
     const satangNum = Number(satang);
-    return satangNum ? b + readInt(satang) + 'สตางค์' : b + 'ถ้วน';
+    return satangNum ? b + readInt(satang) + 'สตางค์' : b + '-';
 }
 
 function contractAmountTextParts(n) {
@@ -1266,15 +1268,15 @@ function contractAmountTextParts(n) {
     if (p >= 0) {
         bahtText = full.slice(0, p).trim(); // ไม่ใส่คำว่า บาท เพราะฟอร์มมีคำว่า บาท อยู่แล้ว
         const afterBaht = full.slice(p + marker.length).trim();
-        satangText = satangNum > 0 ? afterBaht.replace(/สตางค์$/, '').trim() : 'ถ้วน';
+        satangText = satangNum > 0 ? afterBaht.replace(/สตางค์$/, '').trim() : '-';
     } else {
         bahtText = full.replace(/บาทถ้วน$/, '').replace(/บาท$/, '').trim();
-        satangText = satangNum > 0 ? '' : 'ถ้วน';
+        satangText = satangNum > 0 ? '' : '-';
     }
     return {
         number: safeValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
         bahtText: bahtText || '-',
-        satangText: satangText || (satangNum > 0 ? '-' : 'ถ้วน')
+        satangText: satangText || (satangNum > 0 ? '-' : '-')
     };
 }
 
@@ -1704,14 +1706,15 @@ async function renderContractImageCanvas(row, debtor) {
             contractNo: { x: 248, y: 166, maxWidth: 359, size: FS, minSize: 28, align: 'left' },
             place: { x: 755, y: 166, maxWidth: 514, size: FS, minSize: 28, align: 'left' },
             day: { x: 688, y: 217, maxWidth: 107, size: FS, minSize: 28, align: 'center' },
-            month: mobileField({ x: 880, y: 217, maxWidth: 203, size: FS, minSize: 28, align: 'center' }, { x: 880, maxWidth: 203, align: 'left', indent: 0 }),
+            month: { x: 885, y: 217, maxWidth: 154, size: FS, minSize: 28, align: 'center' },
             year: { x: 1116, y: 217, maxWidth: 154, size: FS, minSize: 28, align: 'center' }
         },
         borrower: {
             name: { x: 485, y: 268, maxWidth: 470, size: FS, minSize: 32, align: 'left', indent: 0 },
             age: { x: 1000 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 55, size: FS_SMALL, minSize: 30, align: 'center' },
             houseNo: { x: 1178 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 105, size: FS_SMALL, minSize: 30, align: 'center' },
-            subDistrict: mobileField({ x: 250 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' }, { x: 250, maxWidth: 200, align: 'left', indent: 0 }),
+            // subDistrict: mobileField({ x: 250 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' }, { x: 250, maxWidth: 200, align: 'left', indent: 0 }),
+            subDistrict: { x: 205 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'center' },
             district: { x: 485 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'center' },
             province: { x: 810 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 340, size: FS_SMALL, minSize: 30, align: 'center' }
         },
@@ -1725,15 +1728,16 @@ async function renderContractImageCanvas(row, debtor) {
             // Do not use a second-line Y for the Thai amount text. Only X changes by field.
             amount: { x: 175, y: 525, maxWidth: 450, size: FS, minSize: 32, align: 'right', rightPad: 4 },
             // Starts after the first printed "บาท" label and auto-shrinks to fit before the next "บาท" label.
-            amountText: { x: 685, y: 525, maxWidth: 340, size: 30, minSize: 18, align: 'left', indent: 0 },
+            amountText: { x: 635, y: 520, maxWidth: 340, size: 34, minSize: 20, align: 'right', rightPad: 0 },
+            // amountText: { x: 550, y: 525, maxWidth: 340, size: 34, minSize: 18, align: 'right', indent: 0 },
             // If there are satang, write Thai satang text right-aligned close to the printed "สต." label.
-            satang: mobileField({ x: 1031, y: 525, maxWidth: 202, size: 30, minSize: 18, align: 'right', rightPad: 0 }, { x: 880, maxWidth: 230, align: 'right', rightPad: 0 }), // ตัวหนังสือ
+            satang: mobileField({ x: 1035, y: 520, maxWidth: 202, size: 34, minSize: 20, align: 'right', rightPad: 0 }, { x: 1030, maxWidth: 230, align: 'right', rightPad: 0 }), // ตัวหนังสือ
             // If the amount is .00, "ถ้วน" starts immediately after the second printed "บาท" label.
-            satangFull: { x: 1033, y: 525, maxWidth: 145, size: 30, minSize: 18, align: 'left', indent: 0 } // ถ้วน
+            satangFull: { x: 1035, y: 520, maxWidth: 145, size: 34, minSize: 18, align: 'right', indent: 0 } // '-' 
         },
         clause3: {
             day: { x: 223, y: 935, maxWidth: 118, size: FS, minSize: 32, align: 'center' },
-            month: mobileField({ x: 410, y: 935, maxWidth: 202, size: FS, minSize: 32, align: 'center' }, { x: 420, maxWidth: 202, align: 'left', indent: 0 }),
+            month: { x: 410, y: 935, maxWidth: 178, size: FS, minSize: 32, align: 'center' },
             year: { x: 655, y: 935, maxWidth: 178, size: FS, minSize: 32, align: 'center' }
         },
         clause4: {
@@ -1772,7 +1776,7 @@ async function renderContractImageCanvas(row, debtor) {
     drawF(lenderNameWithId, F.clause1.lenderLine);
     drawF(amountInteger, F.clause1.amount);
     drawF(amountThai, F.clause1.amountText);
-    drawF(amountSatang, amountSatang === 'ถ้วน' ? F.clause1.satangFull : F.clause1.satang);
+    drawF(amountSatang, amountSatang === '-' ? F.clause1.satangFull : F.clause1.satang);
 
     // Clause 2 - collateral can flow across almost three full lines.
     drawContractWrapSegments(ctx, collateral, [
