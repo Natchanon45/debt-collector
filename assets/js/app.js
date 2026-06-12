@@ -1441,11 +1441,11 @@ function drawContractText(ctx, text, x, y, opt = {}) {
     const value = String(text || '-').trim() || '-';
     ctx.fillStyle = opt.color || '#0000ff';
     while (size > minSize) {
-        setupContractCanvasFont(ctx, size, opt.bold === true);
+        setupContractCanvasFont(ctx, size, opt.bold !== false);
         if (ctx.measureText(value).width <= maxWidth) break;
         size -= 2;
     }
-    setupContractCanvasFont(ctx, size, opt.bold === true);
+    setupContractCanvasFont(ctx, size, opt.bold !== false);
     const textWidth = ctx.measureText(value).width;
     if (align === 'smart') {
         // Smart Alignment Rule v7.2:
@@ -1464,7 +1464,7 @@ function drawContractWrap(ctx, text, x, y, maxWidth, lineHeight = 26, maxLines =
     const lines = [];
     let current = '';
     const size = opt.size || 38;
-    setupContractCanvasFont(ctx, size, opt.bold === true);
+    setupContractCanvasFont(ctx, size, opt.bold !== false);
     const pxMax = maxWidth * (2480 / 1447);
     for (const word of words) {
         const test = current ? current + ' ' + word : word;
@@ -1593,24 +1593,28 @@ async function renderContractImageCanvas(row, debtor) {
     const FS_INLINE_ID = 44;
     const FS_COLLATERAL = 44;
     const FS_SIG_NAME = 43;
+    // v8.0.2: compensate template-field visual centering for mobile canvas/font rendering.
+    // Coordinates are in the 1447x2048 template coordinate map.
+    const PDF_FIELD_RIGHT_NUDGE = 12;
+    const PDF_MONTH_RIGHT_NUDGE = 8;
     const F = {
         header: {
             contractNo: { x: 248, y: 166, maxWidth: 359, size: FS, minSize: 28, align: 'left' },
             place: { x: 755, y: 166, maxWidth: 514, size: FS, minSize: 28, align: 'left' },
             day: { x: 688, y: 217, maxWidth: 107, size: FS, minSize: 28, align: 'center' },
-            month: { x: 858, y: 217, maxWidth: 203, size: FS, minSize: 28, align: 'center' },
+            month: { x: 858 + PDF_MONTH_RIGHT_NUDGE, y: 217, maxWidth: 203, size: FS, minSize: 28, align: 'center' },
             year: { x: 1116, y: 217, maxWidth: 154, size: FS, minSize: 28, align: 'center' }
         },
         borrower: {
-            name: { x: 435, y: 268, maxWidth: 520, size: FS, minSize: 32, align: 'center' },
-            age: { x: 1000, y: 268, maxWidth: 55, size: FS_SMALL, minSize: 30, align: 'center' },
-            houseNo: { x: 1178, y: 268, maxWidth: 105, size: FS_SMALL, minSize: 30, align: 'center' },
-            subDistrict: { x: 225, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' },
-            district: { x: 485, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'center' },
-            province: { x: 810, y: 320, maxWidth: 340, size: FS_SMALL, minSize: 30, align: 'center' }
+            name: { x: 435 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 520, size: FS, minSize: 32, align: 'center' },
+            age: { x: 1000 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 55, size: FS_SMALL, minSize: 30, align: 'center' },
+            houseNo: { x: 1178 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 105, size: FS_SMALL, minSize: 30, align: 'center' },
+            subDistrict: { x: 225 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' },
+            district: { x: 485 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'center' },
+            province: { x: 810 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 340, size: FS_SMALL, minSize: 30, align: 'center' }
         },
         lender: {
-            name: { x: 315, y: 371, maxWidth: 760, size: FS, minSize: 32, align: 'center' }
+            name: { x: 315 + PDF_FIELD_RIGHT_NUDGE, y: 371, maxWidth: 760, size: FS, minSize: 32, align: 'center' }
         },
         clause1: {
             borrowerLine: { x: 405, y: 422, maxWidth: 730, size: FS_INLINE_ID, minSize: 30, align: 'left', indent: 0 },
@@ -1621,7 +1625,7 @@ async function renderContractImageCanvas(row, debtor) {
         },
         clause3: {
             day: { x: 223, y: 935, maxWidth: 118, size: FS, minSize: 32, align: 'center' },
-            month: { x: 405, y: 935, maxWidth: 202, size: FS, minSize: 32, align: 'center' },
+            month: { x: 405 + PDF_MONTH_RIGHT_NUDGE, y: 935, maxWidth: 202, size: FS, minSize: 32, align: 'center' },
             year: { x: 655, y: 935, maxWidth: 178, size: FS, minSize: 32, align: 'center' }
         },
         clause4: {
