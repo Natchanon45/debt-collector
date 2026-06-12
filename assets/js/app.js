@@ -1692,26 +1692,26 @@ async function renderContractImageCanvas(row, debtor) {
     // Coordinates are in the 1447x2048 template coordinate map.
     // v8.0.5: top borrower/lender name fields must start immediately after the printed form text.
     // Do not center these fields, because mobile Canvas text metrics can visually push centered Thai text to the right.
-    const isPdfMobileRender = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+    const isPdfMobileRender = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '')
+        || (typeof window !== 'undefined' && ((window.innerWidth || 9999) <= 900 || (navigator.maxTouchPoints || 0) > 0));
     const PDF_FIELD_RIGHT_NUDGE = -12;
-    // v8.0.14: Mobile Canvas text metrics push some centered Thai fields to the right.
-    // Keep PC-stable coordinates unchanged, and only compensate when rendering on Mobile.
-    const PDF_MONTH_RIGHT_NUDGE = isPdfMobileRender ? -15 : 0;
-    const PDF_SUBDISTRICT_MOBILE_NUDGE = isPdfMobileRender ? -15 : 0;
-    const PDF_SATANG_MOBILE_NUDGE = isPdfMobileRender ? -25 : 0;
+    // v8.0.15: Mobile Canvas text metrics do not match PC when a Thai field is centered/right-fitted.
+    // Keep the PC-stable map untouched. On Mobile only, use fixed left/right anchors instead of center metrics
+    // for the fields the user marked: both month fields, borrower subdistrict, and satang text.
+    const mobileField = (pc, mobile) => isPdfMobileRender ? { ...pc, ...mobile } : pc;
     const F = {
         header: {
             contractNo: { x: 248, y: 166, maxWidth: 359, size: FS, minSize: 28, align: 'left' },
             place: { x: 755, y: 166, maxWidth: 514, size: FS, minSize: 28, align: 'left' },
             day: { x: 688, y: 217, maxWidth: 107, size: FS, minSize: 28, align: 'center' },
-            month: { x: 858 + PDF_MONTH_RIGHT_NUDGE, y: 217, maxWidth: 203, size: FS, minSize: 28, align: 'center' },
+            month: mobileField({ x: 858, y: 217, maxWidth: 203, size: FS, minSize: 28, align: 'center' }, { x: 875, maxWidth: 203, align: 'left', indent: 0 }),
             year: { x: 1116, y: 217, maxWidth: 154, size: FS, minSize: 28, align: 'center' }
         },
         borrower: {
             name: { x: 485, y: 268, maxWidth: 470, size: FS, minSize: 32, align: 'left', indent: 0 },
             age: { x: 1000 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 55, size: FS_SMALL, minSize: 30, align: 'center' },
             houseNo: { x: 1178 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 105, size: FS_SMALL, minSize: 30, align: 'center' },
-            subDistrict: { x: 225 + PDF_FIELD_RIGHT_NUDGE + PDF_SUBDISTRICT_MOBILE_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' },
+            subDistrict: mobileField({ x: 225 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' }, { x: 230, maxWidth: 200, align: 'left', indent: 0 }),
             district: { x: 485 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'center' },
             province: { x: 810 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 340, size: FS_SMALL, minSize: 30, align: 'center' }
         },
@@ -1727,13 +1727,13 @@ async function renderContractImageCanvas(row, debtor) {
             // Starts after the first printed "บาท" label and auto-shrinks to fit before the next "บาท" label.
             amountText: { x: 685, y: 525, maxWidth: 340, size: 30, minSize: 18, align: 'left', indent: 0 },
             // If there are satang, write Thai satang text right-aligned close to the printed "สต." label.
-            satang: { x: 1031 + PDF_SATANG_MOBILE_NUDGE, y: 525, maxWidth: 202, size: 30, minSize: 18, align: 'right', rightPad: 0 },
+            satang: mobileField({ x: 1031, y: 525, maxWidth: 202, size: 30, minSize: 18, align: 'right', rightPad: 0 }, { x: 980, maxWidth: 230, align: 'right', rightPad: 0 }),
             // If the amount is .00, "ถ้วน" starts immediately after the second printed "บาท" label.
             satangFull: { x: 1033, y: 525, maxWidth: 145, size: 30, minSize: 18, align: 'left', indent: 0 }
         },
         clause3: {
             day: { x: 223, y: 935, maxWidth: 118, size: FS, minSize: 32, align: 'center' },
-            month: { x: 405 + PDF_MONTH_RIGHT_NUDGE, y: 935, maxWidth: 202, size: FS, minSize: 32, align: 'center' },
+            month: mobileField({ x: 405, y: 935, maxWidth: 202, size: FS, minSize: 32, align: 'center' }, { x: 420, maxWidth: 202, align: 'left', indent: 0 }),
             year: { x: 655, y: 935, maxWidth: 178, size: FS, minSize: 32, align: 'center' }
         },
         clause4: {
