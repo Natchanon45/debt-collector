@@ -2685,7 +2685,8 @@ button,
 .bottom-tab,
 .bottom-tab span,
 label.file {
-    font-weight: 400 !important
+    font-weight: 400 !important;
+    margin: 5px 0;
 }
 
 #refreshContractSummaryBtn {
@@ -3620,4 +3621,56 @@ body.signature-drawing{overflow:hidden!important;overscroll-behavior:none!import
     #previewPdfDesignerBtn{min-width:112px!important;font-size:12px!important;padding:0 8px!important}
     .pdf-designer-save-row{grid-template-columns:1fr!important}
     .pdf-bulk-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+
+
+/* ===== v9.3 UX Patch: contracts, settings accordion, signature tools, designer controls ===== */
+.contract-row.doc-card{grid-template-columns:54px 1fr 48px!important;align-items:center!important}
+.contract-vertical-actions{display:flex!important;flex-direction:column!important;gap:7px!important;align-items:center!important;justify-content:center!important;margin-left:auto!important}
+.contract-vertical-actions .icon-action{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;box-shadow:none!important}
+.icon-lock{background:rgba(59,130,246,.14)!important;color:#1d4ed8!important}
+@media(max-width:560px){.contract-row.doc-card{grid-template-columns:46px 1fr 42px!important}.contract-vertical-actions .icon-action{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important}}
+
+.settings-accordion-card{padding:0!important;overflow:hidden!important}
+.settings-accordion-head{margin:0!important;padding:16px!important;cursor:pointer!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;user-select:none!important;-webkit-user-select:none!important}
+.settings-accordion-head:after{content:'⌄';font-size:20px;font-weight:900;color:var(--muted);transition:.2s}
+.settings-accordion-card.collapsed .settings-accordion-head:after{transform:rotate(-90deg)}
+.settings-accordion-body{padding:0 16px 16px!important}
+.settings-accordion-card.collapsed .settings-accordion-body{display:none!important}
+.settings-accordion-card .card-head-row{padding:16px!important;margin:0!important}
+.settings-accordion-card .card-head-row + .settings-accordion-body{padding-top:0!important}
+
+.sig-actions-row.sig-smart-tools{display:flex!important;gap:8px!important;justify-content:flex-end!important;align-items:center!important;margin-top:8px!important;min-height:38px!important}
+.sig-tool-btn{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;padding:0!important;border-radius:999px!important;display:inline-grid!important;place-items:center!important;margin:0!important}
+.sig-tool-btn i{font-size:18px!important}.sig-actions-row.hidden{display:none!important}
+.sig-pad{touch-action:none!important}
+body.signature-drawing{overflow:hidden!important;touch-action:none!important}
+
+#pdfDesignerPanel{touch-action:manipulation!important;overscroll-behavior:contain!important;-webkit-user-select:none!important;user-select:none!important}
+.pdf-designer-preview-wrap,.pdf-designer-overlay,.pdf-designer-preview{touch-action:none!important;user-select:none!important;-webkit-user-select:none!important}
+.pdf-designer-advanced-inputs{display:none!important}
+.pdf-designer-top-tools{display:grid!important;grid-template-columns:1fr auto auto!important;gap:10px!important;align-items:center!important;position:sticky!important;top:8px!important;z-index:20!important;background:var(--card)!important;padding:10px!important;border:1px solid var(--border)!important;border-radius:18px!important;box-shadow:0 8px 24px rgba(15,23,42,.08)!important}
+.pdf-arrow-pad{display:grid!important;grid-template-columns:repeat(3,42px)!important;grid-template-areas:'. up .' 'left down right'!important;gap:6px!important;justify-content:start!important}.pdf-arrow-pad button{width:42px!important;height:42px!important;min-height:42px!important;padding:0!important;margin:0!important;border-radius:14px!important}.pdf-arrow-pad #pdfDesignerUpBtn{grid-area:up}.pdf-arrow-pad #pdfDesignerLeftBtn{grid-area:left}.pdf-arrow-pad #pdfDesignerRightBtn{grid-area:right}.pdf-arrow-pad #pdfDesignerDownBtn{grid-area:down}
+.pdf-selected-font-tools{display:flex!important;gap:6px!important}.pdf-selected-font-tools button{width:48px!important;height:42px!important;min-height:42px!important;margin:0!important;padding:0!important;font-weight:900!important}
+#previewPdfDesignerBtn{width:auto!important;min-width:52px!important;height:42px!important;min-height:42px!important;margin:0!important;padding:0 12px!important;white-space:nowrap!important}.pdf-designer-save-row{position:sticky!important;bottom:8px!important;z-index:20!important;background:var(--card)!important;padding:10px!important;border:1px solid var(--border)!important;border-radius:18px!important;box-shadow:0 -8px 24px rgba(15,23,42,.08)!important}.pdf-designer-save-row .primary{margin:0!important}
+@media(max-width:560px){.pdf-designer-top-tools{grid-template-columns:1fr auto!important}.pdf-selected-font-tools{grid-column:2}.pdf-arrow-pad{grid-row:1/3}#previewPdfDesignerBtn{grid-column:1/3;width:100%!important}.pdf-arrow-pad{grid-template-columns:repeat(3,38px)!important}.pdf-arrow-pad button{width:38px!important;height:38px!important;min-height:38px!important}.pdf-selected-font-tools button{width:44px!important}}
+
+
+/* ===== v9.4.0 UX hotfix ===== */
+.sig-smart-tools,
+.sig-smart-tools [data-undo-sig],
+.sig-smart-tools [data-redo-sig],
+.sig-smart-tools [data-clear-sig]{display:none}
+.sig-smart-tools:not(.hidden){display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.dc-swal-btn-icon{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:900}
+.dc-swal-btn-icon .bi{font-size:1.15em;line-height:1}
+.pdf-designer-panel,.pdf-designer-panel *{touch-action:manipulation}
+#pdfDesignerOverlay,.pdf-field-hotspot{touch-action:none;-webkit-user-select:none;user-select:none}
+
+.designer-title{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:8px;
+    width:100%;
 }

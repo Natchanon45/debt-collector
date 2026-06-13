@@ -31,8 +31,16 @@ function shortAddressText(v) {
     const raw = String(v || '').replace(/\s+/g, ' ').trim();
     if (!raw) return '-';
     const parsed = parseThaiAddressParts(raw);
-    if (parsed.houseNo) return `บ้านเลขที่ ${parsed.houseNo}`;
-    return raw.length > 22 ? raw.slice(0, 22) + '…' : raw;
+    const sub = parsed.subDistrict ? '*******' : '';
+    const dist = parsed.district || '';
+    const prov = parsed.province || '';
+    const parts = [];
+    parts.push('บ้านเลขที่ ****');
+    if (sub || parsed.subDistrict) parts.push(`ตำบล/แขวง ${sub || '*******'}`);
+    if (dist) parts.push(`อำเภอ/เขต ${dist}`);
+    if (prov) parts.push(`จังหวัด ${prov}`);
+    if (parts.length > 1) return parts.join(' ');
+    return 'บ้านเลขที่ ****';
 }
 
 function displayAddress(v) {
@@ -93,7 +101,7 @@ function toast(m, type = 'info') {
 
 
 // ===== v9.2 Document Template Designer (Coordinate Override) =====
-const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_doc_template_overrides_v9_2';
+const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_doc_template_overrides_v9_4';
 const PDF_TEMPLATE_FIELD_LABELS = {
     'header.contractNo': 'เลขที่สัญญา',
     'header.place': 'สถานที่ทำสัญญา',
@@ -238,14 +246,17 @@ async function confirmAction(options = {}) {
     const confirmButtonText = options.confirmButtonText || 'ยืนยัน';
     const cancelButtonText = options.cancelButtonText || 'ยกเลิก';
     const icon = options.icon || 'warning';
+    const confirmIcon = options.confirmIcon || (options.confirmButtonColor === '#dc2626' ? 'bi-trash-fill' : icon === 'warning' ? 'bi-check2-circle' : 'bi-check2-circle');
+    const cancelIcon = options.cancelIcon || 'bi-x-circle';
+    const swalBtn = (bi, label) => `<span class="dc-swal-btn-icon"><i class="bi ${bi}"></i><span>${escapeHtml(label)}</span></span>`;
     const isLockDocumentConfirm = options.lockDocumentConfirm === true;
     if (window.Swal?.fire) {
         const swalOptions = {
             icon,
             title,
             showCancelButton: true,
-            confirmButtonText,
-            cancelButtonText,
+            confirmButtonText: swalBtn(confirmIcon, confirmButtonText),
+            cancelButtonText: swalBtn(cancelIcon, cancelButtonText),
             confirmButtonColor: options.confirmButtonColor || '#16a34a',
             cancelButtonColor: options.cancelButtonColor || '#64748b',
             reverseButtons: true,
@@ -294,7 +305,8 @@ async function alertAction(options = {}) {
     const icon = options.icon || 'success';
     if (window.Swal?.fire) {
         cleanupSwalCheckboxLeak();
-        await window.Swal.fire({ icon, title, text, confirmButtonText: options.confirmButtonText || 'ตกลง', confirmButtonColor: options.confirmButtonColor || '#16a34a', heightAuto: false, didOpen: () => cleanupSwalCheckboxLeak(), willClose: () => cleanupSwalCheckboxLeak(), didClose: () => cleanupSwalCheckboxLeak() });
+        const okText = options.confirmButtonText || 'ตกลง';
+        await window.Swal.fire({ icon, title, text, confirmButtonText: `<span class="dc-swal-btn-icon"><i class="bi bi-check2-circle"></i><span>${escapeHtml(okText)}</span></span>`, confirmButtonColor: options.confirmButtonColor || '#16a34a', heightAuto: false, didOpen: () => cleanupSwalCheckboxLeak(), willClose: () => cleanupSwalCheckboxLeak(), didClose: () => cleanupSwalCheckboxLeak() });
         cleanupSwalCheckboxLeak();
         return;
     }
@@ -1273,7 +1285,24 @@ function redrawSignatureCanvas(canvas) {
         ctx.stroke();
     });
     canvas.dataset.hasInk = (st?.strokes || []).length ? '1' : '';
+    updateSignatureTools(canvas.id);
 }
+
+function updateSignatureTools(id) {
+    const st = signatureState(id);
+    const box = $(id)?.closest('.signature-box, .profile-signature-box');
+    if (!box) return;
+    const hasUndo = !!(st && st.strokes && st.strokes.length);
+    const hasRedo = !!(st && st.redo && st.redo.length);
+    box.querySelectorAll(`[data-undo-sig="${id}"]`).forEach(b => { b.classList.toggle('hidden', !hasUndo); b.style.display = hasUndo ? '' : 'none'; });
+    box.querySelectorAll(`[data-redo-sig="${id}"]`).forEach(b => { b.classList.toggle('hidden', !hasRedo); b.style.display = hasRedo ? '' : 'none'; });
+    box.querySelectorAll(`[data-clear-sig="${id}"]`).forEach(b => { b.classList.toggle('hidden', !hasUndo); b.style.display = hasUndo ? '' : 'none'; });
+    box.querySelectorAll('.sig-actions-row').forEach(r => { r.classList.toggle('hidden', !(hasUndo || hasRedo)); r.style.display = (hasUndo || hasRedo) ? '' : 'none'; });
+}
+function updateAllSignatureTools() {
+    [...SIG_IDS, 'profileLenderSignature'].forEach(updateSignatureTools);
+}
+
 function resizeSignatureCanvas(canvas) {
     if (!canvas) return;
     const ratio = SIGNATURE_CANVAS_RATIO;
@@ -1325,6 +1354,7 @@ function bindSignaturePad(id) {
         st.current = null;
         document.body.classList.remove('signature-drawing');
         redrawSignatureCanvas(canvas);
+        updateSignatureTools(id);
     };
     if (window.PointerEvent) {
         canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture?.(e.pointerId); start(e); });
@@ -1342,11 +1372,18 @@ function clearSignature(id) {
     if (st) { st.strokes = []; st.redo = []; st.current = null; st.drawing = false; }
     c.dataset.hasInk = '';
     c.getContext('2d').clearRect(0, 0, c.width, c.height);
+    updateSignatureTools(id);
+}
+function redoSignature(id) {
+    const c = $(id); const st = signatureState(id); if (!c || !st || !st.redo.length) return;
+    st.strokes.push(st.redo.pop());
+    redrawSignatureCanvas(c);
 }
 function undoSignature(id) {
     const c = $(id); const st = signatureState(id); if (!c || !st || !st.strokes.length) return;
     st.redo.push(st.strokes.pop());
     redrawSignatureCanvas(c);
+    updateSignatureTools(id);
 }
 function hasSignature(id) { return $(id)?.dataset.hasInk === '1'; }
 function getSignatureData(id) { const c = $(id); return c && hasSignature(id) ? c.toDataURL('image/png') : ''; }
@@ -1555,10 +1592,10 @@ function renderContractList(d, c) {
         const signed = contractSignedCount(x), required = contractRequiredSignatureCount(x), complete = isContractLocked(x), fullySigned = isContractFullySigned(x);
         const debtStatus = x.autoDebtCreated ? ' · สร้างก้อนหนี้แล้ว' : '';
         const status = complete ? `${signed}/${required} : ล็อกสัญญาแล้ว${debtStatus}` : (fullySigned ? `${signed}/${required} : ลงลายเซ็นครบแล้ว / รอล็อกเอกสาร` : `${signed}/${required} : ยังแก้ไขได้อยู่`);
-        const canDelete = signed === 0 && !complete;
+        const canDelete = !complete;
         const canLock = fullySigned && !complete;
         const displayAmount = contractDisplayAmount(x, c);
-        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${escapeHtml(c.debtors[x.debtorId]?.name || x.borrowerName || '-')} · ${money(displayAmount)}</div><div class="item-sub">${status} · วันที่ ${formatDate(x.contractDate || x.createdDate)} · ครบกำหนด ${formatDate(x.dueDate)} · ${escapeHtml(x.fileName || '')}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิด เอกสาร" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${canLock ? `<button class="icon-action icon-lock" type="button" title="ล็อกเอกสาร" aria-label="ล็อกเอกสาร" onclick="lockContractDocument('${x.id}')"><i class="bi bi-lock"></i></button>` : ''}${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
+        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${escapeHtml(c.debtors[x.debtorId]?.name || x.borrowerName || '-')} · ${money(displayAmount)}</div><div class="item-sub">${status} · วันที่ ${formatDate(x.contractDate || x.createdDate)} · ครบกำหนด ${formatDate(x.dueDate)} · ${escapeHtml(x.fileName || '')}</div></div><div class="doc-actions icon-actions contract-vertical-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="openContractPdf('${x.id}')"><i class="bi bi-eye"></i></button>${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canLock ? `<button class="icon-action icon-lock" type="button" title="ล็อกเอกสาร" aria-label="ล็อกเอกสาร" onclick="lockContractDocument('${x.id}')"><i class="bi bi-lock"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
     }).join('') : '<div class="empty">ยังไม่มีสัญญากู้ยืม</div>';
 }
 function bahtTextFallback(n) {
@@ -2363,7 +2400,9 @@ function pdfDesignerRenderOverlay() {
             if (!d || d.path !== path) return;
             pdfTemplateDesignerState.dragging = null;
             if (d.moved) {
-                pdfDesignerSaveSelectedSilent();
+                const nx = Number($('pdfDesignerX')?.value || 0);
+                const ny = Number($('pdfDesignerY')?.value || 0);
+                setPdfOverrideField(d.path, { x: nx, y: ny });
                 await pdfDesignerRenderPreview(false);
             }
         };
@@ -2400,7 +2439,7 @@ async function pdfDesignerRenderPreview(saveBeforeRender = false) {
     }, 'image/jpeg', 0.9);
 }
 async function openPdfTemplateDesigner() {
-    $('pdfDesignerPanel')?.classList.remove('hidden');
+    $('pdfDesignerPanel')?.classList.remove('hidden'); bindNoZoomDesigner();
     const sel = $('pdfDesignerField');
     if (sel && !sel.options.length) sel.innerHTML = pdfDesignerFieldOptions();
     if (sel) sel.value = pdfTemplateDesignerState.selected;
@@ -2417,17 +2456,29 @@ function bindPdfTemplateDesigner() {
     if ($('savePdfDesignerBtn')) $('savePdfDesignerBtn').onclick = () => { pdfDesignerSaveSelectedSilent(); toast('บันทึกพิกัดเอกสารแล้ว'); };
     if ($('previewPdfDesignerBtn')) $('previewPdfDesignerBtn').onclick = () => pdfDesignerRenderPreview(true);
     const nudge = (dx, dy) => async () => {
-        const x = Number($('pdfDesignerX')?.value || 0) + dx;
-        const y = Number($('pdfDesignerY')?.value || 0) + dy;
-        if ($('pdfDesignerX')) $('pdfDesignerX').value = x;
-        if ($('pdfDesignerY')) $('pdfDesignerY').value = y;
-        pdfDesignerSaveSelectedSilent();
+        const paths = getPdfDesignerSelectedPaths();
+        if (!paths.length) return toast('กรุณาเลือกฟิลด์ก่อน');
+        pdfDesignerNudgePaths(paths, dx, dy);
+        const current = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
+        const updated = getPdfFieldByPath(deepApplyPdfOverrides(clonePlain(window.__lastContractPdfFieldMap || {}), pdfTemplateLoadOverrides()), current);
+        if (updated) pdfDesignerFillInputs(updated);
         await pdfDesignerRenderPreview(false);
     };
     if ($('pdfDesignerLeftBtn')) $('pdfDesignerLeftBtn').onclick = nudge(-1, 0);
     if ($('pdfDesignerRightBtn')) $('pdfDesignerRightBtn').onclick = nudge(1, 0);
     if ($('pdfDesignerUpBtn')) $('pdfDesignerUpBtn').onclick = nudge(0, -1);
     if ($('pdfDesignerDownBtn')) $('pdfDesignerDownBtn').onclick = nudge(0, 1);
+    const resizeSelected = (delta) => async () => {
+        const paths = getPdfDesignerSelectedPaths();
+        if (!paths.length) return toast('กรุณาเลือกฟิลด์ก่อน');
+        pdfDesignerResizeFontPaths(paths, delta);
+        const current = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
+        const updated = getPdfFieldByPath(deepApplyPdfOverrides(clonePlain(window.__lastContractPdfFieldMap || {}), pdfTemplateLoadOverrides()), current);
+        if (updated) pdfDesignerFillInputs(updated);
+        await pdfDesignerRenderPreview(false);
+    };
+    if ($('pdfDesignerSizeMinusBtn')) $('pdfDesignerSizeMinusBtn').onclick = resizeSelected(-1);
+    if ($('pdfDesignerSizePlusBtn')) $('pdfDesignerSizePlusBtn').onclick = resizeSelected(1);
     const bulkRun = async (fn) => { fn(pdfDesignerBulkPaths()); await pdfDesignerRenderPreview(false); };
     if ($('pdfDesignerBulkLeftBtn')) $('pdfDesignerBulkLeftBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, -1, 0));
     if ($('pdfDesignerBulkRightBtn')) $('pdfDesignerBulkRightBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 1, 0));
@@ -2457,6 +2508,8 @@ bindContractSmartUi();
 bindPdfTemplateDesigner();
 document.querySelectorAll('[data-clear-sig]').forEach(b => b.onclick = () => clearSignature(b.dataset.clearSig));
 document.querySelectorAll('[data-undo-sig]').forEach(b => b.onclick = () => undoSignature(b.dataset.undoSig));
+document.querySelectorAll('[data-redo-sig]').forEach(b => b.onclick = () => redoSignature(b.dataset.redoSig));
+setTimeout(updateAllSignatureTools, 300);
 window.addEventListener('resize', () => { if (!$('contractFormCard')?.classList.contains('hidden')) SIG_IDS.forEach(id => resizeSignatureCanvas($(id))); if ($('profileLenderSignature')) resizeSignatureCanvas($('profileLenderSignature')); pdfDesignerRenderOverlay(); });
 
 
@@ -2534,7 +2587,6 @@ window.deleteContractDraft = async id => {
     const row = (latestData?.contracts || []).find(x => x.id === id);
     if (!row) return toast('ไม่พบสัญญา');
     if (isContractLocked(row)) return toast('ลบไม่ได้ เพราะสัญญาลงลายเซ็นครบและถูกล็อกแล้ว');
-    if (contractSignedCount(row) > 0) return toast('ลบไม่ได้ เพราะมีลายเซ็นแล้ว แต่ยังสามารถแก้ไขได้');
     const ok = await confirmAction({ title: 'ยืนยันการลบแบบร่างสัญญา', text: 'ลบแบบร่างสัญญานี้ใช่หรือไม่?', confirmButtonText: 'ลบแบบร่าง', confirmButtonColor: '#dc2626' }); if (!ok) return;
     if (row.documentId) await deleteDocument(row.documentId, { force: true, skipConfirm: true });
     await deleteRow('contracts', id);
@@ -2645,7 +2697,49 @@ function restoreUiChrome() {
     if (latestData) updateFollowupBadges(calc(latestData).debts.filter(x => x.isDue).length);
 }
 
-window.addEventListener('DOMContentLoaded', () => { decorateButtons(); restoreUiChrome(); });
+
+function bindNoZoomDesigner() {
+    const area = $('pdfDesignerPanel');
+    if (!area || area.dataset.noZoomBound) return;
+    area.dataset.noZoomBound = '1';
+    ['dblclick','gesturestart','gesturechange','gestureend'].forEach(evt => area.addEventListener(evt, e => e.preventDefault(), { passive:false }));
+    let lastTap = 0;
+    area.addEventListener('touchend', e => {
+        const now = Date.now();
+        if (now - lastTap < 320) e.preventDefault();
+        lastTap = now;
+    }, { passive:false });
+}
+function initSettingsAccordion() {
+    const panel = $('tab-settings');
+    if (!panel || panel.dataset.accordionReady) return;
+    panel.dataset.accordionReady = '1';
+    panel.querySelectorAll(':scope > .card').forEach((card, index) => {
+        if (card.id === 'pdfDesignerPanel') return;
+        const head = card.querySelector(':scope > h3, :scope > .card-head-row');
+        if (!head) return;
+        card.classList.add('settings-accordion-card', 'collapsed');
+        if (index === 0) card.classList.remove('collapsed');
+        let body = card.querySelector(':scope > .settings-accordion-body');
+        if (!body) {
+            body = document.createElement('div');
+            body.className = 'settings-accordion-body';
+            let node = head.nextSibling;
+            const moving = [];
+            while (node) { const next = node.nextSibling; moving.push(node); node = next; }
+            moving.forEach(n => body.appendChild(n));
+            card.appendChild(body);
+        }
+        head.classList.add('settings-accordion-head');
+        head.setAttribute('role','button');
+        head.addEventListener('click', (e) => {
+            if (e.target.closest('button,input,select,textarea,a,label')) return;
+            card.classList.toggle('collapsed');
+        });
+    });
+}
+
+window.addEventListener('DOMContentLoaded', () => { decorateButtons(); restoreUiChrome(); initSettingsAccordion(); bindNoZoomDesigner(); });
 
 try {
     decorateButtons();

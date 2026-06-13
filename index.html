@@ -81,7 +81,7 @@
                             id="dashDueAmountAction">0.00</strong></button>
                 </section>
                 <div class="card">
-                    <h3><i class="bi bi-bar-chart"></i> Aging Report</h3>
+                    <h3><i class="bi bi-bar-chart"></i> รายงานวิเคราะห์อายุหนี้</h3>
                     <div class="aging-grid">
                         <div><span>0-30 วัน</span><b id="aging030">0.00</b></div>
                         <div><span>31-60 วัน</span><b id="aging3160">0.00</b></div>
@@ -204,8 +204,8 @@
                     </select>
                     <label>เลือกไฟล์</label><label id="dropzone" class="dropzone"><i
                             class="bi bi-cloud-arrow-up"></i><strong>ลากไฟล์มาวาง หรือ
-                            แตะเพื่อเลือกหลายไฟล์</strong><span id="dropzoneText">รองรับรูปภาพ / เอกสาร /
-                            เอกสารทั่วไป</span><input id="documentFile" type="file" multiple></label>
+                            แตะเพื่อเลือกหลายไฟล์</strong><span id="dropzoneText">รองรับรูปภาพ / ไฟล์ PDF /
+                            Docx,Xlsx</span><input id="documentFile" type="file" multiple></label>
                     <button id="addDocumentBtn" class="primary">บันทึกเอกสารแนบ</button>
                     <hr class="soft-sep">
                     <div id="documentList" class="list"></div>
@@ -391,20 +391,56 @@
                     <div id="contractSummaryBox" class="contract-summary-box"></div>
 
                     <div class="signature-grid">
-                        <div class="signature-box"><b>ผู้ให้กู้</b><canvas id="sigLender"
-                                class="sig-pad"></canvas><div class="sig-actions-row"><button class="mini" type="button" data-undo-sig="sigLender"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button><button class="mini" type="button" data-clear-sig="sigLender"><i class="bi bi-eraser"></i> ล้าง</button></div>
+                        <div class="signature-box"><b>ผู้ให้กู้</b><canvas id="sigLender" class="sig-pad"></canvas>
+                            <div class="sig-actions-row sig-smart-tools hidden"><button class="mini sig-tool-btn hidden"
+                                    type="button" data-undo-sig="sigLender" title="ย้อนกลับ" aria-label="ย้อนกลับ"><i
+                                        class="bi bi-arrow-counterclockwise"></i></button><button
+                                    class="mini sig-tool-btn hidden" type="button" data-redo-sig="sigLender"
+                                    title="ทำซ้ำ" aria-label="ทำซ้ำ"><i
+                                        class="bi bi-arrow-clockwise"></i></button><button
+                                    class="mini sig-tool-btn hidden" type="button" data-clear-sig="sigLender"
+                                    title="ล้าง" aria-label="ล้าง"><i class="bi bi-eraser"></i></button></div>
                         </div>
-                        <div class="signature-box"><b>ผู้กู้</b><canvas id="sigBorrower"
-                                class="sig-pad"></canvas><div class="sig-actions-row"><button class="mini" type="button" data-undo-sig="sigBorrower"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button><button class="mini" type="button" data-clear-sig="sigBorrower"><i class="bi bi-eraser"></i> ล้าง</button></div>
+                        <div class="signature-box"><b>ผู้กู้</b><canvas id="sigBorrower" class="sig-pad"></canvas>
+                            <div class="sig-actions-row sig-smart-tools hidden"><button class="mini sig-tool-btn hidden"
+                                    type="button" data-undo-sig="sigBorrower" title="ย้อนกลับ" aria-label="ย้อนกลับ"><i
+                                        class="bi bi-arrow-counterclockwise"></i></button><button
+                                    class="mini sig-tool-btn hidden" type="button" data-redo-sig="sigBorrower"
+                                    title="ทำซ้ำ" aria-label="ทำซ้ำ"><i
+                                        class="bi bi-arrow-clockwise"></i></button><button
+                                    class="mini sig-tool-btn hidden" type="button" data-clear-sig="sigBorrower"
+                                    title="ล้าง" aria-label="ล้าง"><i class="bi bi-eraser"></i></button></div>
                         </div>
-                        <div class="signature-box"><b>พยาน 1</b><canvas id="sigWitness1"
-                                class="sig-pad"></canvas><div class="sig-actions-row"><button class="mini" type="button" data-undo-sig="sigWitness1"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button><button class="mini" type="button" data-clear-sig="sigWitness1"><i class="bi bi-eraser"></i> ล้าง</button></div>
+                        <div class="signature-box"><b>พยาน 1</b><canvas id="sigWitness1" class="sig-pad"></canvas>
+                            <div class="sig-actions-row sig-smart-tools hidden"><button class="mini sig-tool-btn hidden"
+                                    type="button" data-undo-sig="sigWitness1" title="ย้อนกลับ" aria-label="ย้อนกลับ"><i
+                                        class="bi bi-arrow-counterclockwise"></i></button><button
+                                    class="mini sig-tool-btn hidden" type="button" data-redo-sig="sigWitness1"
+                                    title="ทำซ้ำ" aria-label="ทำซ้ำ"><i
+                                        class="bi bi-arrow-clockwise"></i></button><button
+                                    class="mini sig-tool-btn hidden" type="button" data-clear-sig="sigWitness1"
+                                    title="ล้าง" aria-label="ล้าง"><i class="bi bi-eraser"></i></button></div>
                         </div>
-                        <div class="signature-box"><b>พยาน 2</b><canvas id="sigWitness2"
-                                class="sig-pad"></canvas><div class="sig-actions-row"><button class="mini" type="button" data-undo-sig="sigWitness2"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button><button class="mini" type="button" data-clear-sig="sigWitness2"><i class="bi bi-eraser"></i> ล้าง</button></div>
+                        <div class="signature-box"><b>พยาน 2</b><canvas id="sigWitness2" class="sig-pad"></canvas>
+                            <div class="sig-actions-row sig-smart-tools hidden"><button class="mini sig-tool-btn hidden"
+                                    type="button" data-undo-sig="sigWitness2" title="ย้อนกลับ" aria-label="ย้อนกลับ"><i
+                                        class="bi bi-arrow-counterclockwise"></i></button><button
+                                    class="mini sig-tool-btn hidden" type="button" data-redo-sig="sigWitness2"
+                                    title="ทำซ้ำ" aria-label="ทำซ้ำ"><i
+                                        class="bi bi-arrow-clockwise"></i></button><button
+                                    class="mini sig-tool-btn hidden" type="button" data-clear-sig="sigWitness2"
+                                    title="ล้าง" aria-label="ล้าง"><i class="bi bi-eraser"></i></button></div>
                         </div>
                         <div class="signature-box"><b>ผู้เขียนและพยาน</b><canvas id="sigWriter"
-                                class="sig-pad"></canvas><div class="sig-actions-row"><button class="mini" type="button" data-undo-sig="sigWriter"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button><button class="mini" type="button" data-clear-sig="sigWriter"><i class="bi bi-eraser"></i> ล้าง</button></div>
+                                class="sig-pad"></canvas>
+                            <div class="sig-actions-row sig-smart-tools hidden"><button class="mini sig-tool-btn hidden"
+                                    type="button" data-undo-sig="sigWriter" title="ย้อนกลับ" aria-label="ย้อนกลับ"><i
+                                        class="bi bi-arrow-counterclockwise"></i></button><button
+                                    class="mini sig-tool-btn hidden" type="button" data-redo-sig="sigWriter"
+                                    title="ทำซ้ำ" aria-label="ทำซ้ำ"><i
+                                        class="bi bi-arrow-clockwise"></i></button><button
+                                    class="mini sig-tool-btn hidden" type="button" data-clear-sig="sigWriter"
+                                    title="ล้าง" aria-label="ล้าง"><i class="bi bi-eraser"></i></button></div>
                         </div>
                     </div>
                     <div class="contract-action-row">
@@ -491,53 +527,93 @@
                             </div>
                         </div>
                         <canvas id="profileLenderSignature" class="sig-pad profile-sig-pad"></canvas>
-                        <div class="sig-actions-row">
-                            <button class="mini" type="button" data-undo-sig="profileLenderSignature"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button>
-                            <button class="mini" type="button" data-clear-sig="profileLenderSignature"><i class="bi bi-eraser"></i> ล้าง</button>
+                        <div class="sig-actions-row sig-smart-tools hidden">
+                            <button class="mini sig-tool-btn hidden" type="button"
+                                data-undo-sig="profileLenderSignature" title="ย้อนกลับ" aria-label="ย้อนกลับ"><i
+                                    class="bi bi-arrow-counterclockwise"></i></button>
+                            <button class="mini sig-tool-btn hidden" type="button"
+                                data-redo-sig="profileLenderSignature" title="ทำซ้ำ" aria-label="ทำซ้ำ"><i
+                                    class="bi bi-arrow-clockwise"></i></button>
+                            <button class="mini sig-tool-btn hidden" type="button"
+                                data-clear-sig="profileLenderSignature" title="ล้าง" aria-label="ล้าง"><i
+                                    class="bi bi-eraser"></i></button>
                         </div>
-                        <p class="note">เอกสารที่สร้างและล็อกแล้วจะใช้ลายเซ็นที่ถูกบันทึกไว้ในเอกสารฉบับนั้น ไม่เปลี่ยนตามการแก้ไขภายหลัง</p>
+                        <p class="note">เอกสารที่สร้างและล็อกแล้วจะใช้ลายเซ็นที่ถูกบันทึกไว้ในเอกสารฉบับนั้น
+                            ไม่เปลี่ยนตามการแก้ไขภายหลัง</p>
                     </div>
                     <button id="saveProfileBtn" class="primary">บันทึกข้อมูลผู้ใช้งาน</button>
                 </div>
 
-                <div class="card" id="pdfTemplateDesignerCard">
-                    <h3><i class="bi bi-bezier2"></i> ตัวปรับพิกัดเอกสาร <span class="badge-soft">Beta</span></h3>
-                    <p class="note">ปรับพิกัดข้อความบนแบบฟอร์มเอกสาร ได้เองโดยไม่ต้องแก้โค้ด ใช้สำหรับ Fine tune
-                        ตำแหน่งก่อน Production</p>
-                    <button id="openPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-sliders"></i>
-                        เปิดตัวปรับพิกัดเอกสาร</button>
+                <div class="card settings-accordion-card collapsed" id="pdfTemplateDesignerCard">
+                    <h3 class="settings-accordion-head" role="button" tabindex="0">
+                        <span class="settings-accordion-title">
+                            <i class="bi bi-bezier2"></i>
+                        </span>
+                        <span class="settings-accordion-title"> <span>ตัวปรับพิกัดเอกสาร</span>
+                            <span class="badge-soft">Beta</span>
+                        </span>
+
+                        <!-- <i class="bi bi-chevron-down settings-accordion-arrow"></i> -->
+                    </h3>
+
+                    <div class="settings-accordion-body">
+                        <p class="note">
+                            ปรับพิกัดข้อความบนแบบฟอร์มเอกสารได้เองโดยไม่ต้องแก้โค้ด ใช้สำหรับ Fine tune
+                            ตำแหน่งก่อน Production
+                        </p>
+
+                        <button id="openPdfDesignerBtn" class="secondary" type="button" data-v7-decorated="1"
+                            title="เปิดตัวปรับพิกัดเอกสาร">
+                            <i class="bi bi-sliders"></i>
+                            เปิดตัวปรับพิกัดเอกสาร
+                        </button>
+                    </div>
                 </div>
                 <div id="pdfDesignerPanel" class="card hidden">
                     <div class="card-head-row">
                         <h3><i class="bi bi-crosshair"></i> ตัวปรับพิกัดเอกสาร</h3>
-                        <button id="closePdfDesignerBtn" class="mini icon-action" type="button" title="ปิด"><i class="bi bi-x-lg"></i></button>
+                        <button id="closePdfDesignerBtn" class="mini icon-action" type="button" title="ปิด"><i
+                                class="bi bi-x-lg"></i></button>
                     </div>
-                    <p class="note">แตะฟิลด์บนภาพเพื่อเลือก กด Shift/Ctrl แล้วแตะเพื่อเลือกหลายฟิลด์ หรือใช้ชุดปรับพร้อมกันด้านล่าง เส้นจะขึ้นเฉพาะฟิลด์ที่เลือกเพื่อลดความรกตา</p>
+                    <p class="note">แตะฟิลด์บนภาพเพื่อเลือก กด Shift/Ctrl แล้วแตะเพื่อเลือกหลายฟิลด์
+                        หรือใช้ชุดปรับพร้อมกันด้านล่าง เส้นจะขึ้นเฉพาะฟิลด์ที่เลือกเพื่อลดความรกตา</p>
 
                     <label>ฟิลด์ที่ต้องการปรับ</label>
                     <select id="pdfDesignerField" class="input"></select>
 
-                    <div class="pdf-designer-grid">
+                    <div class="pdf-designer-grid pdf-designer-advanced-inputs">
                         <div><label>X</label><input id="pdfDesignerX" class="input" type="number" step="1"></div>
                         <div><label>Y</label><input id="pdfDesignerY" class="input" type="number" step="1"></div>
-                        <div><label>Max Width</label><input id="pdfDesignerMaxWidth" class="input" type="number" step="1"></div>
-                        <div><label>Font Size</label><input id="pdfDesignerSize" class="input" type="number" step="1"></div>
-                        <div><label>Min Size</label><input id="pdfDesignerMinSize" class="input" type="number" step="1"></div>
+                        <div><label>Max Width</label><input id="pdfDesignerMaxWidth" class="input" type="number"
+                                step="1"></div>
+                        <div><label>Font Size</label><input id="pdfDesignerSize" class="input" type="number" step="1">
+                        </div>
+                        <div><label>Min Size</label><input id="pdfDesignerMinSize" class="input" type="number" step="1">
+                        </div>
                         <div><label>Align</label><select id="pdfDesignerAlign" class="input">
-                            <option value="left">left</option>
-                            <option value="center">center</option>
-                            <option value="right">right</option>
-                        </select></div>
+                                <option value="left">left</option>
+                                <option value="center">center</option>
+                                <option value="right">right</option>
+                            </select></div>
                     </div>
 
                     <div class="pdf-designer-top-tools">
                         <div class="pdf-arrow-pad" aria-label="ขยับฟิลด์ที่เลือก">
-                            <button id="pdfDesignerUpBtn" class="secondary" type="button"><i class="bi bi-arrow-up"></i></button>
-                            <button id="pdfDesignerLeftBtn" class="secondary" type="button"><i class="bi bi-arrow-left"></i></button>
-                            <button id="pdfDesignerRightBtn" class="secondary" type="button"><i class="bi bi-arrow-right"></i></button>
-                            <button id="pdfDesignerDownBtn" class="secondary" type="button"><i class="bi bi-arrow-down"></i></button>
+                            <button id="pdfDesignerUpBtn" class="secondary" type="button"><i
+                                    class="bi bi-arrow-up"></i></button>
+                            <button id="pdfDesignerLeftBtn" class="secondary" type="button"><i
+                                    class="bi bi-arrow-left"></i></button>
+                            <button id="pdfDesignerRightBtn" class="secondary" type="button"><i
+                                    class="bi bi-arrow-right"></i></button>
+                            <button id="pdfDesignerDownBtn" class="secondary" type="button"><i
+                                    class="bi bi-arrow-down"></i></button>
                         </div>
-                        <button id="previewPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-eye"></i> แสดงตัวอย่าง</button>
+                        <div class="pdf-selected-font-tools" aria-label="ปรับขนาดตัวอักษรฟิลด์ที่เลือก">
+                            <button id="pdfDesignerSizeMinusBtn" class="secondary" type="button">A-</button>
+                            <button id="pdfDesignerSizePlusBtn" class="secondary" type="button">A+</button>
+                        </div>
+                        <button id="previewPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-eye"></i>
+                            แสดงตัวอย่าง</button>
                     </div>
 
                     <div class="pdf-designer-preview-wrap" id="pdfDesignerPreviewWrap">
@@ -560,17 +636,22 @@
                             <option value="signatures">ลายเซ็น</option>
                         </select>
                         <div class="pdf-designer-actions pdf-bulk-actions">
-                            <button id="pdfDesignerBulkLeftBtn" class="secondary" type="button"><i class="bi bi-arrow-left"></i></button>
-                            <button id="pdfDesignerBulkRightBtn" class="secondary" type="button"><i class="bi bi-arrow-right"></i></button>
-                            <button id="pdfDesignerBulkUpBtn" class="secondary" type="button"><i class="bi bi-arrow-up"></i></button>
-                            <button id="pdfDesignerBulkDownBtn" class="secondary" type="button"><i class="bi bi-arrow-down"></i></button>
+                            <button id="pdfDesignerBulkLeftBtn" class="secondary" type="button"><i
+                                    class="bi bi-arrow-left"></i></button>
+                            <button id="pdfDesignerBulkRightBtn" class="secondary" type="button"><i
+                                    class="bi bi-arrow-right"></i></button>
+                            <button id="pdfDesignerBulkUpBtn" class="secondary" type="button"><i
+                                    class="bi bi-arrow-up"></i></button>
+                            <button id="pdfDesignerBulkDownBtn" class="secondary" type="button"><i
+                                    class="bi bi-arrow-down"></i></button>
                             <button id="pdfDesignerBulkSizeMinusBtn" class="secondary" type="button">A-</button>
                             <button id="pdfDesignerBulkSizePlusBtn" class="secondary" type="button">A+</button>
                         </div>
                     </div>
 
                     <div class="pdf-designer-save-row">
-                        <button id="savePdfDesignerBtn" class="primary" type="button"><i class="bi bi-save"></i> บันทึกพิกัด</button>
+                        <button id="savePdfDesignerBtn" class="primary" type="button"><i class="bi bi-save"></i>
+                            บันทึกพิกัด</button>
                         <button id="resetPdfDesignerFieldBtn" class="ghost" type="button">รีเซ็ตฟิลด์นี้</button>
                         <button id="resetPdfDesignerAllBtn" class="danger" type="button">ล้างพิกัดทั้งหมด</button>
                     </div>
