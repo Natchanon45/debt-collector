@@ -1366,7 +1366,7 @@ function updateContractSmartUi() {
     }
     if ($('contractSummaryBox')) {
         $('contractSummaryBox').innerHTML = `
-            <div class="contract-summary-title"><i class="bi bi-clipboard-check"></i> สรุปก่อนสร้าง PDF</div>
+            <div class="contract-summary-title"><i class="bi bi-clipboard-check"></i> สรุปก่อนสร้างเอกสาร</div>
             <div class="contract-summary-grid">
                 <div><span>ผู้กู้</span><strong>${escapeHtml(debtor.name || '-')}</strong></div>
                 <div><span>อายุ</span><strong>${escapeHtml(age || '-')} ปี</strong></div>
@@ -1419,7 +1419,7 @@ function renderContractList(d, c) {
         const canDelete = signed === 0 && !complete;
         const canLock = fullySigned && !complete;
         const displayAmount = contractDisplayAmount(x, c);
-        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${escapeHtml(c.debtors[x.debtorId]?.name || x.borrowerName || '-')} · ${money(displayAmount)}</div><div class="item-sub">${status} · วันที่ ${formatDate(x.contractDate || x.createdDate)} · ครบกำหนด ${formatDate(x.dueDate)} · ${escapeHtml(x.fileName || '')}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิด PDF" aria-label="เปิด PDF" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${canLock ? `<button class="icon-action icon-lock" type="button" title="ล็อกเอกสาร" aria-label="ล็อกเอกสาร" onclick="lockContractDocument('${x.id}')"><i class="bi bi-lock"></i></button>` : ''}${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
+        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${escapeHtml(c.debtors[x.debtorId]?.name || x.borrowerName || '-')} · ${money(displayAmount)}</div><div class="item-sub">${status} · วันที่ ${formatDate(x.contractDate || x.createdDate)} · ครบกำหนด ${formatDate(x.dueDate)} · ${escapeHtml(x.fileName || '')}</div></div><div class="doc-actions icon-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิด เอกสาร" onclick="openContractPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>${canLock ? `<button class="icon-action icon-lock" type="button" title="ล็อกเอกสาร" aria-label="ล็อกเอกสาร" onclick="lockContractDocument('${x.id}')"><i class="bi bi-lock"></i></button>` : ''}${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
     }).join('') : '<div class="empty">ยังไม่มีสัญญากู้ยืม</div>';
 }
 function bahtTextFallback(n) {
@@ -1702,7 +1702,11 @@ function loadContractTemplateImage() {
     }
     return contractTemplateImagePromise;
 }
-function contractCanvasPoint(x, y) { return { x: x * (2480 / 1447), y: y * (3508 / 2048) }; }
+const CONTRACT_CANVAS_WIDTH = 1447;
+const CONTRACT_CANVAS_HEIGHT = 2048;
+const CONTRACT_CANVAS_SCALE_X = CONTRACT_CANVAS_WIDTH / 1447;
+const CONTRACT_CANVAS_SCALE_Y = CONTRACT_CANVAS_HEIGHT / 2048;
+function contractCanvasPoint(x, y) { return { x: x * CONTRACT_CANVAS_SCALE_X, y: y * CONTRACT_CANVAS_SCALE_Y }; }
 const CONTRACT_CANVAS_FONT_FAMILY = '"THSarabunContract"';
 let contractFontReadyPromise = null;
 async function ensureContractCanvasFont() {
@@ -1741,7 +1745,7 @@ function setupContractCanvasFont(ctx, size = 40, bold = false) {
 }
 function drawContractText(ctx, text, x, y, opt = {}) {
     const p = contractCanvasPoint(x, y);
-    const maxWidth = opt.maxWidth ? opt.maxWidth * (2480 / 1447) : 9999;
+    const maxWidth = opt.maxWidth ? opt.maxWidth * CONTRACT_CANVAS_SCALE_X : 9999;
     let align = opt.align || 'left';
     let size = opt.size || 40;
     const minSize = opt.minSize || 30;
@@ -1762,8 +1766,8 @@ function drawContractText(ctx, text, x, y, opt = {}) {
         align = 'center';
     }
     ctx.textAlign = align;
-    const indent = opt.indent != null ? opt.indent * (2480 / 1447) : 12;
-    const tx = align === 'right' ? p.x + maxWidth - (opt.rightPad || 0) * (2480 / 1447) : (align === 'center' ? p.x + (maxWidth / 2) : p.x + indent);
+    const indent = opt.indent != null ? opt.indent * CONTRACT_CANVAS_SCALE_X : 12;
+    const tx = align === 'right' ? p.x + maxWidth - (opt.rightPad || 0) * CONTRACT_CANVAS_SCALE_X : (align === 'center' ? p.x + (maxWidth / 2) : p.x + indent);
     ctx.fillText(value, tx, p.y, maxWidth);
 }
 function drawContractWrap(ctx, text, x, y, maxWidth, lineHeight = 26, maxLines = 2, opt = {}) {
@@ -1772,7 +1776,7 @@ function drawContractWrap(ctx, text, x, y, maxWidth, lineHeight = 26, maxLines =
     let current = '';
     const size = opt.size || 38;
     setupContractCanvasFont(ctx, size, opt.bold !== false);
-    const pxMax = maxWidth * (2480 / 1447);
+    const pxMax = maxWidth * CONTRACT_CANVAS_SCALE_X;
     for (const word of words) {
         const test = current ? current + ' ' + word : word;
         if (ctx.measureText(test).width <= pxMax || !current) current = test;
@@ -1791,7 +1795,7 @@ function drawContractWrapSegments(ctx, text, segments, opt = {}) {
     let current = '';
     let segIndex = 0;
     setupContractCanvasFont(ctx, size, opt.bold === true);
-    const maxPxFor = i => (segments[Math.min(i, segments.length - 1)].maxWidth || 9999) * (2480 / 1447);
+    const maxPxFor = i => (segments[Math.min(i, segments.length - 1)].maxWidth || 9999) * CONTRACT_CANVAS_SCALE_X;
     for (const word of words) {
         const test = current ? current + ' ' + word : word;
         if (ctx.measureText(test).width <= maxPxFor(segIndex) || !current) {
@@ -1814,8 +1818,8 @@ function drawContractInlineWrap(ctx, text, firstX, firstY, firstMaxWidth, nextX,
     const words = String(text || '-').trim().split(/\s+/).filter(Boolean);
     const size = opt.size || 38;
     setupContractCanvasFont(ctx, size, opt.bold === true);
-    const firstPxMax = firstMaxWidth * (2480 / 1447);
-    const nextPxMax = nextMaxWidth * (2480 / 1447);
+    const firstPxMax = firstMaxWidth * CONTRACT_CANVAS_SCALE_X;
+    const nextPxMax = nextMaxWidth * CONTRACT_CANVAS_SCALE_X;
     const lines = [];
     let current = '';
     let currentMax = firstPxMax;
@@ -1842,7 +1846,7 @@ function drawContractSignature(ctx, dataUrl, x, y, w, h) {
         const img = new Image();
         img.onload = () => {
             const p = contractCanvasPoint(x, y);
-            const boxW = w * (2480 / 1447), boxH = h * (3508 / 2048);
+            const boxW = w * CONTRACT_CANVAS_SCALE_X, boxH = h * CONTRACT_CANVAS_SCALE_Y;
             const scale = Math.min(boxW / img.width, boxH / img.height);
             const drawW = img.width * scale, drawH = img.height * scale;
             const dx = p.x + (boxW - drawW) / 2;
@@ -1869,7 +1873,7 @@ async function renderContractImageCanvas(row, debtor) {
     await ensureContractCanvasFont();
     const template = await loadContractTemplateImage();
     const canvas = document.createElement('canvas');
-    canvas.width = 2480; canvas.height = 3508;
+    canvas.width = CONTRACT_CANVAS_WIDTH; canvas.height = CONTRACT_CANVAS_HEIGHT;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(template, 0, 0, canvas.width, canvas.height);
@@ -2028,7 +2032,7 @@ function validateContractFormForPdf() {
     if (!row.amount) { toast('กรุณากรอกจำนวนเงินกู้'); return null; }
     const interestNum = Number(String(row.interestRate || '').replace(/[^0-9.]/g, ''));
     if (Number.isFinite(interestNum) && interestNum > 15) {
-        toast('อัตราดอกเบี้ยเกิน 15% ต่อปี กรุณาแก้ไขก่อนสร้าง PDF');
+        toast('อัตราดอกเบี้ยเกิน 15% ต่อปี กรุณาแก้ไขก่อนสร้างเอกสาร');
         return null;
     }
     return { row, debtor };
@@ -2038,7 +2042,7 @@ async function buildContractPdfBlob(row, debtor) {
     const canvas = await renderContractImageCanvas(row, debtor);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.86), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
     return pdf.output('blob');
 }
 
@@ -2046,14 +2050,14 @@ async function previewContractBeforeSave() {
     const data = validateContractFormForPdf();
     if (!data) return;
     try {
-        toast('กำลังสร้างตัวอย่าง PDF...');
+        toast('กำลังสร้างตัวอย่าง เอกสาร...');
         const blob = await buildContractPdfBlob(data.row, data.debtor);
         const url = URL.createObjectURL(blob);
-        showPreviewModal('ตัวอย่าง PDF ก่อนบันทึก', url, 'application/pdf', 'preview-loan-contract.pdf');
-        toast('แสดงตัวอย่าง PDF แล้ว');
+        showPreviewModal('ตัวอย่าง เอกสาร ก่อนบันทึก', url, 'application/pdf', 'preview-loan-contract.pdf');
+        toast('แสดงตัวอย่าง เอกสาร แล้ว');
     } catch (e) {
         console.error(e);
-        toast('แสดงตัวอย่าง PDF ไม่สำเร็จ: ' + e.message);
+        toast('แสดงตัวอย่าง เอกสาร ไม่สำเร็จ: ' + e.message);
     }
 }
 
@@ -2129,7 +2133,7 @@ function pdfDesignerSaveSelected() {
     if (!path) return;
     const patch = pdfDesignerReadInputs();
     setPdfOverrideField(path, patch);
-    toast('บันทึกพิกัด PDF แล้ว');
+    toast('บันทึกพิกัดเอกสารแล้ว');
 }
 async function pdfDesignerRenderPreview() {
     const img = $('pdfDesignerPreview');
@@ -2142,8 +2146,8 @@ async function pdfDesignerRenderPreview() {
     const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path);
     if (field) {
         const p = contractCanvasPoint(field.x, field.y);
-        const w = (field.maxWidth || 120) * (2480 / 1447);
-        const h = 52 * (3508 / 2048);
+        const w = (field.maxWidth || 120) * CONTRACT_CANVAS_SCALE_X;
+        const h = 52 * CONTRACT_CANVAS_SCALE_Y;
         ctx.save();
         ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 5;
@@ -2201,10 +2205,10 @@ function bindPdfTemplateDesigner() {
         await openPdfTemplateDesigner();
     };
     if ($('resetPdfDesignerAllBtn')) $('resetPdfDesignerAllBtn').onclick = async () => {
-        const ok = await confirmAction({ title: 'ล้างพิกัด PDF ทั้งหมด?', text: 'ค่าพิกัดที่ปรับไว้ในเครื่องนี้จะถูกลบทั้งหมด', confirmButtonText: 'ล้างพิกัด', confirmButtonColor: '#dc2626' });
+        const ok = await confirmAction({ title: 'ล้างพิกัดเอกสารทั้งหมด?', text: 'ค่าพิกัดที่ปรับไว้ในเครื่องนี้จะถูกลบทั้งหมด', confirmButtonText: 'ล้างพิกัด', confirmButtonColor: '#dc2626' });
         if (!ok) return;
         pdfTemplateSaveOverrides({});
-        toast('ล้างพิกัด PDF ทั้งหมดแล้ว');
+        toast('ล้างพิกัดเอกสารทั้งหมดแล้ว');
         await openPdfTemplateDesigner();
     };
 }
@@ -2264,7 +2268,7 @@ window.openContractPdf = async id => {
         const canvas = await renderContractImageCanvas(row, debtor);
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.86), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
         const blobUrl = URL.createObjectURL(pdf.output('blob'));
         showPreviewModal(row.fileName || 'สัญญากู้ยืมเงิน.pdf', blobUrl, 'application/pdf', row.fileName || 'loan-contract.pdf');
     } catch (e) {
