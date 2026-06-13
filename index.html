@@ -437,6 +437,44 @@
                         id="profileLenderAddress" class="input"></textarea><button id="saveProfileBtn"
                         class="primary">บันทึกข้อมูลผู้ใช้งาน</button>
                 </div>
+
+                <div class="card" id="pdfTemplateDesignerCard">
+                    <h3><i class="bi bi-bezier2"></i> PDF Template Designer <span class="badge-soft">Beta</span></h3>
+                    <p class="note">ปรับพิกัดข้อความบนแบบฟอร์ม PDF ได้เองโดยไม่ต้องแก้โค้ด ใช้สำหรับ Fine tune ตำแหน่งก่อน Production</p>
+                    <button id="openPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-sliders"></i> เปิดตัวปรับพิกัด PDF</button>
+                </div>
+                <div id="pdfDesignerPanel" class="card hidden">
+                    <div class="card-head-row">
+                        <h3><i class="bi bi-crosshair"></i> ตัวปรับพิกัด PDF</h3>
+                        <button id="closePdfDesignerBtn" class="mini icon-action" type="button" title="ปิด"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                    <p class="note">เลือกช่องที่ต้องการปรับ แล้วแก้ X/Y/ขนาด/ความกว้าง จากนั้นกด Preview เพื่อดูผลทันที ค่าเหล่านี้จะบันทึกในเครื่องนี้ก่อน</p>
+                    <label>ฟิลด์ที่ต้องการปรับ</label>
+                    <select id="pdfDesignerField" class="input"></select>
+                    <div class="pdf-designer-grid">
+                        <div><label>X</label><input id="pdfDesignerX" class="input" type="number" step="1"></div>
+                        <div><label>Y</label><input id="pdfDesignerY" class="input" type="number" step="1"></div>
+                        <div><label>Max Width</label><input id="pdfDesignerMaxWidth" class="input" type="number" step="1"></div>
+                        <div><label>Font Size</label><input id="pdfDesignerSize" class="input" type="number" step="1"></div>
+                        <div><label>Min Size</label><input id="pdfDesignerMinSize" class="input" type="number" step="1"></div>
+                        <div><label>Align</label><select id="pdfDesignerAlign" class="input"><option value="left">left</option><option value="center">center</option><option value="right">right</option></select></div>
+                    </div>
+                    <div class="pdf-designer-actions">
+                        <button id="pdfDesignerLeftBtn" class="secondary" type="button">← X</button>
+                        <button id="pdfDesignerRightBtn" class="secondary" type="button">X →</button>
+                        <button id="pdfDesignerUpBtn" class="secondary" type="button">↑ Y</button>
+                        <button id="pdfDesignerDownBtn" class="secondary" type="button">Y ↓</button>
+                    </div>
+                    <div class="pdf-designer-actions">
+                        <button id="savePdfDesignerBtn" class="primary" type="button"><i class="bi bi-save"></i> บันทึกพิกัด</button>
+                        <button id="previewPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-eye"></i> Preview</button>
+                        <button id="resetPdfDesignerFieldBtn" class="ghost" type="button">รีเซ็ตฟิลด์นี้</button>
+                        <button id="resetPdfDesignerAllBtn" class="danger" type="button">ล้างพิกัดทั้งหมด</button>
+                    </div>
+                    <div class="pdf-designer-preview-wrap">
+                        <img id="pdfDesignerPreview" class="pdf-designer-preview" alt="PDF template preview">
+                    </div>
+                </div>
                 <div class="card">
                     <h3><i class="bi bi-bell"></i> Email + Telegram Reminder</h3>
                     <p class="note">ตั้งค่า Token ใน Cloud Functions แล้วใช้ Scheduled Function ส่งแจ้งเตือนทุกเช้า</p>

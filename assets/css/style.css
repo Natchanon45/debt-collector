@@ -3432,3 +3432,46 @@ textarea,
         font-size: 17px !important;
     }
 }
+/* ===== v9.0 PDF Template Designer ===== */
+.badge-soft{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:2px 8px;
+    font-size:11px;
+    background:rgba(34,197,94,.12);
+    color:var(--green);
+    margin-left:6px;
+}
+.pdf-designer-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+}
+.pdf-designer-actions{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px;
+    margin-top:10px;
+}
+.pdf-designer-preview-wrap{
+    margin-top:14px;
+    border:1px solid var(--border);
+    border-radius:18px;
+    background:var(--card2);
+    padding:10px;
+    max-height:70vh;
+    overflow:auto;
+}
+.pdf-designer-preview{
+    display:block;
+    width:100%;
+    max-width:520px;
+    margin:auto;
+    background:white;
+    border-radius:10px;
+}
+@media(max-width:520px){
+    .pdf-designer-grid{grid-template-columns:1fr;}
+    .pdf-designer-actions{grid-template-columns:repeat(2,minmax(0,1fr));}
+}

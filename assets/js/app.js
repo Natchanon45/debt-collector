@@ -20,6 +20,83 @@ function toast(m, type = 'info') {
     window.t = setTimeout(() => el.classList.remove('show'), 3200);
 }
 
+
+// ===== v9.0 Template Designer (Coordinate Override) =====
+const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_pdf_template_overrides_v9';
+const PDF_TEMPLATE_FIELD_LABELS = {
+    'header.contractNo': 'เลขที่สัญญา',
+    'header.place': 'สถานที่ทำสัญญา',
+    'header.day': 'วันที่ด้านบน',
+    'header.month': 'เดือนด้านบน',
+    'header.year': 'พ.ศ. ด้านบน',
+    'borrower.name': 'ชื่อผู้กู้ด้านบน',
+    'borrower.age': 'อายุผู้กู้',
+    'borrower.houseNo': 'บ้านเลขที่ผู้กู้',
+    'borrower.subDistrict': 'ตำบล/แขวง ผู้กู้',
+    'borrower.district': 'อำเภอ/เขต ผู้กู้',
+    'borrower.province': 'จังหวัดผู้กู้',
+    'lender.name': 'ชื่อผู้ให้กู้ด้านบน',
+    'clause1.borrowerLine': 'ชื่อผู้กู้ + เลขบัตร ข้อ 1',
+    'clause1.lenderLine': 'ชื่อผู้ให้กู้ + เลขบัตร ข้อ 1',
+    'clause1.amount': 'จำนวนเงินตัวเลข',
+    'clause1.amountText': 'จำนวนเงินตัวอักษร',
+    'clause1.satang': 'สตางค์ตัวอักษร',
+    'clause1.satangFull': 'ขีดกรณี .00',
+    'clause3.day': 'วันครบกำหนด',
+    'clause3.month': 'เดือนครบกำหนด',
+    'clause3.year': 'พ.ศ. ครบกำหนด',
+    'clause4.interest': 'ดอกเบี้ย',
+    'signatures.borrowerName': 'ชื่อลายเซ็นผู้กู้',
+    'signatures.lenderName': 'ชื่อลายเซ็นผู้ให้กู้',
+    'signatures.witness1Name': 'ชื่อลายเซ็นพยาน 1',
+    'signatures.witness2Name': 'ชื่อลายเซ็นพยาน 2',
+    'signatures.writerName': 'ชื่อลายเซ็นผู้เขียน'
+};
+let pdfTemplateDesignerState = { selected: 'clause1.amountText', previewUrl: '' };
+function pdfTemplateLoadOverrides() {
+    try { return JSON.parse(localStorage.getItem(PDF_TEMPLATE_OVERRIDE_LS) || '{}') || {}; }
+    catch { return {}; }
+}
+function pdfTemplateSaveOverrides(overrides) {
+    localStorage.setItem(PDF_TEMPLATE_OVERRIDE_LS, JSON.stringify(overrides || {}));
+}
+function clonePlain(obj) { return JSON.parse(JSON.stringify(obj || {})); }
+function deepApplyPdfOverrides(target, overrides) {
+    Object.entries(overrides || {}).forEach(([path, value]) => {
+        const keys = path.split('.');
+        let cur = target;
+        for (let i = 0; i < keys.length - 1; i++) cur = cur?.[keys[i]];
+        const last = keys[keys.length - 1];
+        if (cur && cur[last] && typeof cur[last] === 'object') cur[last] = { ...cur[last], ...value };
+    });
+    return target;
+}
+function getPdfFieldByPath(map, path) {
+    return String(path || '').split('.').reduce((acc, key) => acc?.[key], map);
+}
+function setPdfOverrideField(path, patch) {
+    const overrides = pdfTemplateLoadOverrides();
+    overrides[path] = { ...(overrides[path] || {}), ...patch };
+    Object.keys(overrides[path]).forEach(k => {
+        if (overrides[path][k] === '' || overrides[path][k] == null || Number.isNaN(overrides[path][k])) delete overrides[path][k];
+    });
+    pdfTemplateSaveOverrides(overrides);
+}
+function resetPdfOverrideField(path) {
+    const overrides = pdfTemplateLoadOverrides();
+    delete overrides[path];
+    pdfTemplateSaveOverrides(overrides);
+}
+function flattenPdfFields(map, prefix = '') {
+    const out = [];
+    Object.entries(map || {}).forEach(([key, value]) => {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (value && typeof value === 'object' && 'x' in value && 'y' in value) out.push(path);
+        else if (value && typeof value === 'object') out.push(...flattenPdfFields(value, path));
+    });
+    return out;
+}
+
 async function confirmAction(options = {}) {
     const title = options.title || 'ยืนยันการดำเนินการ';
     const text = options.text || '';
@@ -1274,7 +1351,7 @@ function contractAmountTextParts(n) {
         satangText = satangNum > 0 ? '' : '-';
     }
 
-    // v8.1.6: ใส่วงเล็บเฉพาะข้อความจำนวนเงินและสตางค์ แล้วจัดกึ่งกลางในช่องของตัวเอง
+    // v9.0.0: ใส่วงเล็บเฉพาะข้อความจำนวนเงินและสตางค์ แล้วจัดกึ่งกลางในช่องของตัวเอง
     // กรณี .00 ให้สตางค์เป็น '-' โดยไม่ใส่วงเล็บ
     const displayBahtText = bahtText && bahtText !== '-' ? `( ${bahtText} )` : '-';
     const displaySatangText = satangNum > 0 && satangText && satangText !== '-' ? `( ${satangText} )` : '-';
@@ -1733,9 +1810,9 @@ async function renderContractImageCanvas(row, debtor) {
             // v8.0.11: number + Thai amount + satang/full text are on the SAME printed money line.
             // Do not use a second-line Y for the Thai amount text. Only X changes by field.
             amount: { x: 175, y: 525, maxWidth: 450, size: FS, minSize: 32, align: 'right', rightPad: 4 },
-            // v8.1.6: ตัวหนังสือจำนวนเงินใส่วงเล็บและจัดกึ่งกลางในช่องข้อความ เพื่อให้ PC/Mobile ไม่เลื่อนจาก right-anchor
+            // v9.0.0: ตัวหนังสือจำนวนเงินใส่วงเล็บและจัดกึ่งกลางในช่องข้อความ เพื่อให้ PC/Mobile ไม่เลื่อนจาก right-anchor
             amountText: { x: 635, y: 520, maxWidth: 340, size: 32, minSize: 20, align: 'center', rightPad: 0 },
-            // v8.1.6: ถ้ามีสตางค์ให้ใส่วงเล็บและจัดกึ่งกลาง / ถ้า .00 ให้แสดง '-' ไม่ใส่วงเล็บ
+            // v9.0.0: ถ้ามีสตางค์ให้ใส่วงเล็บและจัดกึ่งกลาง / ถ้า .00 ให้แสดง '-' ไม่ใส่วงเล็บ
             satang: { x: 1080, y: 520, maxWidth: 220, size: 32, minSize: 20, align: 'center', rightPad: 0 },
             satangFull: { x: 1080, y: 520, maxWidth: 145, size: 32, minSize: 20, align: 'center', rightPad: 0 } // '-' 
         },
@@ -1755,6 +1832,9 @@ async function renderContractImageCanvas(row, debtor) {
             writerName: { x: 760, y: 1803, maxWidth: 300, size: FS_SIG_NAME, minSize: 28, align: 'left' }
         }
     };
+    // v9.0: apply user-saved coordinate overrides from Template Designer without touching the PC-stable base map.
+    deepApplyPdfOverrides(F, pdfTemplateLoadOverrides());
+    window.__lastContractPdfFieldMap = clonePlain(F);
     const drawF = (value, field) => drawContractText(ctx, value, field.x, field.y, field);
 
     // Header
@@ -1859,11 +1939,151 @@ async function generateContract() {
         toast(editingContractId ? 'บันทึกแก้ไขสัญญาแล้ว' : 'สร้างและบันทึกสัญญาแล้ว'); editingContractId = ''; editingContractNo = ''; $('contractFormCard').classList.add('hidden'); render(); switchTab('contracts');
     } catch (e) { console.error(e); toast('สร้างสัญญาไม่สำเร็จ: ' + e.message); }
 }
+
+
+// ===== v9.0 PDF Template Designer UI =====
+function pdfDesignerSampleData() {
+    const row = {
+        contractNo: '2026060001',
+        place: 'กรุงเทพมหานคร',
+        contractDate: today(),
+        dueDate: addMonthsSafe(today(), 1),
+        lenderName: currentProfile().lenderName || 'นายผู้ให้กู้ ตัวอย่าง',
+        lenderIdCard: currentProfile().lenderIdCard || '1234567890123',
+        amount: 785412.53,
+        interestRate: '15',
+        collateral: 'ไม่มีหลักทรัพย์ค้ำประกัน',
+        witness1Name: 'นายพยาน หนึ่ง',
+        witness2Name: 'นางสาวพยาน สอง',
+        writerName: currentProfile().lenderName || 'นายผู้เขียน ตัวอย่าง',
+        signatures: {}
+    };
+    const debtor = {
+        name: 'นายผู้กู้ ตัวอย่าง',
+        idCard: '1234567890123',
+        birthDate: '1990-01-01',
+        houseNo: '99/99',
+        address: '99/99',
+        subDistrict: 'บึงคำพร้อย',
+        district: 'ลำลูกกา',
+        province: 'ปทุมธานี'
+    };
+    return { row, debtor };
+}
+function pdfDesignerFieldOptions() {
+    return Object.entries(PDF_TEMPLATE_FIELD_LABELS)
+        .map(([path, label]) => `<option value="${escapeHtml(path)}">${escapeHtml(label)} (${escapeHtml(path)})</option>`)
+        .join('');
+}
+function pdfDesignerReadInputs() {
+    return {
+        x: Number($('pdfDesignerX')?.value),
+        y: Number($('pdfDesignerY')?.value),
+        maxWidth: Number($('pdfDesignerMaxWidth')?.value),
+        size: Number($('pdfDesignerSize')?.value),
+        minSize: Number($('pdfDesignerMinSize')?.value),
+        align: $('pdfDesignerAlign')?.value || 'left'
+    };
+}
+function pdfDesignerFillInputs(field = {}) {
+    if ($('pdfDesignerX')) $('pdfDesignerX').value = field.x ?? '';
+    if ($('pdfDesignerY')) $('pdfDesignerY').value = field.y ?? '';
+    if ($('pdfDesignerMaxWidth')) $('pdfDesignerMaxWidth').value = field.maxWidth ?? '';
+    if ($('pdfDesignerSize')) $('pdfDesignerSize').value = field.size ?? '';
+    if ($('pdfDesignerMinSize')) $('pdfDesignerMinSize').value = field.minSize ?? '';
+    if ($('pdfDesignerAlign')) $('pdfDesignerAlign').value = field.align || 'left';
+}
+function pdfDesignerSaveSelected() {
+    const path = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
+    if (!path) return;
+    const patch = pdfDesignerReadInputs();
+    setPdfOverrideField(path, patch);
+    toast('บันทึกพิกัด PDF แล้ว');
+}
+async function pdfDesignerRenderPreview() {
+    const img = $('pdfDesignerPreview');
+    if (!img) return;
+    pdfDesignerSaveSelected();
+    const { row, debtor } = pdfDesignerSampleData();
+    const canvas = await renderContractImageCanvas(row, debtor);
+    const ctx = canvas.getContext('2d');
+    const path = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
+    const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path);
+    if (field) {
+        const p = contractCanvasPoint(field.x, field.y);
+        const w = (field.maxWidth || 120) * (2480 / 1447);
+        const h = 52 * (3508 / 2048);
+        ctx.save();
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 5;
+        ctx.setLineDash([14, 10]);
+        ctx.strokeRect(p.x, p.y - h, w, h + 18);
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+    if (pdfTemplateDesignerState.previewUrl) URL.revokeObjectURL(pdfTemplateDesignerState.previewUrl);
+    canvas.toBlob(blob => {
+        if (!blob) return;
+        pdfTemplateDesignerState.previewUrl = URL.createObjectURL(blob);
+        img.src = pdfTemplateDesignerState.previewUrl;
+    }, 'image/png');
+}
+async function openPdfTemplateDesigner() {
+    $('pdfDesignerPanel')?.classList.remove('hidden');
+    const sel = $('pdfDesignerField');
+    if (sel && !sel.options.length) sel.innerHTML = pdfDesignerFieldOptions();
+    if (sel) sel.value = pdfTemplateDesignerState.selected;
+    const { row, debtor } = pdfDesignerSampleData();
+    await renderContractImageCanvas(row, debtor);
+    const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, pdfTemplateDesignerState.selected);
+    pdfDesignerFillInputs(field || {});
+    await pdfDesignerRenderPreview();
+}
+function bindPdfTemplateDesigner() {
+    if ($('openPdfDesignerBtn')) $('openPdfDesignerBtn').onclick = openPdfTemplateDesigner;
+    if ($('closePdfDesignerBtn')) $('closePdfDesignerBtn').onclick = () => $('pdfDesignerPanel')?.classList.add('hidden');
+    if ($('pdfDesignerField')) $('pdfDesignerField').onchange = async e => {
+        pdfTemplateDesignerState.selected = e.target.value;
+        const { row, debtor } = pdfDesignerSampleData();
+        await renderContractImageCanvas(row, debtor);
+        const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, pdfTemplateDesignerState.selected);
+        pdfDesignerFillInputs(field || {});
+        await pdfDesignerRenderPreview();
+    };
+    if ($('savePdfDesignerBtn')) $('savePdfDesignerBtn').onclick = pdfDesignerSaveSelected;
+    if ($('previewPdfDesignerBtn')) $('previewPdfDesignerBtn').onclick = pdfDesignerRenderPreview;
+    const nudge = (dx, dy) => async () => {
+        const x = Number($('pdfDesignerX')?.value || 0) + dx;
+        const y = Number($('pdfDesignerY')?.value || 0) + dy;
+        if ($('pdfDesignerX')) $('pdfDesignerX').value = x;
+        if ($('pdfDesignerY')) $('pdfDesignerY').value = y;
+        await pdfDesignerRenderPreview();
+    };
+    if ($('pdfDesignerLeftBtn')) $('pdfDesignerLeftBtn').onclick = nudge(-1, 0);
+    if ($('pdfDesignerRightBtn')) $('pdfDesignerRightBtn').onclick = nudge(1, 0);
+    if ($('pdfDesignerUpBtn')) $('pdfDesignerUpBtn').onclick = nudge(0, -1);
+    if ($('pdfDesignerDownBtn')) $('pdfDesignerDownBtn').onclick = nudge(0, 1);
+    if ($('resetPdfDesignerFieldBtn')) $('resetPdfDesignerFieldBtn').onclick = async () => {
+        resetPdfOverrideField($('pdfDesignerField')?.value || pdfTemplateDesignerState.selected);
+        toast('รีเซ็ตฟิลด์นี้แล้ว');
+        await openPdfTemplateDesigner();
+    };
+    if ($('resetPdfDesignerAllBtn')) $('resetPdfDesignerAllBtn').onclick = async () => {
+        const ok = await confirmAction({ title: 'ล้างพิกัด PDF ทั้งหมด?', text: 'ค่าพิกัดที่ปรับไว้ในเครื่องนี้จะถูกลบทั้งหมด', confirmButtonText: 'ล้างพิกัด', confirmButtonColor: '#dc2626' });
+        if (!ok) return;
+        pdfTemplateSaveOverrides({});
+        toast('ล้างพิกัด PDF ทั้งหมดแล้ว');
+        await openPdfTemplateDesigner();
+    };
+}
+
 if ($('newContractBtn')) $('newContractBtn').onclick = () => showContractForm();
 if ($('closeContractFormBtn')) $('closeContractFormBtn').onclick = () => $('contractFormCard').classList.add('hidden');
 if ($('previewContractBtn')) $('previewContractBtn').onclick = previewContractBeforeSave;
 if ($('generateContractBtn')) $('generateContractBtn').onclick = generateContract;
 bindContractSmartUi();
+bindPdfTemplateDesigner();
 document.querySelectorAll('[data-clear-sig]').forEach(b => b.onclick = () => clearSignature(b.dataset.clearSig));
 window.addEventListener('resize', () => { if (!$('contractFormCard')?.classList.contains('hidden')) SIG_IDS.forEach(id => resizeSignatureCanvas($(id))); });
 
