@@ -359,10 +359,15 @@
                             <h4><i class="bi bi-person-badge"></i> ข้อมูลผู้ให้กู้</h4>
                             <label>ชื่อผู้ให้กู้</label>
                             <input id="contractLenderName" class="input" placeholder="เช่น นายณัฐชนน ศรีเปล่ง">
-                            <label>เลขบัตรประชาชนผู้ให้กู้</label><input id="contractLenderIdCard" class="input"
-                                type="tel" inputmode="numeric" maxlength="13">
+                            <label>เบอร์โทรศัพท์ผู้ให้กู้</label>
+                            <input id="contractLenderPhone" class="input privacy-readonly" type="tel"
+                                inputmode="numeric" autocomplete="tel" maxlength="10" readonly>
+                            <label>เลขบัตรประชาชนผู้ให้กู้</label><input id="contractLenderIdCard"
+                                class="input privacy-readonly" type="tel" inputmode="numeric" maxlength="13" readonly>
                             <label>ที่อยู่ผู้ให้กู้</label><textarea id="contractLenderAddress"
-                                class="input"></textarea>
+                                class="input privacy-readonly" readonly></textarea>
+                            <div class="contract-inline-hint">ข้อมูลส่วนนี้ดึงจากการตั้งค่าผู้ให้กู้
+                                และแสดงตามค่าความเป็นส่วนตัว</div>
                         </div>
                         <div class="contract-section-box">
                             <h4><i class="bi bi-cash-coin"></i> รายละเอียดเงินกู้</h4>
@@ -403,10 +408,13 @@
                         </div>
                     </div>
                     <div class="contract-action-row">
-                        <button id="previewContractBtn" class="secondary" type="button"><i class="bi bi-eye"></i> แสดงตัวอย่าง PDF</button>
-                        <button id="generateContractBtn" class="primary"><i class="bi bi-filetype-pdf"></i> สร้างเอกสารและบันทึก</button>
+                        <button id="previewContractBtn" class="secondary" type="button"><i class="bi bi-eye"></i>
+                            แสดงตัวอย่างเอกสร</button>
+                        <button id="generateContractBtn" class="primary"><i class="bi bi-filetype-pdf"></i>
+                            สร้างเอกสารและบันทึก</button>
                     </div>
-                    <p class="note">หมายเหตุ: แบบฟอร์มนี้เป็นแม่แบบทั่วไป ควรตรวจทานข้อมูลและเงื่อนไขให้ถูกต้องก่อนนำไปใช้จริง</p>
+                    <p class="note">หมายเหตุ: แบบฟอร์มนี้เป็นแม่แบบทั่วไป
+                        ควรตรวจทานข้อมูลและเงื่อนไขให้ถูกต้องก่อนนำไปใช้จริง</p>
                 </div>
                 <div id="contractPdfSource" class="contract-pdf-source"></div>
             </section>
@@ -440,63 +448,90 @@
                             <div class="privacy-icon"><i class="bi bi-shield-lock"></i></div>
                             <div>
                                 <strong>ความเป็นส่วนตัว</strong>
-                                <span>เลือกข้อมูลที่ต้องการแสดงเต็มในหน้าจอและเอกสาร PDF</span>
+                                <span>เลือกข้อมูลที่ต้องการแสดงเต็มในหน้าจอและเอกสาร</span>
                             </div>
                         </div>
 
-                        <label class="toggle-row pretty-toggle">
-                            <span class="toggle-text"><b>เลขบัตรประชาชน</b><small>เปิด = แสดงครบทุกหลัก</small></span>
-                            <input id="profileShowFullIdCard" type="checkbox">
-                            <span class="toggle-switch"></span>
-                        </label>
+                        <div class="privacy-toggle-grid">
 
-                        <label class="toggle-row pretty-toggle">
-                            <span class="toggle-text"><b>ที่อยู่</b><small>เปิด = แสดงที่อยู่เต็ม</small></span>
-                            <input id="profileShowFullAddress" type="checkbox">
-                            <span class="toggle-switch"></span>
-                        </label>
+                            <label class="privacy-tile" title="แสดงเลขบัตรประชาชนทั้งหมด">
+                                <input id="profileShowFullIdCard" type="checkbox" aria-label="แสดงเลขบัตรประชาชนทั้งหมด">
+                                <div class="privacy-tile-inner">
+                                    <i class="bi bi-person-vcard"></i>
+                                    <span>บัตรประชาชน</span>
+                                </div>
+                            </label>
 
-                        <label class="toggle-row pretty-toggle">
-                            <span class="toggle-text"><b>เบอร์โทรศัพท์</b><small>เปิด = แสดงเบอร์ครบ</small></span>
-                            <input id="profileShowFullPhone" type="checkbox">
-                            <span class="toggle-switch"></span>
-                        </label>
+                            <label class="privacy-tile" title="แสดงที่อยู่ทั้งหมด">
+                                <input id="profileShowFullAddress" type="checkbox" aria-label="แสดงที่อยู่ทั้งหมด">
+                                <div class="privacy-tile-inner">
+                                    <i class="bi bi-house"></i>
+                                    <span>ที่อยู่</span>
+                                </div>
+                            </label>
 
-                        <p class="note">ถ้าปิด ระบบจะแสดงข้อมูลแบบบางส่วนเฉพาะจุดแสดงผลเท่านั้น ส่วนหน้าเพิ่ม/แก้ไขยังแสดงเต็มเพื่อป้องกันการบันทึกผิด</p>
-                    </div><button id="saveProfileBtn"
-                        class="primary">บันทึกข้อมูลผู้ใช้งาน</button>
+                            <label class="privacy-tile" title="แสดงเบอร์โทรศัพท์ทั้งหมด">
+                                <input id="profileShowFullPhone" type="checkbox" aria-label="แสดงเบอร์โทรศัพท์ทั้งหมด">
+                                <div class="privacy-tile-inner">
+                                    <i class="bi bi-telephone"></i>
+                                    <span>เบอร์โทรศัพท์</span>
+                                </div>
+                            </label>
+
+                        </div>
+                        <p class="note">ถ้าปิด ระบบจะแสดงข้อมูลแบบบางส่วนเฉพาะจุดแสดงผลเท่านั้น
+                            ส่วนหน้าเพิ่ม/แก้ไขยังแสดงเต็มเพื่อป้องกันการบันทึกผิด</p>
+                    </div>
+                    <button id="saveProfileBtn" class="primary">บันทึกข้อมูลผู้ใช้งาน</button>
                 </div>
 
                 <div class="card" id="pdfTemplateDesignerCard">
                     <h3><i class="bi bi-bezier2"></i> PDF Template Designer <span class="badge-soft">Beta</span></h3>
-                    <p class="note">ปรับพิกัดข้อความบนแบบฟอร์ม PDF ได้เองโดยไม่ต้องแก้โค้ด ใช้สำหรับ Fine tune ตำแหน่งก่อน Production</p>
-                    <button id="openPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-sliders"></i> เปิดตัวปรับพิกัด PDF</button>
+                    <p class="note">ปรับพิกัดข้อความบนแบบฟอร์มเอกสาร ได้เองโดยไม่ต้องแก้โค้ด ใช้สำหรับ Fine tune
+                        ตำแหน่งก่อน Production</p>
+                    <button id="openPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-sliders"></i>
+                        เปิดตัวปรับพิกัดเอกสาร</button>
                 </div>
                 <div id="pdfDesignerPanel" class="card hidden">
                     <div class="card-head-row">
-                        <h3><i class="bi bi-crosshair"></i> ตัวปรับพิกัด PDF</h3>
-                        <button id="closePdfDesignerBtn" class="mini icon-action" type="button" title="ปิด"><i class="bi bi-x-lg"></i></button>
+                        <h3><i class="bi bi-crosshair"></i> ตัวปรับพิกัดเอกสาร</h3>
+                        <button id="closePdfDesignerBtn" class="mini icon-action" type="button" title="ปิด"><i
+                                class="bi bi-x-lg"></i></button>
                     </div>
-                    <p class="note">เลือกช่องที่ต้องการปรับ แล้วแก้ X/Y/ขนาด/ความกว้าง จากนั้นกด Preview เพื่อดูผลทันที ค่าเหล่านี้จะบันทึกในเครื่องนี้ก่อน</p>
+                    <p class="note">เลือกช่องที่ต้องการปรับ แล้วแก้ X/Y/ขนาด/ความกว้าง จากนั้นกด Preview เพื่อดูผลทันที
+                        ค่าเหล่านี้จะบันทึกในเครื่องนี้ก่อน</p>
                     <label>ฟิลด์ที่ต้องการปรับ</label>
                     <select id="pdfDesignerField" class="input"></select>
                     <div class="pdf-designer-grid">
                         <div><label>X</label><input id="pdfDesignerX" class="input" type="number" step="1"></div>
                         <div><label>Y</label><input id="pdfDesignerY" class="input" type="number" step="1"></div>
-                        <div><label>Max Width</label><input id="pdfDesignerMaxWidth" class="input" type="number" step="1"></div>
-                        <div><label>Font Size</label><input id="pdfDesignerSize" class="input" type="number" step="1"></div>
-                        <div><label>Min Size</label><input id="pdfDesignerMinSize" class="input" type="number" step="1"></div>
-                        <div><label>Align</label><select id="pdfDesignerAlign" class="input"><option value="left">left</option><option value="center">center</option><option value="right">right</option></select></div>
+                        <div><label>Max Width</label><input id="pdfDesignerMaxWidth" class="input" type="number"
+                                step="1"></div>
+                        <div><label>Font Size</label><input id="pdfDesignerSize" class="input" type="number" step="1">
+                        </div>
+                        <div><label>Min Size</label><input id="pdfDesignerMinSize" class="input" type="number" step="1">
+                        </div>
+                        <div><label>Align</label><select id="pdfDesignerAlign" class="input">
+                                <option value="left">left</option>
+                                <option value="center">center</option>
+                                <option value="right">right</option>
+                            </select></div>
                     </div>
                     <div class="pdf-designer-actions">
-                        <button id="pdfDesignerLeftBtn" class="secondary" type="button"><i class="bi bi-arrow-left"></i></button>
-                        <button id="pdfDesignerRightBtn" class="secondary" type="button"><i class="bi bi-arrow-right"></i></button>
-                        <button id="pdfDesignerUpBtn" class="secondary" type="button"><i class="bi bi-arrow-up"></i></button>
-                        <button id="pdfDesignerDownBtn" class="secondary" type="button"><i class="bi bi-arrow-down"></i></button>
+                        <button id="pdfDesignerLeftBtn" class="secondary" type="button"><i
+                                class="bi bi-arrow-left"></i></button>
+                        <button id="pdfDesignerRightBtn" class="secondary" type="button"><i
+                                class="bi bi-arrow-right"></i></button>
+                        <button id="pdfDesignerUpBtn" class="secondary" type="button"><i
+                                class="bi bi-arrow-up"></i></button>
+                        <button id="pdfDesignerDownBtn" class="secondary" type="button"><i
+                                class="bi bi-arrow-down"></i></button>
                     </div>
                     <div class="pdf-designer-actions">
-                        <button id="savePdfDesignerBtn" class="primary" type="button"><i class="bi bi-save"></i> บันทึกพิกัด</button>
-                        <button id="previewPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-eye"></i> Preview</button>
+                        <button id="savePdfDesignerBtn" class="primary" type="button"><i class="bi bi-save"></i>
+                            บันทึกพิกัด</button>
+                        <button id="previewPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-eye"></i>
+                            Preview</button>
                         <button id="resetPdfDesignerFieldBtn" class="ghost" type="button">รีเซ็ตฟิลด์นี้</button>
                         <button id="resetPdfDesignerAllBtn" class="danger" type="button">ล้างพิกัดทั้งหมด</button>
                     </div>

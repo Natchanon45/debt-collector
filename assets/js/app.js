@@ -54,6 +54,24 @@ function displayPhone(v) {
     if (!raw) return '-';
     return privacySettings().showFullPhone ? raw : maskPhone(raw);
 }
+function privacyInputSet(id, rawValue, displayValue) {
+    const el = $(id);
+    if (!el) return;
+    const raw = String(rawValue || '').trim();
+    el.dataset.rawValue = raw;
+    el.value = displayValue == null ? raw : String(displayValue || '');
+}
+function privacyInputRaw(id) {
+    const el = $(id);
+    if (!el) return '';
+    return (el.dataset.rawValue || el.value || '').trim();
+}
+function fillContractLenderPrivacyFields(profile = currentProfile()) {
+    privacyInputSet('contractLenderPhone', profile.phone || '', displayPhone(profile.phone || ''));
+    privacyInputSet('contractLenderIdCard', profile.lenderIdCard || '', displayIdCard(profile.lenderIdCard || ''));
+    privacyInputSet('contractLenderAddress', profile.lenderAddress || '', displayAddress(profile.lenderAddress || ''));
+}
+
 
 function debtorFullAddress(debtor = {}) {
     return [debtor.houseNo, debtor.address, debtor.subDistrict, debtor.district, debtor.province].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
@@ -233,6 +251,29 @@ function setUserDisplay(text) {
 function local() { return JSON.parse(localStorage.getItem(LS) || JSON.stringify(blank)) } function setLocal(d) { localStorage.setItem(LS, JSON.stringify({ ...blank, ...d })) }
 async function getData() { if (demoMode) return local(); const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const names = ['debtors', 'debts', 'payments', 'followups', 'documents', 'contracts', 'settings']; const result = {}; for (const n of names) { const snap = await getDocs(collection(db, `users/${currentUser.uid}/${n}`)); result[n] = snap.docs.map(d => ({ id: d.id, ...d.data() })) } result.settings = (result.settings || []).reduce((acc, x) => ({ ...acc, ...x, profile: { ...(acc.profile || {}), ...(x.profile || {}) } }), {}); return { ...blank, ...result } }
 async function add(type, row) { if (demoMode) { const d = local(); const id = uid(); d[type].push({ id, ...row }); setLocal(d); return id } const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const ref = await addDoc(collection(db, `users/${currentUser.uid}/${type}`), { ...row, createdAt: serverTimestamp() }); return ref.id }
+async function addMany(type, rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) return [];
+    if (demoMode) {
+        const d = local();
+        const ids = list.map(() => uid());
+        d[type].push(...list.map((row, i) => ({ id: ids[i], ...row })));
+        setLocal(d);
+        latestData = d;
+        return ids;
+    }
+    const { collection, doc, writeBatch, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+    const batch = writeBatch(db);
+    const col = collection(db, `users/${currentUser.uid}/${type}`);
+    const ids = [];
+    list.forEach(row => {
+        const ref = doc(col);
+        ids.push(ref.id);
+        batch.set(ref, { ...row, createdAt: serverTimestamp() });
+    });
+    await batch.commit();
+    return ids;
+}
 async function updateRow(type, id, row) { if (demoMode) { const d = local(); d[type] = d[type].map(x => x.id === id ? { ...x, ...row } : x); setLocal(d); return } const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); await updateDoc(doc(db, `users/${currentUser.uid}/${type}/${id}`), row) }
 async function deleteRow(type, id) {
     if (demoMode) { const d = local(); d[type] = d[type].filter(x => x.id !== id); setLocal(d); return }
@@ -1277,8 +1318,9 @@ function readContractFormRow(includeSignatures = false) {
         debtorId: $('contractDebtorId')?.value || '',
         borrowerName: debtor.name || '',
         lenderName: (($('contractLenderName')?.value || '').trim() || p.lenderName || getDisplayName()),
-        lenderIdCard: normalizeIdCard(($('contractLenderIdCard')?.value || p.lenderIdCard || '')),
-        lenderAddress: (($('contractLenderAddress')?.value || '').trim() || p.lenderAddress || ''),
+        lenderPhone: privacyInputRaw('contractLenderPhone') || p.phone || '',
+        lenderIdCard: normalizeIdCard(privacyInputRaw('contractLenderIdCard') || p.lenderIdCard || ''),
+        lenderAddress: privacyInputRaw('contractLenderAddress') || p.lenderAddress || '',
         amount: num($('contractAmount')?.value),
         contractDate: $('contractDate')?.value || today(),
         dueDate: $('contractDueDate')?.value || '',
@@ -1355,8 +1397,7 @@ function showContractForm(prefillDebtorId = '') {
     card.classList.remove('hidden'); if ($('contractDate') && !$('contractDate').value) $('contractDate').value = today(); if ($('contractDueDate') && !$('contractDueDate').value) $('contractDueDate').value = addMonthsSafe(today(), 1); if ($('contractFirstPaymentDate') && !$('contractFirstPaymentDate').value) $('contractFirstPaymentDate').value = addMonthsSafe(today(), 1); updateContractPaymentTypeUi();
     const p = currentProfile();
     if ($('contractLenderName')) $('contractLenderName').value = p.lenderName || p.alias || getDisplayName();
-    if ($('contractLenderIdCard')) $('contractLenderIdCard').value = p.lenderIdCard || '';
-    if ($('contractLenderAddress')) $('contractLenderAddress').value = p.lenderAddress || '';
+    fillContractLenderPrivacyFields(p);
     if (prefillDebtorId && $('contractDebtorId')) $('contractDebtorId').value = prefillDebtorId;
     bindContractSmartUi();
     updateContractSmartUi();
@@ -1571,7 +1612,7 @@ async function ensureAutoDebtForLockedContract(contract) {
     const existing = (latestData?.debts || []).some(d => d.source === 'contract_auto' && (d.contractId === contract.id || (contract.contractNo && d.contractNo === contract.contractNo)));
     if (contract.autoDebtCreated || existing) return false;
     const installments = buildContractDebtInstallments(contract);
-    for (const row of installments) await add('debts', row);
+    await addMany('debts', installments);
     const totalDebtAmount = roundMoney(installments.reduce((s, x) => s + num(x.principal), 0));
     await updateRow('contracts', contract.id, {
         status: 'locked', locked: true, autoDebtCreated: true,
@@ -2021,7 +2062,7 @@ async function generateContract() {
     if (!data) return;
     const { row, debtor } = data;
     const p = currentProfile();
-    await saveSettings({ profile: { ...p, lenderName: row.lenderName, lenderIdCard: row.lenderIdCard, lenderAddress: row.lenderAddress } });
+    await saveSettings({ profile: { ...p, lenderName: row.lenderName, phone: row.lenderPhone || p.phone || '', lenderIdCard: row.lenderIdCard, lenderAddress: row.lenderAddress } });
     try {
         toast('กำลังสร้างเอกสาร...');
         const blob = await buildContractPdfBlob(row, debtor);
@@ -2238,8 +2279,11 @@ window.editContractDraft = id => {
     if (isContractLocked(row)) return toast('สัญญาที่ลงลายเซ็นครบแล้วถูกล็อก ไม่สามารถแก้ไขได้');
     editingContractNo = row.contractNo || ''; editingContractId = row.id || '';
     showContractForm(row.debtorId || '');
-    const map = { contractLenderName: 'lenderName', contractLenderIdCard: 'lenderIdCard', contractLenderAddress: 'lenderAddress', contractAmount: 'amount', contractDate: 'contractDate', contractDueDate: 'dueDate', contractPaymentType: 'paymentType', contractInstallmentCount: 'installmentCount', contractFirstPaymentDate: 'firstPaymentDate', contractInterestRate: 'interestRate', contractPlace: 'place', contractCollateral: 'collateral', contractWitness1Name: 'witness1Name', contractWitness2Name: 'witness2Name', contractWriterName: 'writerName' };
+    const map = { contractLenderName: 'lenderName', contractLenderPhone: 'lenderPhone', contractLenderIdCard: 'lenderIdCard', contractLenderAddress: 'lenderAddress', contractAmount: 'amount', contractDate: 'contractDate', contractDueDate: 'dueDate', contractPaymentType: 'paymentType', contractInstallmentCount: 'installmentCount', contractFirstPaymentDate: 'firstPaymentDate', contractInterestRate: 'interestRate', contractPlace: 'place', contractCollateral: 'collateral', contractWitness1Name: 'witness1Name', contractWitness2Name: 'witness2Name', contractWriterName: 'writerName' };
     Object.entries(map).forEach(([el, key]) => { if ($(el)) $(el).value = row[key] || ''; });
+    privacyInputSet('contractLenderPhone', row.lenderPhone || currentProfile().phone || '', displayPhone(row.lenderPhone || currentProfile().phone || ''));
+    privacyInputSet('contractLenderIdCard', row.lenderIdCard || currentProfile().lenderIdCard || '', displayIdCard(row.lenderIdCard || currentProfile().lenderIdCard || ''));
+    privacyInputSet('contractLenderAddress', row.lenderAddress || currentProfile().lenderAddress || '', displayAddress(row.lenderAddress || currentProfile().lenderAddress || ''));
     updateContractPaymentTypeUi();
     if ($('contractDebtorId')) $('contractDebtorId').value = row.debtorId || '';
     setTimeout(() => restoreContractSignatures(row.signatures || {}), 180);
