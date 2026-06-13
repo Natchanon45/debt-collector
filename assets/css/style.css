@@ -2759,7 +2759,7 @@ label.file {
 }
 
 label:not(.dropzone):not(.file) {
-    display: inline-flex !important;
+    /* display: inline-flex !important; */
     align-items: center !important;
     width: auto !important;
     max-width: 100% !important;
