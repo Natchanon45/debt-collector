@@ -118,7 +118,10 @@ async function confirmAction(options = {}) {
         };
         if (html) swalOptions.html = html;
         else swalOptions.text = text;
-        if (options.requireCheckbox) {
+        // v9.0.1: แสดง checkbox เฉพาะงานที่ย้อนกลับไม่ได้จริง ๆ เท่านั้น
+        // ปัจจุบันใช้กับการล็อกเอกสาร โดยส่ง requireCheckbox:true และ highRisk:true
+        const shouldShowCheckbox = options.requireCheckbox === true && options.highRisk === true;
+        if (shouldShowCheckbox) {
             swalOptions.input = 'checkbox';
             swalOptions.inputValue = 0;
             swalOptions.inputPlaceholder = options.checkboxText || 'ฉันเข้าใจแล้ว และต้องการดำเนินการต่อ';
@@ -1351,7 +1354,7 @@ function contractAmountTextParts(n) {
         satangText = satangNum > 0 ? '' : '-';
     }
 
-    // v9.0.0: ใส่วงเล็บเฉพาะข้อความจำนวนเงินและสตางค์ แล้วจัดกึ่งกลางในช่องของตัวเอง
+    // v9.0.1: ใส่วงเล็บเฉพาะข้อความจำนวนเงินและสตางค์ แล้วจัดกึ่งกลางในช่องของตัวเอง
     // กรณี .00 ให้สตางค์เป็น '-' โดยไม่ใส่วงเล็บ
     const displayBahtText = bahtText && bahtText !== '-' ? `( ${bahtText} )` : '-';
     const displaySatangText = satangNum > 0 && satangText && satangText !== '-' ? `( ${satangText} )` : '-';
@@ -1810,9 +1813,9 @@ async function renderContractImageCanvas(row, debtor) {
             // v8.0.11: number + Thai amount + satang/full text are on the SAME printed money line.
             // Do not use a second-line Y for the Thai amount text. Only X changes by field.
             amount: { x: 175, y: 525, maxWidth: 450, size: FS, minSize: 32, align: 'right', rightPad: 4 },
-            // v9.0.0: ตัวหนังสือจำนวนเงินใส่วงเล็บและจัดกึ่งกลางในช่องข้อความ เพื่อให้ PC/Mobile ไม่เลื่อนจาก right-anchor
+            // v9.0.1: ตัวหนังสือจำนวนเงินใส่วงเล็บและจัดกึ่งกลางในช่องข้อความ เพื่อให้ PC/Mobile ไม่เลื่อนจาก right-anchor
             amountText: { x: 635, y: 520, maxWidth: 340, size: 32, minSize: 20, align: 'center', rightPad: 0 },
-            // v9.0.0: ถ้ามีสตางค์ให้ใส่วงเล็บและจัดกึ่งกลาง / ถ้า .00 ให้แสดง '-' ไม่ใส่วงเล็บ
+            // v9.0.1: ถ้ามีสตางค์ให้ใส่วงเล็บและจัดกึ่งกลาง / ถ้า .00 ให้แสดง '-' ไม่ใส่วงเล็บ
             satang: { x: 1080, y: 520, maxWidth: 220, size: 32, minSize: 20, align: 'center', rightPad: 0 },
             satangFull: { x: 1080, y: 520, maxWidth: 145, size: 32, minSize: 20, align: 'center', rightPad: 0 } // '-' 
         },
@@ -2102,6 +2105,7 @@ window.lockContractDocument = async id => {
             กรุณาตรวจสอบความถูกต้องก่อนยืนยัน
         </div>`,
         requireCheckbox: true,
+        highRisk: true,
         checkboxText: 'ฉันเข้าใจแล้ว และต้องการล็อกเอกสาร',
         checkboxError: 'กรุณายืนยันก่อนล็อกเอกสาร',
         confirmButtonText: 'ยืนยันการล็อก',
