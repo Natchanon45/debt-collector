@@ -434,7 +434,36 @@
                         maxlength="10">
                     <label>เลขบัตรประชาชนผู้ให้กู้</label><input id="profileLenderIdCard" class="input" type="tel"
                         inputmode="numeric" maxlength="13"><label>ที่อยู่ผู้ให้กู้</label><textarea
-                        id="profileLenderAddress" class="input"></textarea><button id="saveProfileBtn"
+                        id="profileLenderAddress" class="input"></textarea>
+                    <div class="privacy-setting-box privacy-toggle-card">
+                        <div class="privacy-head">
+                            <div class="privacy-icon"><i class="bi bi-shield-lock"></i></div>
+                            <div>
+                                <strong>ความเป็นส่วนตัว</strong>
+                                <span>เลือกข้อมูลที่ต้องการแสดงเต็มในหน้าจอและเอกสาร PDF</span>
+                            </div>
+                        </div>
+
+                        <label class="toggle-row pretty-toggle">
+                            <span class="toggle-text"><b>เลขบัตรประชาชน</b><small>เปิด = แสดงครบทุกหลัก</small></span>
+                            <input id="profileShowFullIdCard" type="checkbox">
+                            <span class="toggle-switch"></span>
+                        </label>
+
+                        <label class="toggle-row pretty-toggle">
+                            <span class="toggle-text"><b>ที่อยู่</b><small>เปิด = แสดงที่อยู่เต็ม</small></span>
+                            <input id="profileShowFullAddress" type="checkbox">
+                            <span class="toggle-switch"></span>
+                        </label>
+
+                        <label class="toggle-row pretty-toggle">
+                            <span class="toggle-text"><b>เบอร์โทรศัพท์</b><small>เปิด = แสดงเบอร์ครบ</small></span>
+                            <input id="profileShowFullPhone" type="checkbox">
+                            <span class="toggle-switch"></span>
+                        </label>
+
+                        <p class="note">ถ้าปิด ระบบจะแสดงข้อมูลแบบบางส่วนเฉพาะจุดแสดงผลเท่านั้น ส่วนหน้าเพิ่ม/แก้ไขยังแสดงเต็มเพื่อป้องกันการบันทึกผิด</p>
+                    </div><button id="saveProfileBtn"
                         class="primary">บันทึกข้อมูลผู้ใช้งาน</button>
                 </div>
 
@@ -460,10 +489,10 @@
                         <div><label>Align</label><select id="pdfDesignerAlign" class="input"><option value="left">left</option><option value="center">center</option><option value="right">right</option></select></div>
                     </div>
                     <div class="pdf-designer-actions">
-                        <button id="pdfDesignerLeftBtn" class="secondary" type="button">← X</button>
-                        <button id="pdfDesignerRightBtn" class="secondary" type="button">X →</button>
-                        <button id="pdfDesignerUpBtn" class="secondary" type="button">↑ Y</button>
-                        <button id="pdfDesignerDownBtn" class="secondary" type="button">Y ↓</button>
+                        <button id="pdfDesignerLeftBtn" class="secondary" type="button"><i class="bi bi-arrow-left"></i></button>
+                        <button id="pdfDesignerRightBtn" class="secondary" type="button"><i class="bi bi-arrow-right"></i></button>
+                        <button id="pdfDesignerUpBtn" class="secondary" type="button"><i class="bi bi-arrow-up"></i></button>
+                        <button id="pdfDesignerDownBtn" class="secondary" type="button"><i class="bi bi-arrow-down"></i></button>
                     </div>
                     <div class="pdf-designer-actions">
                         <button id="savePdfDesignerBtn" class="primary" type="button"><i class="bi bi-save"></i> บันทึกพิกัด</button>

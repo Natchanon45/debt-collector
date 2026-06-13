@@ -6,6 +6,59 @@ import { applyTheme, initTheme } from './theme.js';
 
 let firebaseReady = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId), auth, db, storage, currentUser = null, demoMode = !firebaseReady, deferredPrompt = null, newWorker = null, latestData = null, pendingOcrDebtor = null;
 function isDuplicateIdCard(id, ignoreId = '') { const v = normalizeIdCard(id); if (!v) return false; return (latestData?.debtors || []).some(d => d.id !== ignoreId && normalizeIdCard(d.idCard) === v) };
+
+function cleanupSwalCheckboxLeak(includeCustomLockCheck = true) {
+    const selector = includeCustomLockCheck ? '.swal2-checkbox, #swal2-checkbox, .dc-swal-check-wrap' : '.swal2-checkbox, #swal2-checkbox';
+    document.querySelectorAll(selector).forEach(el => el.remove());
+}
+
+function privacySettings() {
+    const p = currentProfile();
+    return {
+        showFullIdCard: p.showFullIdCard === true,
+        showFullAddress: p.showFullAddress === true,
+        showFullPhone: p.showFullPhone === true
+    };
+}
+
+function displayIdCard(v) {
+    const full = fullId(v);
+    if (!full || full === '-') return '-';
+    return privacySettings().showFullIdCard ? full : maskId(full);
+}
+
+function shortAddressText(v) {
+    const raw = String(v || '').replace(/\s+/g, ' ').trim();
+    if (!raw) return '-';
+    const parsed = parseThaiAddressParts(raw);
+    if (parsed.houseNo) return `บ้านเลขที่ ${parsed.houseNo}`;
+    return raw.length > 22 ? raw.slice(0, 22) + '…' : raw;
+}
+
+function displayAddress(v) {
+    const raw = String(v || '').replace(/\s+/g, ' ').trim();
+    if (!raw) return '-';
+    return privacySettings().showFullAddress ? raw : shortAddressText(raw);
+}
+
+function maskPhone(v) {
+    const raw = String(v || '').trim();
+    if (!raw) return '-';
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length < 7) return raw.length > 4 ? raw.slice(0, 2) + 'x'.repeat(Math.max(2, raw.length - 4)) + raw.slice(-2) : raw;
+    return digits.slice(0, 3) + '-xxx-' + digits.slice(-4);
+}
+
+function displayPhone(v) {
+    const raw = String(v || '').trim();
+    if (!raw) return '-';
+    return privacySettings().showFullPhone ? raw : maskPhone(raw);
+}
+
+function debtorFullAddress(debtor = {}) {
+    return [debtor.houseNo, debtor.address, debtor.subDistrict, debtor.district, debtor.province].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+
 function toast(m, type = 'info') {
     const el = $('toast'); if (!el) return;
     const msg = String(m || '');
@@ -117,10 +170,11 @@ async function confirmAction(options = {}) {
             reverseButtons: true,
             heightAuto: false,
             didOpen: (popup) => {
-                // v9.0.3: ไม่ใช้ input:'checkbox' ของ SweetAlert2 แล้ว
-                // กัน checkbox หลุดไป confirm อื่นบน browser/PWA บางเครื่อง
+                cleanupSwalCheckboxLeak(false);
                 popup.querySelectorAll('.swal2-checkbox, #swal2-checkbox').forEach(el => el.remove());
-            }
+            },
+            willClose: () => cleanupSwalCheckboxLeak(),
+            didClose: () => cleanupSwalCheckboxLeak()
         };
 
         if (isLockDocumentConfirm) {
@@ -158,7 +212,9 @@ async function alertAction(options = {}) {
     const text = options.text || '';
     const icon = options.icon || 'success';
     if (window.Swal?.fire) {
-        await window.Swal.fire({ icon, title, text, confirmButtonText: options.confirmButtonText || 'ตกลง', confirmButtonColor: options.confirmButtonColor || '#16a34a', heightAuto: false });
+        cleanupSwalCheckboxLeak();
+        await window.Swal.fire({ icon, title, text, confirmButtonText: options.confirmButtonText || 'ตกลง', confirmButtonColor: options.confirmButtonColor || '#16a34a', heightAuto: false, didOpen: () => cleanupSwalCheckboxLeak(), willClose: () => cleanupSwalCheckboxLeak(), didClose: () => cleanupSwalCheckboxLeak() });
+        cleanupSwalCheckboxLeak();
         return;
     }
     toast(title || text);
@@ -275,7 +331,7 @@ async function render() {
     <div>
       <div class="item-title">${x.name}</div>
       <div class="item-sub">
-        ${x.phone || '-'} · ${maskId(x.idCard)} · ${x.district || ''} ${x.province || ''}
+        ${displayPhone(x.phone)} · ${displayIdCard(x.idCard)} · ${displayAddress(debtorFullAddress(x))}
       </div>
       <div class="item-sub">
         ยอดคงเหลือ ${money(remain)}
@@ -708,6 +764,9 @@ function fillSettings(s) {
     if ($('profileTelegramId')) $('profileTelegramId').value = p.telegramId || '';
     if ($('profileLenderIdCard')) $('profileLenderIdCard').value = p.lenderIdCard || '';
     if ($('profileLenderAddress')) $('profileLenderAddress').value = p.lenderAddress || '';
+    if ($('profileShowFullIdCard')) $('profileShowFullIdCard').checked = p.showFullIdCard === true;
+    if ($('profileShowFullAddress')) $('profileShowFullAddress').checked = p.showFullAddress === true;
+    if ($('profileShowFullPhone')) $('profileShowFullPhone').checked = p.showFullPhone === true;
     setUserDisplay();
 }
 window.openDebtForm = (id, name) => { if ($('transactionDebtorId')) $('transactionDebtorId').value = id; switchTransaction('debt'); switchTab('transactions') };
@@ -1014,7 +1073,10 @@ $('saveProfileBtn').onclick = async () => {
             lineId: $('profileLineId').value.trim(),
             telegramId: $('profileTelegramId').value.trim(),
             lenderIdCard: normalizeIdCard($('profileLenderIdCard')?.value || ''),
-            lenderAddress: $('profileLenderAddress')?.value.trim() || ''
+            lenderAddress: $('profileLenderAddress')?.value.trim() || '',
+            showFullIdCard: $('profileShowFullIdCard')?.checked === true,
+            showFullAddress: $('profileShowFullAddress')?.checked === true,
+            showFullPhone: $('profileShowFullPhone')?.checked === true
         }
     });
     toast('บันทึกชื่อและที่อยู่ผู้ให้กู้ลงฐานข้อมูลแล้ว'); switchTab('settings');
@@ -1426,7 +1488,7 @@ function thDateParts(v) {
 }
 function contractValue(v, cls = '') { return `<span class="contract-fill ${cls}"><span class="contract-fill-text">${escapeHtml(v || '-')}</span></span>`; }
 function buildContractHtml(row, debtor) {
-    const borrowerAddress = [debtor.address, debtor.district, debtor.province].filter(Boolean).join(' ');
+    const borrowerAddress = displayAddress(debtorFullAddress(debtor));
     const cdate = thDateParts(row.contractDate || today());
     const ddate = thDateParts(row.dueDate);
     const lenderName = row.lenderName || currentProfile().lenderName || getDisplayName();
@@ -1439,8 +1501,8 @@ function buildContractHtml(row, debtor) {
         <p class="contract-line contract-no-line">ลำดับที่ ${contractValue(row.contractNo || nextContractNo(), 'fill-left fill-docno')}</p>
         <p class="contract-line contract-place-line">ทำที่ ${contractValue(row.place || '-', 'fill-left fill-place')}</p>
         <p class="contract-line contract-date-line">วันที่ ${contractValue(cdate.day, 'fill-date')} เดือน ${contractValue(cdate.month, 'fill-date')} พ.ศ. ${contractValue(cdate.year, 'fill-date')}</p>
-        <p>ข้าพเจ้า ${contractValue(borrowerName)} อายุ ${contractValue(debtorAgeForContract(debtor, row.contractDate || today()))} ปี ที่อยู่ ${contractValue(borrowerAddress || '-')} เลขประจำตัวประชาชน ${contractValue(fullId(debtor.idCard))}</p>
-        <p>ได้ทำหนังสือสัญญากู้เงินให้ไว้แก่ ${contractValue(lenderName)} เลขประจำตัวประชาชน ${contractValue(fullId(row.lenderIdCard))} ที่อยู่ ${contractValue(row.lenderAddress || '-')} มีข้อสัญญาดังแจ้งต่อไปนี้</p>
+        <p>ข้าพเจ้า ${contractValue(borrowerName)} อายุ ${contractValue(debtorAgeForContract(debtor, row.contractDate || today()))} ปี ที่อยู่ ${contractValue(borrowerAddress || '-')} เลขประจำตัวประชาชน ${contractValue(displayIdCard(debtor.idCard))}</p>
+        <p>ได้ทำหนังสือสัญญากู้เงินให้ไว้แก่ ${contractValue(lenderName)} เลขประจำตัวประชาชน ${contractValue(displayIdCard(row.lenderIdCard))} ที่อยู่ ${contractValue(displayAddress(row.lenderAddress || '-'))} มีข้อสัญญาดังแจ้งต่อไปนี้</p>
         <p>ข้อ ๑. ข้าพเจ้า ${contractValue(borrowerName)} ได้กู้เงินของ ${contractValue(lenderName)} เป็นจำนวนเงิน ${contractValue(money(row.amount), 'fill-money')} บาท (${contractValue(bahtTextFallback(row.amount), 'fill-left')}) ข้าพเจ้าได้รับเงินไปครบถ้วนเสร็จแล้วตั้งแต่วันทำสัญญานี้</p>
         <p>ข้อ ๒. เพื่อเป็นหลักฐานในเงินซึ่งข้าพเจ้ากู้ไปนี้ ข้าพเจ้าได้นำ ${contractValue(collateral)} ให้ท่านถือไว้เป็นประกันด้วย และข้าพเจ้าขอรับรองว่า ทรัพย์สินซึ่งข้าพเจ้านำมานี้ เป็นของข้าพเจ้าโดยแท้จริง และไม่มีภาระผูกพันใด ๆ ในหนี้สินรายอื่นนอกเหนือทรัพย์สินนี้เลย</p>
         <p>ข้อ ๓. ในจำนวนเงินซึ่งข้าพเจ้าได้กู้ไปนี้ ข้าพเจ้าจะนำมาใช้ให้ท่านเสร็จภายในวันที่ ${contractValue(ddate.day, 'fill-date')} เดือน ${contractValue(ddate.month, 'fill-date')} พ.ศ. ${contractValue(ddate.year, 'fill-date')} นับตั้งแต่วันทำสัญญานี้เป็นต้นไป</p>
@@ -1783,8 +1845,12 @@ async function renderContractImageCanvas(row, debtor) {
     const subDistrict = debtor.subDistrict || debtor.tambon || debtor.subdistrict || parsedAddress.subDistrict || '';
     const district = debtor.district || parsedAddress.district || '';
     const province = debtor.province || parsedAddress.province || '';
-    const borrowerNameWithId = fullId(debtor.idCard) ? `${borrowerName} เลขประจำตัวประชาชน ${fullId(debtor.idCard)}`.replace(/\s+/g, ' ').trim() : borrowerName;
-    const lenderNameWithId = fullId(row.lenderIdCard) ? `${lenderName} เลขประจำตัวประชาชน ${fullId(row.lenderIdCard)}`.replace(/\s+/g, ' ').trim() : lenderName;
+    const showFullAddress = privacySettings().showFullAddress;
+    const pdfSubDistrict = showFullAddress ? subDistrict : '-';
+    const pdfDistrict = showFullAddress ? district : '-';
+    const pdfProvince = showFullAddress ? province : '-';
+    const borrowerNameWithId = displayIdCard(debtor.idCard) !== '-' ? `${borrowerName} เลขประจำตัวประชาชน ${displayIdCard(debtor.idCard)}`.replace(/\s+/g, ' ').trim() : borrowerName;
+    const lenderNameWithId = displayIdCard(row.lenderIdCard) !== '-' ? `${lenderName} เลขประจำตัวประชาชน ${displayIdCard(row.lenderIdCard)}`.replace(/\s+/g, ' ').trim() : lenderName;
     const amountParts = contractAmountTextParts(row.amount);
     const amountInteger = amountParts.number || '-';
     const amountSatang = amountParts.satangText || '';
@@ -1872,9 +1938,9 @@ async function renderContractImageCanvas(row, debtor) {
     drawF(borrowerName, F.borrower.name);
     drawF(borrowerAge || '-', F.borrower.age);
     drawF(houseNo, F.borrower.houseNo);
-    drawF(subDistrict || '-', F.borrower.subDistrict);
-    drawF(district || '-', F.borrower.district);
-    drawF(province || '-', F.borrower.province);
+    drawF(pdfSubDistrict || '-', F.borrower.subDistrict);
+    drawF(pdfDistrict || '-', F.borrower.district);
+    drawF(pdfProvince || '-', F.borrower.province);
 
     // Lender section
     drawF(lenderName, F.lender.name);
