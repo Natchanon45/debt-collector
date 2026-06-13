@@ -194,14 +194,6 @@ function pdfDesignerSaveSelectedSilent() {
     if (!path) return;
     setPdfOverrideField(path, pdfDesignerReadInputs());
 }
-function pdfDesignerCurrentFieldMap() {
-    return deepApplyPdfOverrides(clonePlain(window.__lastContractPdfFieldMap || {}), pdfTemplateLoadOverrides());
-}
-function pdfDesignerRefreshCurrentInputs() {
-    const current = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
-    const updated = getPdfFieldByPath(pdfDesignerCurrentFieldMap(), current);
-    if (updated) pdfDesignerFillInputs(updated);
-}
 function pdfDesignerApplyPatchToPaths(paths, patch) {
     (paths || []).forEach(path => {
         const base = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path) || {};
@@ -210,13 +202,13 @@ function pdfDesignerApplyPatchToPaths(paths, patch) {
 }
 function pdfDesignerNudgePaths(paths, dx = 0, dy = 0) {
     (paths || []).forEach(path => {
-        const base = getPdfFieldByPath(pdfDesignerCurrentFieldMap(), path) || {};
+        const base = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path) || {};
         setPdfOverrideField(path, { x: Number(base.x || 0) + dx, y: Number(base.y || 0) + dy });
     });
 }
 function pdfDesignerResizeFontPaths(paths, delta = 0) {
     (paths || []).forEach(path => {
-        const base = getPdfFieldByPath(pdfDesignerCurrentFieldMap(), path) || {};
+        const base = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path) || {};
         const size = Math.max(8, Number(base.size || 24) + delta);
         const minSize = Math.max(8, Math.min(size, Number(base.minSize || size) + delta));
         setPdfOverrideField(path, { size, minSize });
@@ -1269,7 +1261,7 @@ const SIGNATURE_CANVAS_RATIO = 2; // v8.0.1: fixed ratio so PC/Mobile signatures
 function signatureState(id) {
     const c = $(id);
     if (!c) return null;
-    if (!c.__sigState) c.__sigState = { strokes: [], redo: [], drawing: false, current: null, redoTouched: false };
+    if (!c.__sigState) c.__sigState = { strokes: [], redo: [], drawing: false, current: null };
     return c.__sigState;
 }
 function redrawSignatureCanvas(canvas) {
@@ -1300,12 +1292,31 @@ function updateSignatureTools(id) {
     const st = signatureState(id);
     const box = $(id)?.closest('.signature-box, .profile-signature-box');
     if (!box) return;
-    const hasUndo = !!(st && st.strokes && st.strokes.length);
-    const hasRedo = !!(st && st.redoTouched && st.redo && st.redo.length);
-    box.querySelectorAll(`[data-undo-sig="${id}"]`).forEach(b => { b.classList.toggle('hidden', !hasUndo); b.style.display = hasUndo ? '' : 'none'; });
-    box.querySelectorAll(`[data-redo-sig="${id}"]`).forEach(b => { b.classList.toggle('hidden', !hasRedo); b.style.display = hasRedo ? '' : 'none'; });
-    box.querySelectorAll(`[data-clear-sig="${id}"]`).forEach(b => { b.classList.toggle('hidden', !hasUndo); b.style.display = hasUndo ? '' : 'none'; });
-    box.querySelectorAll('.sig-actions-row').forEach(r => { r.classList.toggle('hidden', !(hasUndo || hasRedo)); r.style.display = (hasUndo || hasRedo) ? '' : 'none'; });
+
+    // Undo/Clear ดูจากเส้นที่มีอยู่จริง
+    const canUndo = !!(st && Array.isArray(st.strokes) && st.strokes.length > 0);
+
+    // Redo ต้องดูจาก redo stack เท่านั้น ห้ามใช้ strokes.length
+    // จึงจะไม่โผล่ทันทีหลังวาดเส้นแรก
+    const canRedo = !!(st && Array.isArray(st.redo) && st.redo.length > 0);
+
+    const setVisible = (btn, show) => {
+        btn.classList.toggle('hidden', !show);
+        btn.hidden = !show;
+        btn.setAttribute('aria-hidden', show ? 'false' : 'true');
+        btn.style.setProperty('display', show ? 'inline-grid' : 'none', 'important');
+    };
+
+    box.querySelectorAll(`[data-undo-sig="${id}"]`).forEach(b => setVisible(b, canUndo));
+    box.querySelectorAll(`[data-redo-sig="${id}"]`).forEach(b => setVisible(b, canRedo));
+    box.querySelectorAll(`[data-clear-sig="${id}"]`).forEach(b => setVisible(b, canUndo));
+
+    box.querySelectorAll('.sig-actions-row').forEach(r => {
+        const showRow = canUndo || canRedo;
+        r.classList.toggle('hidden', !showRow);
+        r.hidden = !showRow;
+        r.style.setProperty('display', showRow ? 'flex' : 'none', 'important');
+    });
 }
 function updateAllSignatureTools() {
     [...SIG_IDS, 'profileLenderSignature'].forEach(updateSignatureTools);
@@ -1337,8 +1348,6 @@ function bindSignaturePad(id) {
         st.drawing = true;
         st.current = [pos(e)];
         st.redo = [];
-        st.redoTouched = false;
-        updateSignatureTools(id);
         document.body.classList.add('signature-drawing');
     };
     const move = e => {
@@ -1379,7 +1388,7 @@ function bindSignaturePad(id) {
 function clearSignature(id) {
     const c = $(id); if (!c) return;
     const st = signatureState(id);
-    if (st) { st.strokes = []; st.redo = []; st.current = null; st.drawing = false; st.redoTouched = false; }
+    if (st) { st.strokes = []; st.redo = []; st.current = null; st.drawing = false; }
     c.dataset.hasInk = '';
     c.getContext('2d').clearRect(0, 0, c.width, c.height);
     updateSignatureTools(id);
@@ -1387,14 +1396,12 @@ function clearSignature(id) {
 function redoSignature(id) {
     const c = $(id); const st = signatureState(id); if (!c || !st || !st.redo.length) return;
     st.strokes.push(st.redo.pop());
-    st.redoTouched = st.redo.length > 0;
     redrawSignatureCanvas(c);
     updateSignatureTools(id);
 }
 function undoSignature(id) {
     const c = $(id); const st = signatureState(id); if (!c || !st || !st.strokes.length) return;
     st.redo.push(st.strokes.pop());
-    st.redoTouched = true;
     redrawSignatureCanvas(c);
     updateSignatureTools(id);
 }
@@ -1454,7 +1461,7 @@ function collectContractSignatures() {
 function restoreSignatureCanvas(id, dataUrl) {
     const c = $(id); if (!c || !dataUrl) return;
     const st = signatureState(id);
-    if (st) { st.strokes = []; st.redo = []; st.current = null; st.redoTouched = false; }
+    if (st) { st.strokes = []; st.redo = []; st.current = null; }
     resizeSignatureCanvas(c);
     const ctx = c.getContext('2d');
     const img = new Image();
@@ -1467,7 +1474,6 @@ function restoreSignatureCanvas(id, dataUrl) {
         ctx.drawImage(img, (cssW - w) / 2, (cssH - h) / 2, w, h);
         c.dataset.hasInk = '1';
         c.dataset.restoredImage = dataUrl;
-        updateSignatureTools(id);
     };
     img.src = dataUrl;
 }
@@ -2469,31 +2475,31 @@ function bindPdfTemplateDesigner() {
     if ($('pdfDesignerField')) $('pdfDesignerField').onchange = e => pdfDesignerSelectField(e.target.value, false);
     if ($('savePdfDesignerBtn')) $('savePdfDesignerBtn').onclick = () => { pdfDesignerSaveSelectedSilent(); toast('บันทึกพิกัดเอกสารแล้ว'); };
     if ($('previewPdfDesignerBtn')) $('previewPdfDesignerBtn').onclick = () => pdfDesignerRenderPreview(true);
-    const runDesignerAction = async (fn) => {
+    const nudge = (dx, dy) => async () => {
         const paths = getPdfDesignerSelectedPaths();
         if (!paths.length) return toast('กรุณาเลือกฟิลด์ก่อน');
-        fn(paths);
-        pdfDesignerRefreshCurrentInputs();
+        pdfDesignerNudgePaths(paths, dx, dy);
+        const current = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
+        const updated = getPdfFieldByPath(deepApplyPdfOverrides(clonePlain(window.__lastContractPdfFieldMap || {}), pdfTemplateLoadOverrides()), current);
+        if (updated) pdfDesignerFillInputs(updated);
         await pdfDesignerRenderPreview(false);
     };
-    const bindDesignerButton = (id, fn) => {
-        const btn = $(id);
-        if (!btn) return;
-        btn.type = 'button';
-        btn.onclick = null;
-        btn.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            runDesignerAction(fn);
-        }, { passive: false });
+    if ($('pdfDesignerLeftBtn')) $('pdfDesignerLeftBtn').onclick = nudge(-1, 0);
+    if ($('pdfDesignerRightBtn')) $('pdfDesignerRightBtn').onclick = nudge(1, 0);
+    if ($('pdfDesignerUpBtn')) $('pdfDesignerUpBtn').onclick = nudge(0, -1);
+    if ($('pdfDesignerDownBtn')) $('pdfDesignerDownBtn').onclick = nudge(0, 1);
+    const resizeSelected = (delta) => async () => {
+        const paths = getPdfDesignerSelectedPaths();
+        if (!paths.length) return toast('กรุณาเลือกฟิลด์ก่อน');
+        pdfDesignerResizeFontPaths(paths, delta);
+        const current = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
+        const updated = getPdfFieldByPath(deepApplyPdfOverrides(clonePlain(window.__lastContractPdfFieldMap || {}), pdfTemplateLoadOverrides()), current);
+        if (updated) pdfDesignerFillInputs(updated);
+        await pdfDesignerRenderPreview(false);
     };
-    bindDesignerButton('pdfDesignerLeftBtn', paths => pdfDesignerNudgePaths(paths, -1, 0));
-    bindDesignerButton('pdfDesignerRightBtn', paths => pdfDesignerNudgePaths(paths, 1, 0));
-    bindDesignerButton('pdfDesignerUpBtn', paths => pdfDesignerNudgePaths(paths, 0, -1));
-    bindDesignerButton('pdfDesignerDownBtn', paths => pdfDesignerNudgePaths(paths, 0, 1));
-    bindDesignerButton('pdfDesignerSizeMinusBtn', paths => pdfDesignerResizeFontPaths(paths, -1));
-    bindDesignerButton('pdfDesignerSizePlusBtn', paths => pdfDesignerResizeFontPaths(paths, 1));
-    const bulkRun = async (fn) => { fn(pdfDesignerBulkPaths()); pdfDesignerRefreshCurrentInputs(); await pdfDesignerRenderPreview(false); };
+    if ($('pdfDesignerSizeMinusBtn')) $('pdfDesignerSizeMinusBtn').onclick = resizeSelected(-1);
+    if ($('pdfDesignerSizePlusBtn')) $('pdfDesignerSizePlusBtn').onclick = resizeSelected(1);
+    const bulkRun = async (fn) => { fn(pdfDesignerBulkPaths()); await pdfDesignerRenderPreview(false); };
     if ($('pdfDesignerBulkLeftBtn')) $('pdfDesignerBulkLeftBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, -1, 0));
     if ($('pdfDesignerBulkRightBtn')) $('pdfDesignerBulkRightBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 1, 0));
     if ($('pdfDesignerBulkUpBtn')) $('pdfDesignerBulkUpBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, -1));
@@ -2719,7 +2725,6 @@ function bindNoZoomDesigner() {
     ['dblclick','gesturestart','gesturechange','gestureend'].forEach(evt => area.addEventListener(evt, e => e.preventDefault(), { passive:false }));
     let lastTap = 0;
     area.addEventListener('touchend', e => {
-        if (e.target?.closest?.('button,input,select,textarea,label,.pdf-designer-controls,.pdf-designer-actions')) return;
         const now = Date.now();
         if (now - lastTap < 320) e.preventDefault();
         lastTap = now;

@@ -3674,3 +3674,14 @@ body.signature-drawing{overflow:hidden!important;touch-action:none!important}
     gap:8px;
     width:100%;
 }
+
+/* ===== v9.4.2 Signature toolbar visibility fix =====
+   ให้ปุ่ม Redo แสดงเฉพาะตอนมีรายการที่ Undo แล้วจริง ๆ
+   และบังคับให้ .hidden ชนะ CSS display:inline-grid เดิมของ .sig-tool-btn */
+.sig-actions-row.sig-smart-tools.hidden{display:none!important;}
+.sig-actions-row.sig-smart-tools:not(.hidden){display:flex!important;}
+.sig-actions-row.sig-smart-tools .sig-tool-btn.hidden,
+.sig-actions-row.sig-smart-tools [data-undo-sig].hidden,
+.sig-actions-row.sig-smart-tools [data-redo-sig].hidden,
+.sig-actions-row.sig-smart-tools [data-clear-sig].hidden{display:none!important;}
+.sig-actions-row.sig-smart-tools .sig-tool-btn:not(.hidden){display:inline-grid!important;}
