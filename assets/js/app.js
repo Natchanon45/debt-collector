@@ -104,6 +104,7 @@ async function confirmAction(options = {}) {
     const confirmButtonText = options.confirmButtonText || 'ยืนยัน';
     const cancelButtonText = options.cancelButtonText || 'ยกเลิก';
     const icon = options.icon || 'warning';
+    const isLockDocumentConfirm = options.lockDocumentConfirm === true;
     if (window.Swal?.fire) {
         const swalOptions = {
             icon,
@@ -114,24 +115,44 @@ async function confirmAction(options = {}) {
             confirmButtonColor: options.confirmButtonColor || '#16a34a',
             cancelButtonColor: options.cancelButtonColor || '#64748b',
             reverseButtons: true,
-            heightAuto: false
+            heightAuto: false,
+            didOpen: (popup) => {
+                // v9.0.3: ไม่ใช้ input:'checkbox' ของ SweetAlert2 แล้ว
+                // กัน checkbox หลุดไป confirm อื่นบน browser/PWA บางเครื่อง
+                popup.querySelectorAll('.swal2-checkbox, #swal2-checkbox').forEach(el => el.remove());
+            }
         };
-        if (html) swalOptions.html = html;
-        else swalOptions.text = text;
-        // v9.0.1: แสดง checkbox เฉพาะงานที่ย้อนกลับไม่ได้จริง ๆ เท่านั้น
-        // ปัจจุบันใช้กับการล็อกเอกสาร โดยส่ง requireCheckbox:true และ highRisk:true
-        const shouldShowCheckbox = options.requireCheckbox === true && options.highRisk === true;
-        if (shouldShowCheckbox) {
-            swalOptions.input = 'checkbox';
-            swalOptions.inputValue = 0;
-            swalOptions.inputPlaceholder = options.checkboxText || 'ฉันเข้าใจแล้ว และต้องการดำเนินการต่อ';
-            swalOptions.inputValidator = (result) => !result ? (options.checkboxError || 'กรุณายืนยันก่อนดำเนินการ') : undefined;
+
+        if (isLockDocumentConfirm) {
+            const lockHtml = html || text || 'หลังดำเนินการนี้ จะไม่สามารถแก้ไขข้อมูลใดๆ ได้อีก';
+            swalOptions.html = `
+                <div style="line-height:1.7;text-align:center">
+                    ${lockHtml}
+                    <label class="dc-swal-check-wrap" style="margin-top:14px;display:flex;gap:8px;align-items:flex-start;justify-content:center;text-align:left;font-weight:900;color:#334155">
+                        <input type="checkbox" id="dcLockConfirmCheck" style="margin-top:5px;accent-color:#dc2626">
+                        <span>${options.checkboxText || 'ฉันเข้าใจแล้ว และต้องการล็อกเอกสาร'}</span>
+                    </label>
+                </div>`;
+            swalOptions.preConfirm = () => {
+                const checked = document.getElementById('dcLockConfirmCheck')?.checked === true;
+                if (!checked) {
+                    window.Swal.showValidationMessage(options.checkboxError || 'กรุณายืนยันก่อนดำเนินการ');
+                    return false;
+                }
+                return true;
+            };
+        } else if (html) {
+            swalOptions.html = html;
+        } else {
+            swalOptions.text = text;
         }
+
         const result = await window.Swal.fire(swalOptions);
         return result.isConfirmed === true;
     }
     return window.confirm(`${title}${text ? '\n' + text : ''}`);
 }
+
 async function alertAction(options = {}) {
     const title = options.title || '';
     const text = options.text || '';
@@ -1354,7 +1375,7 @@ function contractAmountTextParts(n) {
         satangText = satangNum > 0 ? '' : '-';
     }
 
-    // v9.0.1: ใส่วงเล็บเฉพาะข้อความจำนวนเงินและสตางค์ แล้วจัดกึ่งกลางในช่องของตัวเอง
+    // v9.0.3: ใส่วงเล็บเฉพาะข้อความจำนวนเงินและสตางค์ แล้วจัดกึ่งกลางในช่องของตัวเอง
     // กรณี .00 ให้สตางค์เป็น '-' โดยไม่ใส่วงเล็บ
     const displayBahtText = bahtText && bahtText !== '-' ? `( ${bahtText} )` : '-';
     const displaySatangText = satangNum > 0 && satangText && satangText !== '-' ? `( ${satangText} )` : '-';
@@ -1813,9 +1834,9 @@ async function renderContractImageCanvas(row, debtor) {
             // v8.0.11: number + Thai amount + satang/full text are on the SAME printed money line.
             // Do not use a second-line Y for the Thai amount text. Only X changes by field.
             amount: { x: 175, y: 525, maxWidth: 450, size: FS, minSize: 32, align: 'right', rightPad: 4 },
-            // v9.0.1: ตัวหนังสือจำนวนเงินใส่วงเล็บและจัดกึ่งกลางในช่องข้อความ เพื่อให้ PC/Mobile ไม่เลื่อนจาก right-anchor
+            // v9.0.3: ตัวหนังสือจำนวนเงินใส่วงเล็บและจัดกึ่งกลางในช่องข้อความ เพื่อให้ PC/Mobile ไม่เลื่อนจาก right-anchor
             amountText: { x: 635, y: 520, maxWidth: 340, size: 32, minSize: 20, align: 'center', rightPad: 0 },
-            // v9.0.1: ถ้ามีสตางค์ให้ใส่วงเล็บและจัดกึ่งกลาง / ถ้า .00 ให้แสดง '-' ไม่ใส่วงเล็บ
+            // v9.0.3: ถ้ามีสตางค์ให้ใส่วงเล็บและจัดกึ่งกลาง / ถ้า .00 ให้แสดง '-' ไม่ใส่วงเล็บ
             satang: { x: 1080, y: 520, maxWidth: 220, size: 32, minSize: 20, align: 'center', rightPad: 0 },
             satangFull: { x: 1080, y: 520, maxWidth: 145, size: 32, minSize: 20, align: 'center', rightPad: 0 } // '-' 
         },
@@ -2104,8 +2125,7 @@ window.lockContractDocument = async id => {
             <span style="color:#dc2626;font-weight:900">หลังดำเนินการนี้ จะไม่สามารถแก้ไขข้อมูลใดๆ ได้อีก</span><br>
             กรุณาตรวจสอบความถูกต้องก่อนยืนยัน
         </div>`,
-        requireCheckbox: true,
-        highRisk: true,
+        lockDocumentConfirm: true,
         checkboxText: 'ฉันเข้าใจแล้ว และต้องการล็อกเอกสาร',
         checkboxError: 'กรุณายืนยันก่อนล็อกเอกสาร',
         confirmButtonText: 'ยืนยันการล็อก',
