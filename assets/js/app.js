@@ -1700,6 +1700,8 @@ async function renderContractImageCanvas(row, debtor) {
     // v8.0.15: Mobile Canvas text metrics do not match PC when a Thai field is centered/right-fitted.
     // Keep the PC-stable map untouched. On Mobile only, use fixed left/right anchors instead of center metrics
     // for the fields the user marked: both month fields, borrower subdistrict, and satang text.
+
+    const IS_MOBILE_PDF = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const mobileField = (pc, mobile) => isPdfMobileRender ? { ...pc, ...mobile } : pc;
     const F = {
         header: {
@@ -1724,15 +1726,10 @@ async function renderContractImageCanvas(row, debtor) {
         clause1: {
             borrowerLine: { x: 405, y: 422, maxWidth: 730, size: FS_INLINE_ID, minSize: 30, align: 'left', indent: 0 },
             lenderLine: { x: 182, y: 473, maxWidth: 900, size: FS_INLINE_ID, minSize: 30, align: 'left', indent: 0 },
-            // v8.0.11: number + Thai amount + satang/full text are on the SAME printed money line.
-            // Do not use a second-line Y for the Thai amount text. Only X changes by field.
             amount: { x: 175, y: 525, maxWidth: 450, size: FS, minSize: 32, align: 'right', rightPad: 4 },
-            // v8.1.1: Thai amount text is right-aligned to prevent inserting extra words before the printed บาท label.
-            amountText: { x: 635, y: 520, maxWidth: 340, size: 34, minSize: 20, align: 'right', rightPad: 0 },
-            // amountText: { x: 550, y: 525, maxWidth: 340, size: 34, minSize: 18, align: 'right', indent: 0 },
-            // v8.1.1: Satang text is right-aligned close to the printed สต. label.
-            // If satang is .00, display '-' instead of 'ถ้วน'.
-            satang: { x: 1080, y: 520, maxWidth: 340, size: 34, minSize: 20, align: 'right', rightPad: 0 },
+            // amountText: { x: 635, y: 520, maxWidth: 200, size: 34, minSize: 20, align: 'right', rightPad: 0 }, // สองหมื่นหนึ่งพันสองร้อยบาท
+            amountText: { x: IS_MOBILE_PDF ? 610 : 635, y: 520, maxWidth: 200, size: 34, minSize: 20, align: 'right', rightPad: 0 },
+            satang: { x: 1080, y: 520, maxWidth: 145, size: 34, minSize: 20, align: 'right', rightPad: 0 },
             satangFull: { x: 1080, y: 520, maxWidth: 145, size: 34, minSize: 18, align: 'right', rightPad: 0 } // '-' 
         },
         clause3: {
@@ -1835,10 +1832,10 @@ async function previewContractBeforeSave() {
         const blob = await buildContractPdfBlob(data.row, data.debtor);
         const url = URL.createObjectURL(blob);
         showPreviewModal('ตัวอย่าง PDF ก่อนบันทึก', url, 'application/pdf', 'preview-loan-contract.pdf');
-        toast('แสดงตัวอย่าง PDF แล้ว');
+        toast('แสดงตัวอย่างเอกสารแล้ว');
     } catch (e) {
         console.error(e);
-        toast('แสดงตัวอย่าง PDF ไม่สำเร็จ: ' + e.message);
+        toast('แสดงตัวอย่างเอกสาร ไม่สำเร็จ: ' + e.message);
     }
 }
 
