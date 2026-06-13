@@ -1266,17 +1266,23 @@ function contractAmountTextParts(n) {
     let bahtText = '';
     let satangText = '';
     if (p >= 0) {
-        bahtText = full.slice(0, p).trim(); // ไม่ใส่คำว่า บาท เพราะฟอร์มมีคำว่า บาท อยู่แล้ว
+        bahtText = full.slice(0, p).trim();
         const afterBaht = full.slice(p + marker.length).trim();
         satangText = satangNum > 0 ? afterBaht.replace(/สตางค์$/, '').trim() : '-';
     } else {
         bahtText = full.replace(/บาทถ้วน$/, '').replace(/บาท$/, '').trim();
         satangText = satangNum > 0 ? '' : '-';
     }
+
+    // v8.1.6: ใส่วงเล็บเฉพาะข้อความจำนวนเงินและสตางค์ แล้วจัดกึ่งกลางในช่องของตัวเอง
+    // กรณี .00 ให้สตางค์เป็น '-' โดยไม่ใส่วงเล็บ
+    const displayBahtText = bahtText && bahtText !== '-' ? `( ${bahtText} )` : '-';
+    const displaySatangText = satangNum > 0 && satangText && satangText !== '-' ? `( ${satangText} )` : '-';
+
     return {
         number: safeValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-        bahtText: bahtText || '-',
-        satangText: satangText || (satangNum > 0 ? '-' : '-')
+        bahtText: displayBahtText,
+        satangText: displaySatangText
     };
 }
 
@@ -1700,8 +1706,6 @@ async function renderContractImageCanvas(row, debtor) {
     // v8.0.15: Mobile Canvas text metrics do not match PC when a Thai field is centered/right-fitted.
     // Keep the PC-stable map untouched. On Mobile only, use fixed left/right anchors instead of center metrics
     // for the fields the user marked: both month fields, borrower subdistrict, and satang text.
-
-    const IS_MOBILE_PDF = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     const mobileField = (pc, mobile) => isPdfMobileRender ? { ...pc, ...mobile } : pc;
     const F = {
         header: {
@@ -1726,11 +1730,14 @@ async function renderContractImageCanvas(row, debtor) {
         clause1: {
             borrowerLine: { x: 405, y: 422, maxWidth: 730, size: FS_INLINE_ID, minSize: 30, align: 'left', indent: 0 },
             lenderLine: { x: 182, y: 473, maxWidth: 900, size: FS_INLINE_ID, minSize: 30, align: 'left', indent: 0 },
+            // v8.0.11: number + Thai amount + satang/full text are on the SAME printed money line.
+            // Do not use a second-line Y for the Thai amount text. Only X changes by field.
             amount: { x: 175, y: 525, maxWidth: 450, size: FS, minSize: 32, align: 'right', rightPad: 4 },
-            // amountText: { x: 635, y: 520, maxWidth: 200, size: 34, minSize: 20, align: 'right', rightPad: 0 }, // สองหมื่นหนึ่งพันสองร้อยบาท
-            amountText: { x: IS_MOBILE_PDF ? 600 : 615, y: 520, maxWidth: 350, size: 34, minSize: 20, align: 'right', rightPad: 0 },
-            satang: { x: 1080, y: 520, maxWidth: 150, size: 34, minSize: 20, align: 'right', rightPad: 0 },
-            satangFull: { x: 1080, y: 520, maxWidth: 150, size: 34, minSize: 18, align: 'right', rightPad: 0 } // '-' 
+            // v8.1.6: ตัวหนังสือจำนวนเงินใส่วงเล็บและจัดกึ่งกลางในช่องข้อความ เพื่อให้ PC/Mobile ไม่เลื่อนจาก right-anchor
+            amountText: { x: 635, y: 520, maxWidth: 340, size: 32, minSize: 20, align: 'center', rightPad: 0 },
+            // v8.1.6: ถ้ามีสตางค์ให้ใส่วงเล็บและจัดกึ่งกลาง / ถ้า .00 ให้แสดง '-' ไม่ใส่วงเล็บ
+            satang: { x: 1080, y: 520, maxWidth: 220, size: 32, minSize: 20, align: 'center', rightPad: 0 },
+            satangFull: { x: 1080, y: 520, maxWidth: 145, size: 32, minSize: 20, align: 'center', rightPad: 0 } // '-' 
         },
         clause3: {
             day: { x: 223, y: 935, maxWidth: 118, size: FS, minSize: 32, align: 'center' },
@@ -1832,10 +1839,10 @@ async function previewContractBeforeSave() {
         const blob = await buildContractPdfBlob(data.row, data.debtor);
         const url = URL.createObjectURL(blob);
         showPreviewModal('ตัวอย่าง PDF ก่อนบันทึก', url, 'application/pdf', 'preview-loan-contract.pdf');
-        toast('แสดงตัวอย่างเอกสารแล้ว');
+        toast('แสดงตัวอย่าง PDF แล้ว');
     } catch (e) {
         console.error(e);
-        toast('แสดงตัวอย่างเอกสาร ไม่สำเร็จ: ' + e.message);
+        toast('แสดงตัวอย่าง PDF ไม่สำเร็จ: ' + e.message);
     }
 }
 
