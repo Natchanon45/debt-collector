@@ -5,7 +5,7 @@ export const APP_INFO = {
 };
 
 export const APP_VERSION = APP_INFO.version;
-export const LS = 'debt_collector_phase3_v9.4.0';
+export const LS = 'debt_collector_phase3_v9.4.2';
 
 export const blank = {
     debtors: [],
