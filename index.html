@@ -501,7 +501,7 @@
                 </div>
 
                 <div class="card" id="pdfTemplateDesignerCard">
-                    <h3><i class="bi bi-bezier2"></i> Document Template Designer <span class="badge-soft">Beta</span></h3>
+                    <h3><i class="bi bi-bezier2"></i> ตัวปรับพิกัดเอกสาร <span class="badge-soft">Beta</span></h3>
                     <p class="note">ปรับพิกัดข้อความบนแบบฟอร์มเอกสาร ได้เองโดยไม่ต้องแก้โค้ด ใช้สำหรับ Fine tune
                         ตำแหน่งก่อน Production</p>
                     <button id="openPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-sliders"></i>
@@ -510,49 +510,69 @@
                 <div id="pdfDesignerPanel" class="card hidden">
                     <div class="card-head-row">
                         <h3><i class="bi bi-crosshair"></i> ตัวปรับพิกัดเอกสาร</h3>
-                        <button id="closePdfDesignerBtn" class="mini icon-action" type="button" title="ปิด"><i
-                                class="bi bi-x-lg"></i></button>
+                        <button id="closePdfDesignerBtn" class="mini icon-action" type="button" title="ปิด"><i class="bi bi-x-lg"></i></button>
                     </div>
-                    <p class="note">เลือกช่องที่ต้องการปรับ แล้วแก้ X/Y/ขนาด/ความกว้าง จากนั้นกด Preview เพื่อดูผลทันที
-                        ค่าเหล่านี้จะบันทึกในเครื่องนี้ก่อน</p>
+                    <p class="note">แตะฟิลด์บนภาพเพื่อเลือก กด Shift/Ctrl แล้วแตะเพื่อเลือกหลายฟิลด์ หรือใช้ชุดปรับพร้อมกันด้านล่าง เส้นจะขึ้นเฉพาะฟิลด์ที่เลือกเพื่อลดความรกตา</p>
+
                     <label>ฟิลด์ที่ต้องการปรับ</label>
                     <select id="pdfDesignerField" class="input"></select>
+
                     <div class="pdf-designer-grid">
                         <div><label>X</label><input id="pdfDesignerX" class="input" type="number" step="1"></div>
                         <div><label>Y</label><input id="pdfDesignerY" class="input" type="number" step="1"></div>
-                        <div><label>Max Width</label><input id="pdfDesignerMaxWidth" class="input" type="number"
-                                step="1"></div>
-                        <div><label>Font Size</label><input id="pdfDesignerSize" class="input" type="number" step="1">
-                        </div>
-                        <div><label>Min Size</label><input id="pdfDesignerMinSize" class="input" type="number" step="1">
-                        </div>
+                        <div><label>Max Width</label><input id="pdfDesignerMaxWidth" class="input" type="number" step="1"></div>
+                        <div><label>Font Size</label><input id="pdfDesignerSize" class="input" type="number" step="1"></div>
+                        <div><label>Min Size</label><input id="pdfDesignerMinSize" class="input" type="number" step="1"></div>
                         <div><label>Align</label><select id="pdfDesignerAlign" class="input">
-                                <option value="left">left</option>
-                                <option value="center">center</option>
-                                <option value="right">right</option>
-                            </select></div>
+                            <option value="left">left</option>
+                            <option value="center">center</option>
+                            <option value="right">right</option>
+                        </select></div>
                     </div>
-                    <div class="pdf-designer-actions">
-                        <button id="pdfDesignerLeftBtn" class="secondary" type="button"><i
-                                class="bi bi-arrow-left"></i></button>
-                        <button id="pdfDesignerRightBtn" class="secondary" type="button"><i
-                                class="bi bi-arrow-right"></i></button>
-                        <button id="pdfDesignerUpBtn" class="secondary" type="button"><i
-                                class="bi bi-arrow-up"></i></button>
-                        <button id="pdfDesignerDownBtn" class="secondary" type="button"><i
-                                class="bi bi-arrow-down"></i></button>
+
+                    <div class="pdf-designer-top-tools">
+                        <div class="pdf-arrow-pad" aria-label="ขยับฟิลด์ที่เลือก">
+                            <button id="pdfDesignerUpBtn" class="secondary" type="button"><i class="bi bi-arrow-up"></i></button>
+                            <button id="pdfDesignerLeftBtn" class="secondary" type="button"><i class="bi bi-arrow-left"></i></button>
+                            <button id="pdfDesignerRightBtn" class="secondary" type="button"><i class="bi bi-arrow-right"></i></button>
+                            <button id="pdfDesignerDownBtn" class="secondary" type="button"><i class="bi bi-arrow-down"></i></button>
+                        </div>
+                        <button id="previewPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-eye"></i> แสดงตัวอย่าง</button>
                     </div>
-                    <div class="pdf-designer-actions">
-                        <button id="savePdfDesignerBtn" class="primary" type="button"><i class="bi bi-save"></i>
-                            บันทึกพิกัด</button>
-                        <button id="previewPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-eye"></i>
-                            Preview</button>
-                        <button id="resetPdfDesignerFieldBtn" class="ghost" type="button">รีเซ็ตฟิลด์นี้</button>
-                        <button id="resetPdfDesignerAllBtn" class="danger" type="button">ล้างพิกัดทั้งหมด</button>
-                    </div>
+
                     <div class="pdf-designer-preview-wrap" id="pdfDesignerPreviewWrap">
                         <img id="pdfDesignerPreview" class="pdf-designer-preview" alt="document template preview">
                         <div id="pdfDesignerOverlay" class="pdf-designer-overlay"></div>
+                    </div>
+
+                    <div class="pdf-designer-bulk-card">
+                        <label>ปรับหลายฟิลด์พร้อมกัน</label>
+                        <select id="pdfDesignerBulkScope" class="input">
+                            <option value="selected">ฟิลด์ที่เลือก</option>
+                            <option value="all">ทุกฟิลด์</option>
+                            <option value="header">ส่วนหัวเอกสาร</option>
+                            <option value="borrower">ข้อมูลผู้กู้</option>
+                            <option value="lender">ข้อมูลผู้ให้กู้</option>
+                            <option value="clause1">ข้อ 1 / จำนวนเงิน</option>
+                            <option value="collateral">หลักทรัพย์ค้ำประกัน</option>
+                            <option value="due">วันครบกำหนด</option>
+                            <option value="interest">ดอกเบี้ย</option>
+                            <option value="signatures">ลายเซ็น</option>
+                        </select>
+                        <div class="pdf-designer-actions pdf-bulk-actions">
+                            <button id="pdfDesignerBulkLeftBtn" class="secondary" type="button"><i class="bi bi-arrow-left"></i></button>
+                            <button id="pdfDesignerBulkRightBtn" class="secondary" type="button"><i class="bi bi-arrow-right"></i></button>
+                            <button id="pdfDesignerBulkUpBtn" class="secondary" type="button"><i class="bi bi-arrow-up"></i></button>
+                            <button id="pdfDesignerBulkDownBtn" class="secondary" type="button"><i class="bi bi-arrow-down"></i></button>
+                            <button id="pdfDesignerBulkSizeMinusBtn" class="secondary" type="button">A-</button>
+                            <button id="pdfDesignerBulkSizePlusBtn" class="secondary" type="button">A+</button>
+                        </div>
+                    </div>
+
+                    <div class="pdf-designer-save-row">
+                        <button id="savePdfDesignerBtn" class="primary" type="button"><i class="bi bi-save"></i> บันทึกพิกัด</button>
+                        <button id="resetPdfDesignerFieldBtn" class="ghost" type="button">รีเซ็ตฟิลด์นี้</button>
+                        <button id="resetPdfDesignerAllBtn" class="danger" type="button">ล้างพิกัดทั้งหมด</button>
                     </div>
                 </div>
                 <div class="card">

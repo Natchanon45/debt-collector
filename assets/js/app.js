@@ -92,8 +92,8 @@ function toast(m, type = 'info') {
 }
 
 
-// ===== v9.1 Document Template Designer (Coordinate Override) =====
-const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_doc_template_overrides_v9_1';
+// ===== v9.2 Document Template Designer (Coordinate Override) =====
+const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_doc_template_overrides_v9_2';
 const PDF_TEMPLATE_FIELD_LABELS = {
     'header.contractNo': 'เลขที่สัญญา',
     'header.place': 'สถานที่ทำสัญญา',
@@ -126,7 +126,7 @@ const PDF_TEMPLATE_FIELD_LABELS = {
     'signatures.witness2Name': 'ชื่อลายเซ็นพยาน 2',
     'signatures.writerName': 'ชื่อลายเซ็นผู้เขียน'
 };
-let pdfTemplateDesignerState = { selected: 'clause1.amountText', previewUrl: '' };
+let pdfTemplateDesignerState = { selected: 'clause1.amountText', previewUrl: '', multi: new Set(), dragging: null };
 function pdfTemplateLoadOverrides() {
     try { return JSON.parse(localStorage.getItem(PDF_TEMPLATE_OVERRIDE_LS) || '{}') || {}; }
     catch { return {}; }
@@ -160,6 +160,58 @@ function resetPdfOverrideField(path) {
     const overrides = pdfTemplateLoadOverrides();
     delete overrides[path];
     pdfTemplateSaveOverrides(overrides);
+}
+
+function getPdfDesignerSelectedPaths() {
+    const set = pdfTemplateDesignerState.multi instanceof Set ? pdfTemplateDesignerState.multi : new Set();
+    const current = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
+    const paths = Array.from(set).filter(Boolean);
+    if (current && !paths.includes(current)) paths.push(current);
+    return paths;
+}
+function pdfDesignerFieldGroup(path) {
+    const p = String(path || '');
+    if (p.startsWith('header.')) return 'header';
+    if (p.startsWith('borrower.')) return 'borrower';
+    if (p.startsWith('lender.')) return 'lender';
+    if (p.startsWith('clause1.')) return 'clause1';
+    if (p.startsWith('clause2.')) return 'collateral';
+    if (p.startsWith('clause3.')) return 'due';
+    if (p.startsWith('clause4.')) return 'interest';
+    if (p.startsWith('signatures.')) return 'signatures';
+    return 'other';
+}
+function pdfDesignerSaveSelectedSilent() {
+    const path = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
+    if (!path) return;
+    setPdfOverrideField(path, pdfDesignerReadInputs());
+}
+function pdfDesignerApplyPatchToPaths(paths, patch) {
+    (paths || []).forEach(path => {
+        const base = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path) || {};
+        setPdfOverrideField(path, { ...base, ...patch });
+    });
+}
+function pdfDesignerNudgePaths(paths, dx = 0, dy = 0) {
+    (paths || []).forEach(path => {
+        const base = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path) || {};
+        setPdfOverrideField(path, { x: Number(base.x || 0) + dx, y: Number(base.y || 0) + dy });
+    });
+}
+function pdfDesignerResizeFontPaths(paths, delta = 0) {
+    (paths || []).forEach(path => {
+        const base = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path) || {};
+        const size = Math.max(8, Number(base.size || 24) + delta);
+        const minSize = Math.max(8, Math.min(size, Number(base.minSize || size) + delta));
+        setPdfOverrideField(path, { size, minSize });
+    });
+}
+function pdfDesignerBulkPaths() {
+    const scope = $('pdfDesignerBulkScope')?.value || 'selected';
+    const all = flattenPdfFieldMap(window.__lastContractPdfFieldMap || {}).map(([path]) => path).filter(path => PDF_TEMPLATE_FIELD_LABELS[path]);
+    if (scope === 'selected') return getPdfDesignerSelectedPaths();
+    if (scope === 'all') return all;
+    return all.filter(path => pdfDesignerFieldGroup(path) === scope);
 }
 function applyDefaultFieldYNudge(obj, dy) {
     if (!obj || typeof obj !== 'object') return;
@@ -1990,11 +2042,11 @@ async function renderContractImageCanvas(row, debtor) {
 
     // Template V2 coordinate map: แก้ตำแหน่ง/ขนาดที่นี่จุดเดียว
     // พิกัด x/y ใช้สเกลเดียวกับ PNG master 1447x2048
-    const FS = 48;
-    const FS_SMALL = 46;
-    const FS_INLINE_ID = 44;
-    const FS_COLLATERAL = 44;
-    const FS_SIG_NAME = 43;
+    const FS = 36;
+    const FS_SMALL = 34;
+    const FS_INLINE_ID = 32;
+    const FS_COLLATERAL = 32;
+    const FS_SIG_NAME = 31;
     // v8.0.2: compensate template-field visual centering for mobile canvas/font rendering.
     // Coordinates are in the 1447x2048 template coordinate map.
     // v8.0.5: top borrower/lender name fields must start immediately after the printed form text.
@@ -2033,10 +2085,10 @@ async function renderContractImageCanvas(row, debtor) {
             // Do not use a second-line Y for the Thai amount text. Only X changes by field.
             amount: { x: 175, y: 525, maxWidth: 450, size: FS, minSize: 32, align: 'right', rightPad: 4 },
             // v9.0.3: ตัวหนังสือจำนวนเงินใส่วงเล็บและจัดกึ่งกลางในช่องข้อความ เพื่อให้ PC/Mobile ไม่เลื่อนจาก right-anchor
-            amountText: { x: 635, y: 520, maxWidth: 340, size: 32, minSize: 20, align: 'center', rightPad: 0 },
+            amountText: { x: 635, y: 520, maxWidth: 340, size: 24, minSize: 18, align: 'center', rightPad: 0 },
             // v9.0.3: ถ้ามีสตางค์ให้ใส่วงเล็บและจัดกึ่งกลาง / ถ้า .00 ให้แสดง '-' ไม่ใส่วงเล็บ
-            satang: { x: 1080, y: 520, maxWidth: 220, size: 32, minSize: 20, align: 'center', rightPad: 0 },
-            satangFull: { x: 1080, y: 520, maxWidth: 145, size: 32, minSize: 20, align: 'center', rightPad: 0 } // '-' 
+            satang: { x: 1080, y: 520, maxWidth: 220, size: 24, minSize: 18, align: 'center', rightPad: 0 },
+            satangFull: { x: 1080, y: 520, maxWidth: 145, size: 24, minSize: 18, align: 'center', rightPad: 0 } // '-' 
         },
         clause3: {
             day: { x: 223, y: 935, maxWidth: 118, size: FS, minSize: 32, align: 'center' },
@@ -2238,13 +2290,21 @@ function flattenPdfFieldMap(map = {}, prefix = '') {
     });
     return out;
 }
-function pdfDesignerSelectField(path, render = true) {
+function pdfDesignerSelectField(path, render = true, additive = false) {
     if (!path) return;
     pdfTemplateDesignerState.selected = path;
+    if (additive) {
+        if (!(pdfTemplateDesignerState.multi instanceof Set)) pdfTemplateDesignerState.multi = new Set();
+        if (pdfTemplateDesignerState.multi.has(path)) pdfTemplateDesignerState.multi.delete(path);
+        else pdfTemplateDesignerState.multi.add(path);
+    } else {
+        pdfTemplateDesignerState.multi = new Set([path]);
+    }
     if ($('pdfDesignerField')) $('pdfDesignerField').value = path;
     const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path);
     pdfDesignerFillInputs(field || {});
-    if (render) pdfDesignerRenderPreview();
+    pdfDesignerRenderOverlay();
+    if (render) pdfDesignerRenderPreview(false);
 }
 function pdfDesignerRenderOverlay() {
     const overlay = $('pdfDesignerOverlay'), img = $('pdfDesignerPreview');
@@ -2255,27 +2315,66 @@ function pdfDesignerRenderOverlay() {
     overlay.innerHTML = '';
     overlay.style.width = rect.width + 'px';
     overlay.style.height = rect.height + 'px';
+    const selectedSet = pdfTemplateDesignerState.multi instanceof Set ? pdfTemplateDesignerState.multi : new Set([pdfTemplateDesignerState.selected]);
     flattenPdfFieldMap(window.__lastContractPdfFieldMap).forEach(([path, field]) => {
         if (!PDF_TEMPLATE_FIELD_LABELS[path]) return;
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'pdf-field-hotspot' + (path === pdfTemplateDesignerState.selected ? ' active' : '');
+        const isActive = path === pdfTemplateDesignerState.selected;
+        const isSelected = selectedSet.has(path);
+        btn.className = 'pdf-field-hotspot' + (isActive ? ' active' : '') + (isSelected ? ' selected' : '');
         const left = (field.x / naturalW) * 100;
-        const top = ((field.y - 42) / naturalH) * 100;
-        const width = Math.max(5, ((field.maxWidth || 120) / naturalW) * 100);
+        const top = ((field.y - 28) / naturalH) * 100;
+        const width = Math.max(4, ((field.maxWidth || 120) / naturalW) * 100);
         btn.style.left = left + '%';
         btn.style.top = top + '%';
         btn.style.width = width + '%';
-        btn.style.height = '22px';
+        btn.style.height = '14px';
         btn.title = PDF_TEMPLATE_FIELD_LABELS[path];
-        btn.onclick = () => pdfDesignerSelectField(path, true);
+        btn.dataset.path = path;
+        btn.onclick = (e) => {
+            if (pdfTemplateDesignerState.dragging?.moved) return;
+            pdfDesignerSelectField(path, false, e.shiftKey || e.ctrlKey || e.metaKey);
+        };
+        btn.onpointerdown = (e) => {
+            e.preventDefault();
+            btn.setPointerCapture?.(e.pointerId);
+            pdfDesignerSelectField(path, false, e.shiftKey || e.ctrlKey || e.metaKey);
+            const f = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path) || field;
+            pdfTemplateDesignerState.dragging = {
+                path, startX: e.clientX, startY: e.clientY,
+                baseX: Number(f.x || 0), baseY: Number(f.y || 0), moved: false
+            };
+        };
+        btn.onpointermove = (e) => {
+            const d = pdfTemplateDesignerState.dragging;
+            if (!d || d.path !== path) return;
+            const dx = ((e.clientX - d.startX) / rect.width) * naturalW;
+            const dy = ((e.clientY - d.startY) / rect.height) * naturalH;
+            if (Math.abs(dx) > 1 || Math.abs(dy) > 1) d.moved = true;
+            const nx = Math.round(d.baseX + dx), ny = Math.round(d.baseY + dy);
+            if ($('pdfDesignerX')) $('pdfDesignerX').value = nx;
+            if ($('pdfDesignerY')) $('pdfDesignerY').value = ny;
+            btn.style.left = ((nx / naturalW) * 100) + '%';
+            btn.style.top = (((ny - 28) / naturalH) * 100) + '%';
+        };
+        btn.onpointerup = async (e) => {
+            const d = pdfTemplateDesignerState.dragging;
+            if (!d || d.path !== path) return;
+            pdfTemplateDesignerState.dragging = null;
+            if (d.moved) {
+                pdfDesignerSaveSelectedSilent();
+                await pdfDesignerRenderPreview(false);
+            }
+        };
         overlay.appendChild(btn);
     });
 }
-async function pdfDesignerRenderPreview() {
+
+async function pdfDesignerRenderPreview(saveBeforeRender = false) {
     const img = $('pdfDesignerPreview');
     if (!img) return;
-    pdfDesignerSaveSelected();
+    if (saveBeforeRender) pdfDesignerSaveSelectedSilent();
     const { row, debtor } = pdfDesignerSampleData();
     const canvas = await renderContractImageCanvas(row, debtor);
     const ctx = canvas.getContext('2d');
@@ -2287,11 +2386,9 @@ async function pdfDesignerRenderPreview() {
         const h = 52 * CONTRACT_CANVAS_SCALE_Y;
         ctx.save();
         ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 5;
-        ctx.setLineDash([14, 10]);
-        ctx.strokeRect(p.x, p.y - h, w, h + 18);
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([8, 6]);
+        ctx.strokeRect(p.x, p.y - h, w, h + 12);
         ctx.restore();
     }
     if (pdfTemplateDesignerState.previewUrl) URL.revokeObjectURL(pdfTemplateDesignerState.previewUrl);
@@ -2316,20 +2413,28 @@ async function openPdfTemplateDesigner() {
 function bindPdfTemplateDesigner() {
     if ($('openPdfDesignerBtn')) $('openPdfDesignerBtn').onclick = openPdfTemplateDesigner;
     if ($('closePdfDesignerBtn')) $('closePdfDesignerBtn').onclick = () => $('pdfDesignerPanel')?.classList.add('hidden');
-    if ($('pdfDesignerField')) $('pdfDesignerField').onchange = e => pdfDesignerSelectField(e.target.value, true);
-    if ($('savePdfDesignerBtn')) $('savePdfDesignerBtn').onclick = pdfDesignerSaveSelected;
-    if ($('previewPdfDesignerBtn')) $('previewPdfDesignerBtn').onclick = pdfDesignerRenderPreview;
+    if ($('pdfDesignerField')) $('pdfDesignerField').onchange = e => pdfDesignerSelectField(e.target.value, false);
+    if ($('savePdfDesignerBtn')) $('savePdfDesignerBtn').onclick = () => { pdfDesignerSaveSelectedSilent(); toast('บันทึกพิกัดเอกสารแล้ว'); };
+    if ($('previewPdfDesignerBtn')) $('previewPdfDesignerBtn').onclick = () => pdfDesignerRenderPreview(true);
     const nudge = (dx, dy) => async () => {
         const x = Number($('pdfDesignerX')?.value || 0) + dx;
         const y = Number($('pdfDesignerY')?.value || 0) + dy;
         if ($('pdfDesignerX')) $('pdfDesignerX').value = x;
         if ($('pdfDesignerY')) $('pdfDesignerY').value = y;
-        await pdfDesignerRenderPreview();
+        pdfDesignerSaveSelectedSilent();
+        await pdfDesignerRenderPreview(false);
     };
     if ($('pdfDesignerLeftBtn')) $('pdfDesignerLeftBtn').onclick = nudge(-1, 0);
     if ($('pdfDesignerRightBtn')) $('pdfDesignerRightBtn').onclick = nudge(1, 0);
     if ($('pdfDesignerUpBtn')) $('pdfDesignerUpBtn').onclick = nudge(0, -1);
     if ($('pdfDesignerDownBtn')) $('pdfDesignerDownBtn').onclick = nudge(0, 1);
+    const bulkRun = async (fn) => { fn(pdfDesignerBulkPaths()); await pdfDesignerRenderPreview(false); };
+    if ($('pdfDesignerBulkLeftBtn')) $('pdfDesignerBulkLeftBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, -1, 0));
+    if ($('pdfDesignerBulkRightBtn')) $('pdfDesignerBulkRightBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 1, 0));
+    if ($('pdfDesignerBulkUpBtn')) $('pdfDesignerBulkUpBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, -1));
+    if ($('pdfDesignerBulkDownBtn')) $('pdfDesignerBulkDownBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, 1));
+    if ($('pdfDesignerBulkSizeMinusBtn')) $('pdfDesignerBulkSizeMinusBtn').onclick = () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, -1));
+    if ($('pdfDesignerBulkSizePlusBtn')) $('pdfDesignerBulkSizePlusBtn').onclick = () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, 1));
     if ($('resetPdfDesignerFieldBtn')) $('resetPdfDesignerFieldBtn').onclick = async () => {
         resetPdfOverrideField($('pdfDesignerField')?.value || pdfTemplateDesignerState.selected);
         toast('รีเซ็ตฟิลด์นี้แล้ว');
