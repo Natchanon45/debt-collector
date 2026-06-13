@@ -1220,7 +1220,7 @@ function renderContractList(d, c) {
 }
 function bahtTextFallback(n) {
     const value = Number(String(n ?? 0).replace(/,/g, ''));
-    if (!Number.isFinite(value) || value <= 0) return 'ศูนย์บาทถ้วน';
+    if (!Number.isFinite(value) || value <= 0) return 'ศูนย์บาท-';
     const nums = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
     const units = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
     const readInt = (numStr) => {
@@ -1727,14 +1727,13 @@ async function renderContractImageCanvas(row, debtor) {
             // v8.0.11: number + Thai amount + satang/full text are on the SAME printed money line.
             // Do not use a second-line Y for the Thai amount text. Only X changes by field.
             amount: { x: 175, y: 525, maxWidth: 450, size: FS, minSize: 32, align: 'right', rightPad: 4 },
-            // Starts after the first printed "บาท" label and auto-shrinks to fit before the next "บาท" label.
+            // v8.1.1: Thai amount text is right-aligned to prevent inserting extra words before the printed บาท label.
             amountText: { x: 635, y: 520, maxWidth: 340, size: 34, minSize: 20, align: 'right', rightPad: 0 },
             // amountText: { x: 550, y: 525, maxWidth: 340, size: 34, minSize: 18, align: 'right', indent: 0 },
-            // If there are satang, write Thai satang text right-aligned close to the printed "สต." label.
-            // satang: mobileField({ x: 1035, y: 520, maxWidth: 202, size: 34, minSize: 20, align: 'right', rightPad: 0 }, { x: 1030, maxWidth: 230, align: 'right', rightPad: 0 }), // ตัวหนังสือ
+            // v8.1.1: Satang text is right-aligned close to the printed สต. label.
+            // If satang is .00, display '-' instead of 'ถ้วน'.
             satang: { x: 1080, y: 520, maxWidth: 340, size: 34, minSize: 20, align: 'right', rightPad: 0 },
-            // If the amount is .00, "ถ้วน" starts immediately after the second printed "บาท" label.
-            satangFull: { x: 1080, y: 520, maxWidth: 145, size: 34, minSize: 18, align: 'right', indent: 0 } // '-' 
+            satangFull: { x: 1080, y: 520, maxWidth: 145, size: 34, minSize: 18, align: 'right', rightPad: 0 } // '-' 
         },
         clause3: {
             day: { x: 223, y: 935, maxWidth: 118, size: FS, minSize: 32, align: 'center' },
