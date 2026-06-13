@@ -1728,9 +1728,9 @@ async function renderContractImageCanvas(row, debtor) {
             lenderLine: { x: 182, y: 473, maxWidth: 900, size: FS_INLINE_ID, minSize: 30, align: 'left', indent: 0 },
             amount: { x: 175, y: 525, maxWidth: 450, size: FS, minSize: 32, align: 'right', rightPad: 4 },
             // amountText: { x: 635, y: 520, maxWidth: 200, size: 34, minSize: 20, align: 'right', rightPad: 0 }, // สองหมื่นหนึ่งพันสองร้อยบาท
-            amountText: { x: IS_MOBILE_PDF ? 610 : 635, y: 520, maxWidth: 200, size: 34, minSize: 20, align: 'right', rightPad: 0 },
-            satang: { x: 1080, y: 520, maxWidth: 145, size: 34, minSize: 20, align: 'right', rightPad: 0 },
-            satangFull: { x: 1080, y: 520, maxWidth: 145, size: 34, minSize: 18, align: 'right', rightPad: 0 } // '-' 
+            amountText: { x: IS_MOBILE_PDF ? 610 : 635, y: 520, maxWidth: 350, size: 34, minSize: 20, align: 'right', rightPad: 0 },
+            satang: { x: 1080, y: 520, maxWidth: 250, size: 34, minSize: 20, align: 'right', rightPad: 0 },
+            satangFull: { x: 1080, y: 520, maxWidth: 250, size: 34, minSize: 18, align: 'right', rightPad: 0 } // '-' 
         },
         clause3: {
             day: { x: 223, y: 935, maxWidth: 118, size: FS, minSize: 32, align: 'center' },
