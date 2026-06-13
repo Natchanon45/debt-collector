@@ -204,7 +204,7 @@
                     </select>
                     <label>เลือกไฟล์</label><label id="dropzone" class="dropzone"><i
                             class="bi bi-cloud-arrow-up"></i><strong>ลากไฟล์มาวาง หรือ
-                            แตะเพื่อเลือกหลายไฟล์</strong><span id="dropzoneText">รองรับรูปภาพ / PDF /
+                            แตะเพื่อเลือกหลายไฟล์</strong><span id="dropzoneText">รองรับรูปภาพ / เอกสาร /
                             เอกสารทั่วไป</span><input id="documentFile" type="file" multiple></label>
                     <button id="addDocumentBtn" class="primary">บันทึกเอกสารแนบ</button>
                     <hr class="soft-sep">
@@ -392,25 +392,25 @@
 
                     <div class="signature-grid">
                         <div class="signature-box"><b>ผู้ให้กู้</b><canvas id="sigLender"
-                                class="sig-pad"></canvas><button class="mini" data-clear-sig="sigLender">ล้าง</button>
+                                class="sig-pad"></canvas><div class="sig-actions-row"><button class="mini" type="button" data-undo-sig="sigLender"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button><button class="mini" type="button" data-clear-sig="sigLender"><i class="bi bi-eraser"></i> ล้าง</button></div>
                         </div>
                         <div class="signature-box"><b>ผู้กู้</b><canvas id="sigBorrower"
-                                class="sig-pad"></canvas><button class="mini" data-clear-sig="sigBorrower">ล้าง</button>
+                                class="sig-pad"></canvas><div class="sig-actions-row"><button class="mini" type="button" data-undo-sig="sigBorrower"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button><button class="mini" type="button" data-clear-sig="sigBorrower"><i class="bi bi-eraser"></i> ล้าง</button></div>
                         </div>
                         <div class="signature-box"><b>พยาน 1</b><canvas id="sigWitness1"
-                                class="sig-pad"></canvas><button class="mini" data-clear-sig="sigWitness1">ล้าง</button>
+                                class="sig-pad"></canvas><div class="sig-actions-row"><button class="mini" type="button" data-undo-sig="sigWitness1"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button><button class="mini" type="button" data-clear-sig="sigWitness1"><i class="bi bi-eraser"></i> ล้าง</button></div>
                         </div>
                         <div class="signature-box"><b>พยาน 2</b><canvas id="sigWitness2"
-                                class="sig-pad"></canvas><button class="mini" data-clear-sig="sigWitness2">ล้าง</button>
+                                class="sig-pad"></canvas><div class="sig-actions-row"><button class="mini" type="button" data-undo-sig="sigWitness2"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button><button class="mini" type="button" data-clear-sig="sigWitness2"><i class="bi bi-eraser"></i> ล้าง</button></div>
                         </div>
                         <div class="signature-box"><b>ผู้เขียนและพยาน</b><canvas id="sigWriter"
-                                class="sig-pad"></canvas><button class="mini" data-clear-sig="sigWriter">ล้าง</button>
+                                class="sig-pad"></canvas><div class="sig-actions-row"><button class="mini" type="button" data-undo-sig="sigWriter"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button><button class="mini" type="button" data-clear-sig="sigWriter"><i class="bi bi-eraser"></i> ล้าง</button></div>
                         </div>
                     </div>
                     <div class="contract-action-row">
                         <button id="previewContractBtn" class="secondary" type="button"><i class="bi bi-eye"></i>
-                            แสดงตัวอย่างเอกสร</button>
-                        <button id="generateContractBtn" class="primary"><i class="bi bi-filetype-pdf"></i>
+                            แสดงตัวอย่างเอกสาร</button>
+                        <button id="generateContractBtn" class="primary"><i class="bi bi-file-earmark-text"></i>
                             สร้างเอกสารและบันทึก</button>
                     </div>
                     <p class="note">หมายเหตุ: แบบฟอร์มนี้เป็นแม่แบบทั่วไป
@@ -482,11 +482,26 @@
                         <p class="note">ถ้าปิด ระบบจะแสดงข้อมูลแบบบางส่วนเฉพาะจุดแสดงผลเท่านั้น
                             ส่วนหน้าเพิ่ม/แก้ไขยังแสดงเต็มเพื่อป้องกันการบันทึกผิด</p>
                     </div>
+                    <div class="profile-signature-box">
+                        <div class="privacy-head">
+                            <div class="privacy-icon"><i class="bi bi-pen"></i></div>
+                            <div>
+                                <strong>ลายเซ็นผู้ให้กู้ / ผู้ใช้งาน</strong>
+                                <span>เก็บไว้ครั้งเดียว ระบบจะนำไปใช้ตอนสร้างเอกสารใหม่</span>
+                            </div>
+                        </div>
+                        <canvas id="profileLenderSignature" class="sig-pad profile-sig-pad"></canvas>
+                        <div class="sig-actions-row">
+                            <button class="mini" type="button" data-undo-sig="profileLenderSignature"><i class="bi bi-arrow-counterclockwise"></i> ย้อนกลับ</button>
+                            <button class="mini" type="button" data-clear-sig="profileLenderSignature"><i class="bi bi-eraser"></i> ล้าง</button>
+                        </div>
+                        <p class="note">เอกสารที่สร้างและล็อกแล้วจะใช้ลายเซ็นที่ถูกบันทึกไว้ในเอกสารฉบับนั้น ไม่เปลี่ยนตามการแก้ไขภายหลัง</p>
+                    </div>
                     <button id="saveProfileBtn" class="primary">บันทึกข้อมูลผู้ใช้งาน</button>
                 </div>
 
                 <div class="card" id="pdfTemplateDesignerCard">
-                    <h3><i class="bi bi-bezier2"></i> PDF Template Designer <span class="badge-soft">Beta</span></h3>
+                    <h3><i class="bi bi-bezier2"></i> Document Template Designer <span class="badge-soft">Beta</span></h3>
                     <p class="note">ปรับพิกัดข้อความบนแบบฟอร์มเอกสาร ได้เองโดยไม่ต้องแก้โค้ด ใช้สำหรับ Fine tune
                         ตำแหน่งก่อน Production</p>
                     <button id="openPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-sliders"></i>
@@ -535,8 +550,9 @@
                         <button id="resetPdfDesignerFieldBtn" class="ghost" type="button">รีเซ็ตฟิลด์นี้</button>
                         <button id="resetPdfDesignerAllBtn" class="danger" type="button">ล้างพิกัดทั้งหมด</button>
                     </div>
-                    <div class="pdf-designer-preview-wrap">
-                        <img id="pdfDesignerPreview" class="pdf-designer-preview" alt="PDF template preview">
+                    <div class="pdf-designer-preview-wrap" id="pdfDesignerPreviewWrap">
+                        <img id="pdfDesignerPreview" class="pdf-designer-preview" alt="document template preview">
+                        <div id="pdfDesignerOverlay" class="pdf-designer-overlay"></div>
                     </div>
                 </div>
                 <div class="card">

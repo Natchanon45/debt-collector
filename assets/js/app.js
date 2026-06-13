@@ -92,8 +92,8 @@ function toast(m, type = 'info') {
 }
 
 
-// ===== v9.0 Template Designer (Coordinate Override) =====
-const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_pdf_template_overrides_v9';
+// ===== v9.1 Document Template Designer (Coordinate Override) =====
+const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_doc_template_overrides_v9_1';
 const PDF_TEMPLATE_FIELD_LABELS = {
     'header.contractNo': 'เลขที่สัญญา',
     'header.place': 'สถานที่ทำสัญญา',
@@ -113,6 +113,9 @@ const PDF_TEMPLATE_FIELD_LABELS = {
     'clause1.amountText': 'จำนวนเงินตัวอักษร',
     'clause1.satang': 'สตางค์ตัวอักษร',
     'clause1.satangFull': 'ขีดกรณี .00',
+    'clause2.collateral1': 'หลักทรัพย์ค้ำประกัน บรรทัด 1',
+    'clause2.collateral2': 'หลักทรัพย์ค้ำประกัน บรรทัด 2',
+    'clause2.collateral3': 'หลักทรัพย์ค้ำประกัน บรรทัด 3',
     'clause3.day': 'วันครบกำหนด',
     'clause3.month': 'เดือนครบกำหนด',
     'clause3.year': 'พ.ศ. ครบกำหนด',
@@ -157,6 +160,14 @@ function resetPdfOverrideField(path) {
     const overrides = pdfTemplateLoadOverrides();
     delete overrides[path];
     pdfTemplateSaveOverrides(overrides);
+}
+function applyDefaultFieldYNudge(obj, dy) {
+    if (!obj || typeof obj !== 'object') return;
+    Object.values(obj).forEach(v => {
+        if (!v || typeof v !== 'object') return;
+        if (typeof v.y === 'number') v.y += dy;
+        else applyDefaultFieldYNudge(v, dy);
+    });
 }
 function flattenPdfFields(map, prefix = '') {
     const out = [];
@@ -330,7 +341,7 @@ function showPreviewModal(title, url, mime = '', fileName = '') {
     $('previewTitle').textContent = title || fileName || 'ดูเอกสาร';
     const safeUrl = String(url || '');
     if (mime.startsWith('image/')) $('previewBody').innerHTML = `<img src="${safeUrl}" alt="${escapeHtml(fileName || '')}">`;
-    else if (mime.includes('pdf') || String(fileName || '').toLowerCase().endsWith('.pdf')) $('previewBody').innerHTML = `<iframe src="${safeUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" title="PDF Preview"></iframe>`;
+    else if (mime.includes('pdf') || String(fileName || '').toLowerCase().endsWith('.pdf')) $('previewBody').innerHTML = `<iframe src="${safeUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH" title="Document Preview"></iframe>`;
     else $('previewBody').innerHTML = `<div class="empty"><i class="bi ${fileIcon(mime, fileName)}"></i><br>ไม่รองรับ Preview ไฟล์ชนิดนี้<br>กดดาวน์โหลด/เปิดไฟล์</div>`;
     $('previewDownloadBtn').href = safeUrl;
     if (fileName) $('previewDownloadBtn').download = fileName;
@@ -809,6 +820,7 @@ function fillSettings(s) {
     if ($('profileShowFullAddress')) $('profileShowFullAddress').checked = p.showFullAddress === true;
     if ($('profileShowFullPhone')) $('profileShowFullPhone').checked = p.showFullPhone === true;
     setUserDisplay();
+    if ($('profileLenderSignature')) { bindSignaturePad('profileLenderSignature'); setTimeout(() => { clearSignature('profileLenderSignature'); if (p.lenderSignature) restoreSignatureCanvas('profileLenderSignature', p.lenderSignature); }, 80); }
 }
 window.openDebtForm = (id, name) => { if ($('transactionDebtorId')) $('transactionDebtorId').value = id; switchTransaction('debt'); switchTab('transactions') };
 window.openDebtorDocuments = id => { if ($('documentDebtorId')) $('documentDebtorId').value = id; if (latestData) fillLists(latestData, calc(latestData)); switchTab('customers'); $('documentDebtorId')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); toast('เลือกเอกสารของลูกหนี้แล้ว'); };
@@ -861,7 +873,7 @@ $('addDocumentBtn').onclick = async () => {
         $('dropzoneText').textContent = `กำลังอัปโหลด ${files.length} ไฟล์...`;
         await uploadDocumentFiles($('documentDebtorId').value, $('documentType').value, files);
         $('documentFile').value = '';
-        $('dropzoneText').textContent = 'รองรับรูปภาพ / PDF / เอกสารทั่วไป';
+        $('dropzoneText').textContent = 'รองรับรูปภาพ / เอกสาร / ไฟล์ทั่วไป';
         toast('บันทึกเอกสารแล้ว');
         switchTab('customers');
         render();
@@ -1117,7 +1129,9 @@ $('saveProfileBtn').onclick = async () => {
             lenderAddress: $('profileLenderAddress')?.value.trim() || '',
             showFullIdCard: $('profileShowFullIdCard')?.checked === true,
             showFullAddress: $('profileShowFullAddress')?.checked === true,
-            showFullPhone: $('profileShowFullPhone')?.checked === true
+            showFullPhone: $('profileShowFullPhone')?.checked === true,
+            lenderSignature: cropSignatureCanvas($('profileLenderSignature')) || currentProfile().lenderSignature || '',
+            lenderSignatureUpdatedAt: cropSignatureCanvas($('profileLenderSignature')) ? new Date().toISOString() : (currentProfile().lenderSignatureUpdatedAt || '')
         }
     });
     toast('บันทึกชื่อและที่อยู่ผู้ให้กู้ลงฐานข้อมูลแล้ว'); switchTab('settings');
@@ -1174,37 +1188,92 @@ document.addEventListener('click', e => { if ($('userDropdown') && !$('userMenuW
 
 
 
-/* ===== Phase 5: Loan Contract + Signature + PDF ===== */
+/* ===== Phase 5: Loan Contract + Signature + Document ===== */
 const contractSigState = {};
 let editingContractNo = '';
 let editingContractId = '';
 const SIG_IDS = ['sigLender', 'sigBorrower', 'sigWitness1', 'sigWitness2', 'sigWriter'];
 const SIGNATURE_CANVAS_RATIO = 2; // v8.0.1: fixed ratio so PC/Mobile signatures render consistently
+function signatureState(id) {
+    const c = $(id);
+    if (!c) return null;
+    if (!c.__sigState) c.__sigState = { strokes: [], redo: [], drawing: false, current: null };
+    return c.__sigState;
+}
+function redrawSignatureCanvas(canvas) {
+    if (!canvas) return;
+    const ratio = SIGNATURE_CANVAS_RATIO;
+    const ctx = canvas.getContext('2d');
+    const cssW = canvas.width / ratio;
+    const cssH = canvas.height / ratio;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111827';
+    const st = signatureState(canvas.id);
+    (st?.strokes || []).forEach(points => {
+        if (!points || !points.length) return;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        points.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+        if (points.length === 1) {
+            ctx.arc(points[0].x, points[0].y, 0.8, 0, Math.PI * 2);
+        }
+        ctx.stroke();
+    });
+    canvas.dataset.hasInk = (st?.strokes || []).length ? '1' : '';
+}
 function resizeSignatureCanvas(canvas) {
     if (!canvas) return;
     const ratio = SIGNATURE_CANVAS_RATIO;
     const rect = canvas.getBoundingClientRect();
-    const old = canvas.dataset.hasInk === '1' ? canvas.toDataURL('image/png') : '';
     const cssWidth = Math.max(280, Math.floor(rect.width || canvas.clientWidth || 320));
     const cssHeight = Math.max(140, Math.floor(rect.height || canvas.clientHeight || 150));
     canvas.width = Math.floor(cssWidth * ratio);
     canvas.height = Math.floor(cssHeight * ratio);
     canvas.style.width = '100%';
     canvas.style.height = cssHeight + 'px';
-    const ctx = canvas.getContext('2d');
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.lineWidth = 2.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111827';
-    if (old) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, cssWidth, cssHeight); img.src = old; }
+    canvas.getContext('2d').setTransform(ratio, 0, 0, ratio, 0, 0);
+    redrawSignatureCanvas(canvas);
 }
 function bindSignaturePad(id) {
     const canvas = $(id); if (!canvas || contractSigState[id]) return;
-    contractSigState[id] = true; resizeSignatureCanvas(canvas);
-    let drawing = false;
-    const getCtx = () => canvas.getContext('2d');
+    contractSigState[id] = true;
+    signatureState(id);
+    resizeSignatureCanvas(canvas);
     const pos = e => { const r = canvas.getBoundingClientRect(); const t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e; return { x: t.clientX - r.left, y: t.clientY - r.top }; };
-    const start = e => { e.preventDefault(); resizeSignatureCanvas(canvas); drawing = true; canvas.dataset.hasInk = '1'; const p = pos(e); const ctx = getCtx(); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-    const move = e => { if (!drawing) return; e.preventDefault(); const p = pos(e); const ctx = getCtx(); ctx.lineTo(p.x, p.y); ctx.stroke(); };
-    const end = e => { if (!drawing) return; e.preventDefault(); drawing = false; };
+    const start = e => {
+        e.preventDefault();
+        resizeSignatureCanvas(canvas);
+        const st = signatureState(id);
+        st.drawing = true;
+        st.current = [pos(e)];
+        st.redo = [];
+        document.body.classList.add('signature-drawing');
+    };
+    const move = e => {
+        const st = signatureState(id);
+        if (!st?.drawing) return;
+        e.preventDefault();
+        st.current.push(pos(e));
+        redrawSignatureCanvas(canvas);
+        const ctx = canvas.getContext('2d');
+        ctx.beginPath();
+        const pts = st.current;
+        ctx.moveTo(pts[0].x, pts[0].y);
+        pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.stroke();
+        canvas.dataset.hasInk = '1';
+    };
+    const end = e => {
+        const st = signatureState(id);
+        if (!st?.drawing) return;
+        e.preventDefault();
+        st.drawing = false;
+        if (st.current && st.current.length) st.strokes.push(st.current);
+        st.current = null;
+        document.body.classList.remove('signature-drawing');
+        redrawSignatureCanvas(canvas);
+    };
     if (window.PointerEvent) {
         canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture?.(e.pointerId); start(e); });
         canvas.addEventListener('pointermove', move);
@@ -1215,12 +1284,23 @@ function bindSignaturePad(id) {
         canvas.addEventListener('touchstart', start, { passive: false }); canvas.addEventListener('touchmove', move, { passive: false }); canvas.addEventListener('touchend', end, { passive: false });
     }
 }
-function clearSignature(id) { const c = $(id); if (!c) return; c.dataset.hasInk = ''; c.getContext('2d').clearRect(0, 0, c.width, c.height); }
+function clearSignature(id) {
+    const c = $(id); if (!c) return;
+    const st = signatureState(id);
+    if (st) { st.strokes = []; st.redo = []; st.current = null; st.drawing = false; }
+    c.dataset.hasInk = '';
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+}
+function undoSignature(id) {
+    const c = $(id); const st = signatureState(id); if (!c || !st || !st.strokes.length) return;
+    st.redo.push(st.strokes.pop());
+    redrawSignatureCanvas(c);
+}
 function hasSignature(id) { return $(id)?.dataset.hasInk === '1'; }
 function getSignatureData(id) { const c = $(id); return c && hasSignature(id) ? c.toDataURL('image/png') : ''; }
 const SIGNATURE_KEYS = { sigBorrower: 'borrower', sigLender: 'lender', sigWitness1: 'witness1', sigWitness2: 'witness2', sigWriter: 'writer' };
 const SIGNATURE_IDS_BY_KEY = Object.fromEntries(Object.entries(SIGNATURE_KEYS).map(([id, key]) => [key, id]));
-// v8.0.12: keep every signature ink box on the same X axis for a cleaner PDF layout.
+// v8.0.12: keep every signature ink box on the same X axis for a cleaner document layout.
 const SIGNATURE_PDF_X = 610;
 const SIGNATURE_PDF_MAP = {
     // Template V2.2 coordinates (1447x2048 master scale).
@@ -1264,20 +1344,27 @@ function collectContractSignatures() {
         const data = cropSignatureCanvas($(id));
         if (key && data) signatures[key] = data;
     });
+    const profileSig = currentProfile().lenderSignature || '';
+    if (profileSig && !signatures.lender) signatures.lender = profileSig;
+    if (profileSig && !signatures.writer) signatures.writer = profileSig;
     return signatures;
 }
 function restoreSignatureCanvas(id, dataUrl) {
     const c = $(id); if (!c || !dataUrl) return;
+    const st = signatureState(id);
+    if (st) { st.strokes = []; st.redo = []; st.current = null; }
     resizeSignatureCanvas(c);
     const ctx = c.getContext('2d');
     const img = new Image();
     img.onload = () => {
         const cssW = c.width / SIGNATURE_CANVAS_RATIO;
         const cssH = c.height / SIGNATURE_CANVAS_RATIO;
+        ctx.clearRect(0, 0, cssW, cssH);
         const scale = Math.min((cssW * .82) / img.width, (cssH * .70) / img.height, 1);
         const w = img.width * scale, h = img.height * scale;
         ctx.drawImage(img, (cssW - w) / 2, (cssH - h) / 2, w, h);
         c.dataset.hasInk = '1';
+        c.dataset.restoredImage = dataUrl;
     };
     img.src = dataUrl;
 }
@@ -1404,7 +1491,7 @@ function showContractForm(prefillDebtorId = '') {
     initContractPads();
     setTimeout(() => {
         SIG_IDS.forEach(id => resizeSignatureCanvas($(id)));
-        if (!editingContractId) restoreContractSignatures({});
+        if (!editingContractId) restoreContractSignatures({ lender: currentProfile().lenderSignature || '', writer: currentProfile().lenderSignature || '' });
         updateContractSmartUi();
     }, 120);
     card.scrollIntoView({ behavior: 'smooth' });
@@ -1634,7 +1721,7 @@ async function saveContractPdf(row, blob) {
     ) || null;
     const fileName = existing?.fileName || `loan-contract-${row.contractNo || debtorId}-${Date.now()}.pdf`;
     const docPayload = { debtorId, type: 'สัญญากู้ยืม', fileName, mimeType: 'application/pdf', size: blob.size, createdDate: existing?.createdDate || today(), updatedDate: today() };
-    const contractPayload = { ...row, fileName, createdDate: existing?.createdDate || today(), updatedDate: today() };
+    const contractPayload = { ...row, fileName, lenderSnapshot: { name: row.lenderName || '', phone: row.lenderPhone || '', idCard: row.lenderIdCard || '', address: row.lenderAddress || '', signature: row.signatures?.lender || currentProfile().lenderSignature || '' }, createdDate: existing?.createdDate || today(), updatedDate: today() };
 
     if (demoMode) {
         if (existing?.documentId) {
@@ -1735,9 +1822,9 @@ async function ensureContractCanvasFont() {
     })();
     return contractFontReadyPromise;
 }
-const CONTRACT_FONT_RENDER_SCALE = 1.25; // ปรับขนาดตัวอักษรทั้ง PDF ได้ที่นี่: 1.00 = ตามค่าที่ map กำหนด
+const CONTRACT_FONT_RENDER_SCALE = 1.25; // ปรับขนาดตัวอักษรทั้งเอกสาร ได้ที่นี่: 1.00 = ตามค่าที่ map กำหนด
 function setupContractCanvasFont(ctx, size = 40, bold = false) {
-    // Contract PDF must always use the bundled TH Sarabun font.
+    // Contract document must always use the bundled TH Sarabun font.
     // Do not let canvas fall back to browser/default fonts, otherwise coordinates drift.
     const px = Math.round(Number(size || 40) * CONTRACT_FONT_RENDER_SCALE);
     ctx.font = `${bold ? '600 ' : '400 '}${px}px ${CONTRACT_CANVAS_FONT_FAMILY}`;
@@ -1914,7 +2001,7 @@ async function renderContractImageCanvas(row, debtor) {
     // Do not center these fields, because mobile Canvas text metrics can visually push centered Thai text to the right.
     const isPdfMobileRender = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '')
         || (typeof window !== 'undefined' && ((window.innerWidth || 9999) <= 900 || (navigator.maxTouchPoints || 0) > 0));
-    const PDF_FIELD_RIGHT_NUDGE = -12;
+    const DOC_FIELD_RIGHT_NUDGE = -12;
     // v8.0.15: Mobile Canvas text metrics do not match PC when a Thai field is centered/right-fitted.
     // Keep the PC-stable map untouched. On Mobile only, use fixed left/right anchors instead of center metrics
     // for the fields the user marked: both month fields, borrower subdistrict, and satang text.
@@ -1929,12 +2016,12 @@ async function renderContractImageCanvas(row, debtor) {
         },
         borrower: {
             name: { x: 485, y: 268, maxWidth: 470, size: FS, minSize: 32, align: 'left', indent: 0 },
-            age: { x: 1000 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 55, size: FS_SMALL, minSize: 30, align: 'center' },
-            houseNo: { x: 1178 + PDF_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 105, size: FS_SMALL, minSize: 30, align: 'center' },
-            // subDistrict: mobileField({ x: 250 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' }, { x: 250, maxWidth: 200, align: 'left', indent: 0 }),
-            subDistrict: { x: 245 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'left' },
-            district: { x: 485 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'center' },
-            province: { x: 810 + PDF_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 340, size: FS_SMALL, minSize: 30, align: 'center' }
+            age: { x: 1000 + DOC_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 55, size: FS_SMALL, minSize: 30, align: 'center' },
+            houseNo: { x: 1178 + DOC_FIELD_RIGHT_NUDGE, y: 268, maxWidth: 105, size: FS_SMALL, minSize: 30, align: 'center' },
+            // subDistrict: mobileField({ x: 250 + DOC_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 200, size: FS_SMALL, minSize: 30, align: 'center' }, { x: 250, maxWidth: 200, align: 'left', indent: 0 }),
+            subDistrict: { x: 245 + DOC_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'left' },
+            district: { x: 485 + DOC_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 260, size: FS_SMALL, minSize: 30, align: 'center' },
+            province: { x: 810 + DOC_FIELD_RIGHT_NUDGE, y: 320, maxWidth: 340, size: FS_SMALL, minSize: 30, align: 'center' }
         },
         lender: {
             name: { x: 370, y: 371, maxWidth: 705, size: FS, minSize: 32, align: 'left', indent: 0 }
@@ -1967,7 +2054,14 @@ async function renderContractImageCanvas(row, debtor) {
             writerName: { x: 760, y: 1803, maxWidth: 300, size: FS_SIG_NAME, minSize: 28, align: 'left' }
         }
     };
-    // v9.0: apply user-saved coordinate overrides from Template Designer without touching the PC-stable base map.
+    F.clause2 = {
+        collateral1: { x: 779, y: 627, maxWidth: 490, size: FS_COLLATERAL, minSize: 30, align: 'left' },
+        collateral2: { x: 182, y: 678, maxWidth: 1088, size: FS_COLLATERAL, minSize: 30, align: 'left' },
+        collateral3: { x: 182, y: 730, maxWidth: 1088, size: FS_COLLATERAL, minSize: 30, align: 'left' }
+    };
+    const DOC_DEFAULT_Y_NUDGE = -12;
+    applyDefaultFieldYNudge(F, DOC_DEFAULT_Y_NUDGE);
+    // v9.1: apply user-saved coordinate overrides from Template Designer after default adjustment.
     deepApplyPdfOverrides(F, pdfTemplateLoadOverrides());
     window.__lastContractPdfFieldMap = clonePlain(F);
     const drawF = (value, field) => drawContractText(ctx, value, field.x, field.y, field);
@@ -1999,9 +2093,9 @@ async function renderContractImageCanvas(row, debtor) {
 
     // Clause 2 - collateral can flow across almost three full lines.
     drawContractWrapSegments(ctx, collateral, [
-        { x: 779, y: 627, maxWidth: 490, align: 'left' },
-        { x: 182, y: 678, maxWidth: 1088, align: 'left' },
-        { x: 182, y: 730, maxWidth: 1088, align: 'left' }
+        F.clause2.collateral1,
+        F.clause2.collateral2,
+        F.clause2.collateral3
     ], { size: FS_COLLATERAL, minSize: 30, align: 'left', bold: true });
 
     // Clause 3 and 4
@@ -2050,14 +2144,14 @@ async function previewContractBeforeSave() {
     const data = validateContractFormForPdf();
     if (!data) return;
     try {
-        toast('กำลังสร้างตัวอย่าง เอกสาร...');
+        toast('กำลังสร้างตัวอย่างเอกสาร...');
         const blob = await buildContractPdfBlob(data.row, data.debtor);
         const url = URL.createObjectURL(blob);
-        showPreviewModal('ตัวอย่าง เอกสาร ก่อนบันทึก', url, 'application/pdf', 'preview-loan-contract.pdf');
-        toast('แสดงตัวอย่าง เอกสาร แล้ว');
+        showPreviewModal('ตัวอย่างเอกสารก่อนบันทึก', url, 'application/pdf', 'preview-loan-contract.pdf');
+        toast('แสดงตัวอย่างเอกสารแล้ว');
     } catch (e) {
         console.error(e);
-        toast('แสดงตัวอย่าง เอกสาร ไม่สำเร็จ: ' + e.message);
+        toast('แสดงตัวอย่างเอกสารไม่สำเร็จ: ' + e.message);
     }
 }
 
@@ -2076,7 +2170,7 @@ async function generateContract() {
 }
 
 
-// ===== v9.0 PDF Template Designer UI =====
+// ===== v9.1 Document Template Designer UI =====
 function pdfDesignerSampleData() {
     const row = {
         contractNo: '2026060001',
@@ -2135,6 +2229,49 @@ function pdfDesignerSaveSelected() {
     setPdfOverrideField(path, patch);
     toast('บันทึกพิกัดเอกสารแล้ว');
 }
+function flattenPdfFieldMap(map = {}, prefix = '') {
+    const out = [];
+    Object.entries(map || {}).forEach(([key, val]) => {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (val && typeof val === 'object' && typeof val.x === 'number' && typeof val.y === 'number') out.push([path, val]);
+        else if (val && typeof val === 'object') out.push(...flattenPdfFieldMap(val, path));
+    });
+    return out;
+}
+function pdfDesignerSelectField(path, render = true) {
+    if (!path) return;
+    pdfTemplateDesignerState.selected = path;
+    if ($('pdfDesignerField')) $('pdfDesignerField').value = path;
+    const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path);
+    pdfDesignerFillInputs(field || {});
+    if (render) pdfDesignerRenderPreview();
+}
+function pdfDesignerRenderOverlay() {
+    const overlay = $('pdfDesignerOverlay'), img = $('pdfDesignerPreview');
+    if (!overlay || !img || !window.__lastContractPdfFieldMap) return;
+    const naturalW = 1447, naturalH = 2048;
+    const rect = img.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    overlay.innerHTML = '';
+    overlay.style.width = rect.width + 'px';
+    overlay.style.height = rect.height + 'px';
+    flattenPdfFieldMap(window.__lastContractPdfFieldMap).forEach(([path, field]) => {
+        if (!PDF_TEMPLATE_FIELD_LABELS[path]) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pdf-field-hotspot' + (path === pdfTemplateDesignerState.selected ? ' active' : '');
+        const left = (field.x / naturalW) * 100;
+        const top = ((field.y - 42) / naturalH) * 100;
+        const width = Math.max(5, ((field.maxWidth || 120) / naturalW) * 100);
+        btn.style.left = left + '%';
+        btn.style.top = top + '%';
+        btn.style.width = width + '%';
+        btn.style.height = '22px';
+        btn.title = PDF_TEMPLATE_FIELD_LABELS[path];
+        btn.onclick = () => pdfDesignerSelectField(path, true);
+        overlay.appendChild(btn);
+    });
+}
 async function pdfDesignerRenderPreview() {
     const img = $('pdfDesignerPreview');
     if (!img) return;
@@ -2161,8 +2298,9 @@ async function pdfDesignerRenderPreview() {
     canvas.toBlob(blob => {
         if (!blob) return;
         pdfTemplateDesignerState.previewUrl = URL.createObjectURL(blob);
+        img.onload = pdfDesignerRenderOverlay;
         img.src = pdfTemplateDesignerState.previewUrl;
-    }, 'image/png');
+    }, 'image/jpeg', 0.9);
 }
 async function openPdfTemplateDesigner() {
     $('pdfDesignerPanel')?.classList.remove('hidden');
@@ -2178,14 +2316,7 @@ async function openPdfTemplateDesigner() {
 function bindPdfTemplateDesigner() {
     if ($('openPdfDesignerBtn')) $('openPdfDesignerBtn').onclick = openPdfTemplateDesigner;
     if ($('closePdfDesignerBtn')) $('closePdfDesignerBtn').onclick = () => $('pdfDesignerPanel')?.classList.add('hidden');
-    if ($('pdfDesignerField')) $('pdfDesignerField').onchange = async e => {
-        pdfTemplateDesignerState.selected = e.target.value;
-        const { row, debtor } = pdfDesignerSampleData();
-        await renderContractImageCanvas(row, debtor);
-        const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, pdfTemplateDesignerState.selected);
-        pdfDesignerFillInputs(field || {});
-        await pdfDesignerRenderPreview();
-    };
+    if ($('pdfDesignerField')) $('pdfDesignerField').onchange = e => pdfDesignerSelectField(e.target.value, true);
     if ($('savePdfDesignerBtn')) $('savePdfDesignerBtn').onclick = pdfDesignerSaveSelected;
     if ($('previewPdfDesignerBtn')) $('previewPdfDesignerBtn').onclick = pdfDesignerRenderPreview;
     const nudge = (dx, dy) => async () => {
@@ -2220,7 +2351,8 @@ if ($('generateContractBtn')) $('generateContractBtn').onclick = generateContrac
 bindContractSmartUi();
 bindPdfTemplateDesigner();
 document.querySelectorAll('[data-clear-sig]').forEach(b => b.onclick = () => clearSignature(b.dataset.clearSig));
-window.addEventListener('resize', () => { if (!$('contractFormCard')?.classList.contains('hidden')) SIG_IDS.forEach(id => resizeSignatureCanvas($(id))); });
+document.querySelectorAll('[data-undo-sig]').forEach(b => b.onclick = () => undoSignature(b.dataset.undoSig));
+window.addEventListener('resize', () => { if (!$('contractFormCard')?.classList.contains('hidden')) SIG_IDS.forEach(id => resizeSignatureCanvas($(id))); if ($('profileLenderSignature')) resizeSignatureCanvas($('profileLenderSignature')); pdfDesignerRenderOverlay(); });
 
 
 
