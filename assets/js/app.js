@@ -1805,29 +1805,59 @@ async function renderContractImageCanvas(row, debtor) {
     return canvas;
 }
 
-async function generateContract() {
-    if (!$('contractDebtorId')?.value) return toast('กรุณาเลือกลูกหนี้ / ผู้กู้');
-    if (!$('contractLenderName')?.value.trim()) return toast('กรุณากรอกชื่อผู้ให้กู้');
+function validateContractFormForPdf() {
+    if (!$('contractDebtorId')?.value) { toast('กรุณาเลือกลูกหนี้ / ผู้กู้'); return null; }
+    if (!$('contractLenderName')?.value.trim()) { toast('กรุณากรอกชื่อผู้ให้กู้'); return null; }
     const debtor = debtorForContract($('contractDebtorId').value);
-    const p = currentProfile();
     const row = readContractFormRow(true);
-    if (!row.amount) return toast('กรุณากรอกจำนวนเงินกู้');
+    if (!row.amount) { toast('กรุณากรอกจำนวนเงินกู้'); return null; }
     const interestNum = Number(String(row.interestRate || '').replace(/[^0-9.]/g, ''));
-    if (Number.isFinite(interestNum) && interestNum > 15) return toast('อัตราดอกเบี้ยเกิน 15% ต่อปี กรุณาแก้ไขก่อนสร้าง PDF');
+    if (Number.isFinite(interestNum) && interestNum > 15) {
+        toast('อัตราดอกเบี้ยเกิน 15% ต่อปี กรุณาแก้ไขก่อนสร้าง PDF');
+        return null;
+    }
+    return { row, debtor };
+}
+
+async function buildContractPdfBlob(row, debtor) {
+    const canvas = await renderContractImageCanvas(row, debtor);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
+    return pdf.output('blob');
+}
+
+async function previewContractBeforeSave() {
+    const data = validateContractFormForPdf();
+    if (!data) return;
+    try {
+        toast('กำลังสร้างตัวอย่าง PDF...');
+        const blob = await buildContractPdfBlob(data.row, data.debtor);
+        const url = URL.createObjectURL(blob);
+        showPreviewModal('ตัวอย่าง PDF ก่อนบันทึก', url, 'application/pdf', 'preview-loan-contract.pdf');
+        toast('แสดงตัวอย่าง PDF แล้ว');
+    } catch (e) {
+        console.error(e);
+        toast('แสดงตัวอย่าง PDF ไม่สำเร็จ: ' + e.message);
+    }
+}
+
+async function generateContract() {
+    const data = validateContractFormForPdf();
+    if (!data) return;
+    const { row, debtor } = data;
+    const p = currentProfile();
     await saveSettings({ profile: { ...p, lenderName: row.lenderName, lenderIdCard: row.lenderIdCard, lenderAddress: row.lenderAddress } });
     try {
         toast('กำลังสร้างเอกสาร...');
-        const canvas = await renderContractImageCanvas(row, debtor);
-        const { jsPDF } = window.jspdf; const pdf = new jsPDF('p', 'mm', 'a4');
-        const img = canvas.toDataURL('image/png');
-        pdf.addImage(img, 'PNG', 0, 0, 210, 297);
-        const blob = pdf.output('blob');
-        const savedContract = await saveContractPdf(row, blob);
+        const blob = await buildContractPdfBlob(row, debtor);
+        await saveContractPdf(row, blob);
         toast(editingContractId ? 'บันทึกแก้ไขสัญญาแล้ว' : 'สร้างและบันทึกสัญญาแล้ว'); editingContractId = ''; editingContractNo = ''; $('contractFormCard').classList.add('hidden'); render(); switchTab('contracts');
     } catch (e) { console.error(e); toast('สร้างสัญญาไม่สำเร็จ: ' + e.message); }
 }
 if ($('newContractBtn')) $('newContractBtn').onclick = () => showContractForm();
 if ($('closeContractFormBtn')) $('closeContractFormBtn').onclick = () => $('contractFormCard').classList.add('hidden');
+if ($('previewContractBtn')) $('previewContractBtn').onclick = previewContractBeforeSave;
 if ($('generateContractBtn')) $('generateContractBtn').onclick = generateContract;
 bindContractSmartUi();
 document.querySelectorAll('[data-clear-sig]').forEach(b => b.onclick = () => clearSignature(b.dataset.clearSig));
