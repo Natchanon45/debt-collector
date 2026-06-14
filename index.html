@@ -603,15 +603,16 @@
                     <div class="pdf-designer-top-tools">
                         <div class="pdf-step-control" aria-label="กำหนดระยะขยับ">
                             <span id="pdfDesignerStepLabel">Step 5</span>
-                            <select id="pdfDesignerStep" class="input" title="เลือกสเกลการขยับ">
-                                <option value="0.001">0.001</option>
-                                <option value="0.01">0.01</option>
-                                <option value="0.1">0.1</option>
-                                <option value="1">1</option>
-                                <option value="5" selected>5</option>
-                                <option value="10">10</option>
-                                <option value="20">20</option>
-                            </select>
+                            <input id="pdfDesignerStep" class="input" type="number" min="0.001" step="0.001" value="5" list="pdfDesignerStepPresets" title="กำหนดสเกลการขยับเอง เช่น 0.5, 2.5, 8">
+                            <datalist id="pdfDesignerStepPresets">
+                                <option value="0.001"></option>
+                                <option value="0.01"></option>
+                                <option value="0.1"></option>
+                                <option value="1"></option>
+                                <option value="5"></option>
+                                <option value="10"></option>
+                                <option value="20"></option>
+                            </datalist>
                         </div>
                         <div class="pdf-arrow-pad" aria-label="ขยับฟิลด์ที่เลือก">
                             <button id="pdfDesignerUpBtn" class="secondary" type="button"><i
@@ -626,6 +627,10 @@
                         <div class="pdf-selected-font-tools" aria-label="ปรับขนาดตัวอักษรฟิลด์ที่เลือก">
                             <button id="pdfDesignerSizeMinusBtn" class="secondary" type="button">A-</button>
                             <button id="pdfDesignerSizePlusBtn" class="secondary" type="button">A+</button>
+                        </div>
+                        <div class="pdf-copy-tools" aria-label="คัดลอกตำแหน่งและรูปแบบ">
+                            <button id="pdfDesignerCopyBtn" class="secondary" type="button" title="คัดลอกค่าจากฟิลด์ปัจจุบัน"><i class="bi bi-clipboard"></i></button>
+                            <button id="pdfDesignerPasteBtn" class="secondary" type="button" title="วางค่าที่คัดลอกไว้ให้ฟิลด์ที่เลือก"><i class="bi bi-clipboard-check"></i></button>
                         </div>
                         <button id="previewPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-eye"></i>
                             แสดงตัวอย่าง</button>
