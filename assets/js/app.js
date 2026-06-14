@@ -391,10 +391,10 @@ async function confirmAction(options = {}) {
     const confirmButtonText = options.confirmButtonText || 'ยืนยัน';
     const cancelButtonText = options.cancelButtonText || 'ยกเลิก';
     const icon = options.icon || 'warning';
-    const confirmIcon = options.confirmIcon || (options.confirmButtonColor === '#dc2626' ? 'bi-trash-fill' : icon === 'warning' ? 'bi-check2-circle' : 'bi-check2-circle');
-    const cancelIcon = options.cancelIcon || 'bi-x-circle';
-    const swalBtn = (bi, label) => `<span class="dc-swal-btn-icon"><i class="bi ${bi}"></i><span>${escapeHtml(label)}</span></span>`;
     const isLockDocumentConfirm = options.lockDocumentConfirm === true;
+    const confirmIcon = options.confirmIcon || (isLockDocumentConfirm ? 'bi-check-circle' : (options.confirmButtonColor === '#dc2626' ? 'bi-trash' : 'bi-check-circle'));
+    const cancelIcon = options.cancelIcon || (isLockDocumentConfirm ? 'bi-x-circle' : 'bi-x-circle');
+    const swalBtn = (bi, label) => `<span class="dc-swal-btn-icon"><i class="bi ${bi}"></i><span>${escapeHtml(label)}</span></span>`;
     if (window.Swal?.fire) {
         const swalOptions = {
             icon,
@@ -402,8 +402,8 @@ async function confirmAction(options = {}) {
             showCancelButton: true,
             confirmButtonText: swalBtn(confirmIcon, confirmButtonText),
             cancelButtonText: swalBtn(cancelIcon, cancelButtonText),
-            confirmButtonColor: options.confirmButtonColor || '#16a34a',
-            cancelButtonColor: options.cancelButtonColor || '#64748b',
+            confirmButtonColor: isLockDocumentConfirm ? '#16a34a' : (options.confirmButtonColor || '#16a34a'),
+            cancelButtonColor: isLockDocumentConfirm ? '#dc2626' : (options.cancelButtonColor || '#64748b'),
             reverseButtons: true,
             heightAuto: false,
             didOpen: (popup) => {
@@ -2849,7 +2849,9 @@ window.lockContractDocument = async id => {
         checkboxError: 'กรุณายืนยันก่อนล็อกเอกสาร',
         confirmButtonText: 'ยืนยันการล็อก',
         cancelButtonText: 'ยกเลิก',
-        confirmButtonColor: '#dc2626'
+        confirmIcon: 'bi-check-circle',
+        cancelIcon: 'bi-x-circle',
+        confirmButtonColor: '#16a34a'
     });
     if (!ok) return toast('ยกเลิกการล็อกเอกสาร');
     await updateRow('contracts', id, { status: 'locked', locked: true, lockedDate: today(), updatedDate: today() });
