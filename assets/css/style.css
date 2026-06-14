@@ -3685,3 +3685,63 @@ body.signature-drawing{overflow:hidden!important;touch-action:none!important}
 .sig-actions-row.sig-smart-tools [data-redo-sig].hidden,
 .sig-actions-row.sig-smart-tools [data-clear-sig].hidden{display:none!important;}
 .sig-actions-row.sig-smart-tools .sig-tool-btn:not(.hidden){display:inline-grid!important;}
+
+
+/* ===== v9.4.3 Mobile Designer usability ===== */
+.pdf-designer-status{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:10px!important;
+    margin:8px 0 10px!important;
+    padding:10px 12px!important;
+    border:1px solid rgba(34,197,94,.28)!important;
+    background:rgba(34,197,94,.08)!important;
+    border-radius:16px!important;
+    line-height:1.25!important;
+}
+.pdf-designer-status strong{color:var(--green)!important;font-size:13px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:60%!important}
+.pdf-designer-status span{font-size:12px!important;font-weight:900!important;color:var(--muted)!important;white-space:nowrap!important}
+.pdf-zoom-tools{display:flex!important;gap:6px!important;align-items:center!important;justify-content:flex-end!important}
+.pdf-zoom-tools .secondary{width:44px!important;min-width:44px!important;height:42px!important;min-height:42px!important;padding:0!important;margin:0!important;border-radius:14px!important}
+#pdfDesignerZoomResetBtn{width:64px!important;min-width:64px!important;font-size:12px!important;font-weight:900!important}
+.pdf-designer-preview-wrap{max-height:min(72vh,760px)!important;overflow:auto!important;background:var(--card2)!important;border-radius:16px!important;border:1px solid var(--border)!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important}
+.pdf-designer-preview{transform-origin:top left!important;max-width:none!important}
+.pdf-designer-preview-wrap.is-zoomed{cursor:grab!important}
+.pdf-field-hotspot{overflow:visible!important;z-index:4!important}
+.pdf-field-hotspot.active,.pdf-field-hotspot.selected{z-index:8!important}
+.pdf-field-label{
+    position:absolute!important;
+    left:0!important;
+    top:-28px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:4px!important;
+    max-width:260px!important;
+    padding:4px 8px!important;
+    border-radius:999px!important;
+    background:#ef4444!important;
+    color:#fff!important;
+    font-size:11px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+    box-shadow:0 8px 18px rgba(239,68,68,.22)!important;
+    pointer-events:none!important;
+}
+.pdf-field-hotspot.active{border:2px solid #ef4444!important;background:rgba(239,68,68,.08)!important}
+@media(max-width:560px){
+    .pdf-designer-top-tools{grid-template-columns:1fr!important;gap:8px!important;position:sticky!important;top:6px!important}
+    .pdf-arrow-pad{justify-content:center!important;grid-template-columns:repeat(3,48px)!important;gap:8px!important;grid-row:auto!important}
+    .pdf-arrow-pad button{width:48px!important;height:48px!important;min-height:48px!important;border-radius:16px!important;font-size:17px!important}
+    .pdf-selected-font-tools{grid-column:auto!important;justify-content:center!important}
+    .pdf-selected-font-tools button{width:64px!important;height:48px!important;min-height:48px!important;font-size:16px!important}
+    #previewPdfDesignerBtn{grid-column:auto!important;width:100%!important;height:46px!important;min-height:46px!important}
+    .pdf-zoom-tools{justify-content:center!important;width:100%!important}
+    .pdf-zoom-tools .secondary{width:56px!important;min-width:56px!important;height:44px!important;min-height:44px!important}
+    #pdfDesignerZoomResetBtn{width:78px!important;min-width:78px!important}
+    .pdf-designer-status{align-items:flex-start!important;flex-direction:column!important;gap:3px!important}
+    .pdf-designer-status strong{max-width:100%!important}
+    .pdf-designer-preview-wrap{max-height:68vh!important}
+    .pdf-field-label{top:-30px!important;font-size:10px!important;max-width:220px!important}
+}

@@ -580,6 +580,9 @@
 
                     <label>ฟิลด์ที่ต้องการปรับ</label>
                     <select id="pdfDesignerField" class="input"></select>
+                    <div id="pdfDesignerSelectedStatus" class="pdf-designer-status">
+                        <strong>ฟิลด์ที่เลือก</strong><span>X : 0 , Y : 0</span>
+                    </div>
 
                     <div class="pdf-designer-grid pdf-designer-advanced-inputs">
                         <div><label>X</label><input id="pdfDesignerX" class="input" type="number" step="1"></div>
@@ -614,6 +617,11 @@
                         </div>
                         <button id="previewPdfDesignerBtn" class="secondary" type="button"><i class="bi bi-eye"></i>
                             แสดงตัวอย่าง</button>
+                        <div class="pdf-zoom-tools" aria-label="ซูมตัวอย่างเอกสาร">
+                            <button id="pdfDesignerZoomOutBtn" class="secondary" type="button" title="ย่อ"><i class="bi bi-zoom-out"></i></button>
+                            <button id="pdfDesignerZoomResetBtn" class="secondary" type="button" title="ขนาดปกติ"><span id="pdfDesignerZoomLabel">100%</span></button>
+                            <button id="pdfDesignerZoomInBtn" class="secondary" type="button" title="ขยาย"><i class="bi bi-zoom-in"></i></button>
+                        </div>
                     </div>
 
                     <div class="pdf-designer-preview-wrap" id="pdfDesignerPreviewWrap">

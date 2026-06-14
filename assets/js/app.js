@@ -102,6 +102,11 @@ function toast(m, type = 'info') {
 
 // ===== v9.2 Document Template Designer (Coordinate Override) =====
 const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_doc_template_overrides_v9_4';
+const PDF_DESIGNER_NUDGE_STEP = 8;
+const PDF_DESIGNER_FONT_STEP = 2;
+const PDF_DESIGNER_ZOOM_STEP = 0.25;
+const PDF_DESIGNER_MIN_ZOOM = 1;
+const PDF_DESIGNER_MAX_ZOOM = 2.5;
 const PDF_TEMPLATE_FIELD_LABELS = {
     'header.contractNo': 'เลขที่สัญญา',
     'header.place': 'สถานที่ทำสัญญา',
@@ -134,7 +139,7 @@ const PDF_TEMPLATE_FIELD_LABELS = {
     'signatures.witness2Name': 'ชื่อลายเซ็นพยาน 2',
     'signatures.writerName': 'ชื่อลายเซ็นผู้เขียน'
 };
-let pdfTemplateDesignerState = { selected: 'clause1.amountText', previewUrl: '', multi: new Set(), dragging: null };
+let pdfTemplateDesignerState = { selected: 'clause1.amountText', previewUrl: '', multi: new Set(), dragging: null, zoom: 1 };
 function pdfTemplateLoadOverrides() {
     try { return JSON.parse(localStorage.getItem(PDF_TEMPLATE_OVERRIDE_LS) || '{}') || {}; }
     catch { return {}; }
@@ -202,13 +207,13 @@ function pdfDesignerApplyPatchToPaths(paths, patch) {
 }
 function pdfDesignerNudgePaths(paths, dx = 0, dy = 0) {
     (paths || []).forEach(path => {
-        const base = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path) || {};
-        setPdfOverrideField(path, { x: Number(base.x || 0) + dx, y: Number(base.y || 0) + dy });
+        const base = getPdfFieldByPath(pdfDesignerCurrentMap(), path) || {};
+        setPdfOverrideField(path, { x: Math.round(Number(base.x || 0) + dx), y: Math.round(Number(base.y || 0) + dy) });
     });
 }
 function pdfDesignerResizeFontPaths(paths, delta = 0) {
     (paths || []).forEach(path => {
-        const base = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path) || {};
+        const base = getPdfFieldByPath(pdfDesignerCurrentMap(), path) || {};
         const size = Math.max(8, Number(base.size || 24) + delta);
         const minSize = Math.max(8, Math.min(size, Number(base.minSize || size) + delta));
         setPdfOverrideField(path, { size, minSize });
@@ -221,6 +226,44 @@ function pdfDesignerBulkPaths() {
     if (scope === 'all') return all;
     return all.filter(path => pdfDesignerFieldGroup(path) === scope);
 }
+
+function pdfDesignerCurrentMap() {
+    return deepApplyPdfOverrides(clonePlain(window.__lastContractPdfFieldMap || {}), pdfTemplateLoadOverrides());
+}
+function pdfDesignerUpdateSelectedStatus() {
+    const box = $('pdfDesignerSelectedStatus');
+    const map = pdfDesignerCurrentMap();
+    const paths = getPdfDesignerSelectedPaths();
+    if (!box || !paths.length) return;
+    const path = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected || paths[0];
+    const field = getPdfFieldByPath(map, path) || {};
+    const label = PDF_TEMPLATE_FIELD_LABELS[path] || path;
+    const countText = paths.length > 1 ? ` • เลือก ${paths.length} ฟิลด์` : '';
+    box.innerHTML = `<strong>${escapeHtml(label)}</strong><span>X : ${Number(field.x || 0)} , Y : ${Number(field.y || 0)}${countText}</span>`;
+}
+function pdfDesignerApplyZoom() {
+    const img = $('pdfDesignerPreview');
+    const wrap = $('pdfDesignerPreviewWrap');
+    const zoomLabel = $('pdfDesignerZoomLabel');
+    if (!img) return;
+    const z = Math.min(PDF_DESIGNER_MAX_ZOOM, Math.max(PDF_DESIGNER_MIN_ZOOM, Number(pdfTemplateDesignerState.zoom || 1)));
+    pdfTemplateDesignerState.zoom = z;
+    img.style.width = (z * 100) + '%';
+    img.style.maxWidth = 'none';
+    img.style.height = 'auto';
+    if (zoomLabel) zoomLabel.textContent = Math.round(z * 100) + '%';
+    requestAnimationFrame(pdfDesignerRenderOverlay);
+    if (wrap) wrap.classList.toggle('is-zoomed', z > 1.01);
+}
+function pdfDesignerChangeZoom(delta) {
+    pdfTemplateDesignerState.zoom = Math.round((Number(pdfTemplateDesignerState.zoom || 1) + delta) * 100) / 100;
+    pdfDesignerApplyZoom();
+}
+function pdfDesignerResetZoom() {
+    pdfTemplateDesignerState.zoom = 1;
+    pdfDesignerApplyZoom();
+}
+
 function applyDefaultFieldYNudge(obj, dy) {
     if (!obj || typeof obj !== 'object') return;
     Object.values(obj).forEach(v => {
@@ -2360,12 +2403,14 @@ function pdfDesignerSelectField(path, render = true, additive = false) {
     if ($('pdfDesignerField')) $('pdfDesignerField').value = path;
     const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path);
     pdfDesignerFillInputs(field || {});
+    pdfDesignerUpdateSelectedStatus();
     pdfDesignerRenderOverlay();
     if (render) pdfDesignerRenderPreview(false);
 }
 function pdfDesignerRenderOverlay() {
     const overlay = $('pdfDesignerOverlay'), img = $('pdfDesignerPreview');
     if (!overlay || !img || !window.__lastContractPdfFieldMap) return;
+    const currentMap = pdfDesignerCurrentMap();
     const naturalW = 1447, naturalH = 2048;
     const rect = img.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
@@ -2373,7 +2418,7 @@ function pdfDesignerRenderOverlay() {
     overlay.style.width = rect.width + 'px';
     overlay.style.height = rect.height + 'px';
     const selectedSet = pdfTemplateDesignerState.multi instanceof Set ? pdfTemplateDesignerState.multi : new Set([pdfTemplateDesignerState.selected]);
-    flattenPdfFieldMap(window.__lastContractPdfFieldMap).forEach(([path, field]) => {
+    flattenPdfFieldMap(currentMap).forEach(([path, field]) => {
         if (!PDF_TEMPLATE_FIELD_LABELS[path]) return;
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -2386,8 +2431,14 @@ function pdfDesignerRenderOverlay() {
         btn.style.left = left + '%';
         btn.style.top = top + '%';
         btn.style.width = width + '%';
-        btn.style.height = '14px';
-        btn.title = PDF_TEMPLATE_FIELD_LABELS[path];
+        btn.style.height = isSelected ? '22px' : '16px';
+        btn.title = `${PDF_TEMPLATE_FIELD_LABELS[path]} | X : ${Math.round(field.x || 0)} , Y : ${Math.round(field.y || 0)}`;
+        if (isSelected) {
+            const tag = document.createElement('span');
+            tag.className = 'pdf-field-label';
+            tag.textContent = `${PDF_TEMPLATE_FIELD_LABELS[path]}  X:${Math.round(field.x || 0)} Y:${Math.round(field.y || 0)}`;
+            btn.appendChild(tag);
+        }
         btn.dataset.path = path;
         btn.onclick = (e) => {
             if (pdfTemplateDesignerState.dragging?.moved) return;
@@ -2397,7 +2448,7 @@ function pdfDesignerRenderOverlay() {
             e.preventDefault();
             btn.setPointerCapture?.(e.pointerId);
             pdfDesignerSelectField(path, false, e.shiftKey || e.ctrlKey || e.metaKey);
-            const f = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, path) || field;
+            const f = getPdfFieldByPath(pdfDesignerCurrentMap(), path) || field;
             pdfTemplateDesignerState.dragging = {
                 path, startX: e.clientX, startY: e.clientY,
                 baseX: Number(f.x || 0), baseY: Number(f.y || 0), moved: false
@@ -2414,6 +2465,9 @@ function pdfDesignerRenderOverlay() {
             if ($('pdfDesignerY')) $('pdfDesignerY').value = ny;
             btn.style.left = ((nx / naturalW) * 100) + '%';
             btn.style.top = (((ny - 28) / naturalH) * 100) + '%';
+            const tag = btn.querySelector('.pdf-field-label');
+            if (tag) tag.textContent = `${PDF_TEMPLATE_FIELD_LABELS[path]}  X:${nx} Y:${ny}`;
+            pdfDesignerUpdateSelectedStatus();
         };
         btn.onpointerup = async (e) => {
             const d = pdfTemplateDesignerState.dragging;
@@ -2454,7 +2508,7 @@ async function pdfDesignerRenderPreview(saveBeforeRender = false) {
     canvas.toBlob(blob => {
         if (!blob) return;
         pdfTemplateDesignerState.previewUrl = URL.createObjectURL(blob);
-        img.onload = pdfDesignerRenderOverlay;
+        img.onload = () => { pdfDesignerApplyZoom(); pdfDesignerRenderOverlay(); };
         img.src = pdfTemplateDesignerState.previewUrl;
     }, 'image/jpeg', 0.9);
 }
@@ -2467,6 +2521,7 @@ async function openPdfTemplateDesigner() {
     await renderContractImageCanvas(row, debtor);
     const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, pdfTemplateDesignerState.selected);
     pdfDesignerFillInputs(field || {});
+    pdfDesignerUpdateSelectedStatus();
     await pdfDesignerRenderPreview();
 }
 function bindPdfTemplateDesigner() {
@@ -2482,12 +2537,13 @@ function bindPdfTemplateDesigner() {
         const current = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
         const updated = getPdfFieldByPath(deepApplyPdfOverrides(clonePlain(window.__lastContractPdfFieldMap || {}), pdfTemplateLoadOverrides()), current);
         if (updated) pdfDesignerFillInputs(updated);
+        pdfDesignerUpdateSelectedStatus();
         await pdfDesignerRenderPreview(false);
     };
-    if ($('pdfDesignerLeftBtn')) $('pdfDesignerLeftBtn').onclick = nudge(-1, 0);
-    if ($('pdfDesignerRightBtn')) $('pdfDesignerRightBtn').onclick = nudge(1, 0);
-    if ($('pdfDesignerUpBtn')) $('pdfDesignerUpBtn').onclick = nudge(0, -1);
-    if ($('pdfDesignerDownBtn')) $('pdfDesignerDownBtn').onclick = nudge(0, 1);
+    if ($('pdfDesignerLeftBtn')) $('pdfDesignerLeftBtn').onclick = nudge(-PDF_DESIGNER_NUDGE_STEP, 0);
+    if ($('pdfDesignerRightBtn')) $('pdfDesignerRightBtn').onclick = nudge(PDF_DESIGNER_NUDGE_STEP, 0);
+    if ($('pdfDesignerUpBtn')) $('pdfDesignerUpBtn').onclick = nudge(0, -PDF_DESIGNER_NUDGE_STEP);
+    if ($('pdfDesignerDownBtn')) $('pdfDesignerDownBtn').onclick = nudge(0, PDF_DESIGNER_NUDGE_STEP);
     const resizeSelected = (delta) => async () => {
         const paths = getPdfDesignerSelectedPaths();
         if (!paths.length) return toast('กรุณาเลือกฟิลด์ก่อน');
@@ -2495,17 +2551,21 @@ function bindPdfTemplateDesigner() {
         const current = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
         const updated = getPdfFieldByPath(deepApplyPdfOverrides(clonePlain(window.__lastContractPdfFieldMap || {}), pdfTemplateLoadOverrides()), current);
         if (updated) pdfDesignerFillInputs(updated);
+        pdfDesignerUpdateSelectedStatus();
         await pdfDesignerRenderPreview(false);
     };
-    if ($('pdfDesignerSizeMinusBtn')) $('pdfDesignerSizeMinusBtn').onclick = resizeSelected(-1);
-    if ($('pdfDesignerSizePlusBtn')) $('pdfDesignerSizePlusBtn').onclick = resizeSelected(1);
+    if ($('pdfDesignerSizeMinusBtn')) $('pdfDesignerSizeMinusBtn').onclick = resizeSelected(-PDF_DESIGNER_FONT_STEP);
+    if ($('pdfDesignerSizePlusBtn')) $('pdfDesignerSizePlusBtn').onclick = resizeSelected(PDF_DESIGNER_FONT_STEP);
     const bulkRun = async (fn) => { fn(pdfDesignerBulkPaths()); await pdfDesignerRenderPreview(false); };
-    if ($('pdfDesignerBulkLeftBtn')) $('pdfDesignerBulkLeftBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, -1, 0));
-    if ($('pdfDesignerBulkRightBtn')) $('pdfDesignerBulkRightBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 1, 0));
-    if ($('pdfDesignerBulkUpBtn')) $('pdfDesignerBulkUpBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, -1));
-    if ($('pdfDesignerBulkDownBtn')) $('pdfDesignerBulkDownBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, 1));
-    if ($('pdfDesignerBulkSizeMinusBtn')) $('pdfDesignerBulkSizeMinusBtn').onclick = () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, -1));
-    if ($('pdfDesignerBulkSizePlusBtn')) $('pdfDesignerBulkSizePlusBtn').onclick = () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, 1));
+    if ($('pdfDesignerBulkLeftBtn')) $('pdfDesignerBulkLeftBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, -PDF_DESIGNER_NUDGE_STEP, 0));
+    if ($('pdfDesignerBulkRightBtn')) $('pdfDesignerBulkRightBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, PDF_DESIGNER_NUDGE_STEP, 0));
+    if ($('pdfDesignerBulkUpBtn')) $('pdfDesignerBulkUpBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, -PDF_DESIGNER_NUDGE_STEP));
+    if ($('pdfDesignerBulkDownBtn')) $('pdfDesignerBulkDownBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, PDF_DESIGNER_NUDGE_STEP));
+    if ($('pdfDesignerBulkSizeMinusBtn')) $('pdfDesignerBulkSizeMinusBtn').onclick = () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, -PDF_DESIGNER_FONT_STEP));
+    if ($('pdfDesignerBulkSizePlusBtn')) $('pdfDesignerBulkSizePlusBtn').onclick = () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, PDF_DESIGNER_FONT_STEP));
+    if ($('pdfDesignerZoomInBtn')) $('pdfDesignerZoomInBtn').onclick = () => pdfDesignerChangeZoom(PDF_DESIGNER_ZOOM_STEP);
+    if ($('pdfDesignerZoomOutBtn')) $('pdfDesignerZoomOutBtn').onclick = () => pdfDesignerChangeZoom(-PDF_DESIGNER_ZOOM_STEP);
+    if ($('pdfDesignerZoomResetBtn')) $('pdfDesignerZoomResetBtn').onclick = () => pdfDesignerResetZoom();
     if ($('resetPdfDesignerFieldBtn')) $('resetPdfDesignerFieldBtn').onclick = async () => {
         resetPdfOverrideField($('pdfDesignerField')?.value || pdfTemplateDesignerState.selected);
         toast('รีเซ็ตฟิลด์นี้แล้ว');
