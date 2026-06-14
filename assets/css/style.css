@@ -3745,3 +3745,49 @@ body.signature-drawing{overflow:hidden!important;touch-action:none!important}
     .pdf-designer-preview-wrap{max-height:68vh!important}
     .pdf-field-label{top:-30px!important;font-size:10px!important;max-width:220px!important}
 }
+
+
+/* ===== v9.4.5 Designer field size label ===== */
+.pdf-step-control{
+    display:flex!important;
+    align-items:center!important;
+    gap:8px!important;
+    padding:6px!important;
+    border:1px solid var(--border)!important;
+    background:var(--card2)!important;
+    border-radius:16px!important;
+    min-width:138px!important;
+}
+.pdf-step-control span{
+    font-size:12px!important;
+    font-weight:900!important;
+    color:var(--green)!important;
+    white-space:nowrap!important;
+}
+.pdf-step-control select.input{
+    width:78px!important;
+    min-width:78px!important;
+    height:38px!important;
+    min-height:38px!important;
+    padding:0 28px 0 10px!important;
+    border-radius:12px!important;
+    font-size:13px!important;
+    margin:0!important;
+}
+.pdf-designer-preview-wrap{
+    overflow:auto!important;
+    position:relative!important;
+}
+.pdf-designer-preview{
+    width:auto!important;
+    min-width:100%!important;
+    max-width:none!important;
+}
+.pdf-designer-preview-wrap.is-zoomed .pdf-designer-preview{
+    min-width:auto!important;
+}
+@media(max-width:560px){
+    .pdf-step-control{width:100%!important;justify-content:center!important;min-width:0!important;order:-1!important}
+    .pdf-step-control select.input{width:96px!important;min-width:96px!important;height:42px!important;min-height:42px!important}
+    .pdf-step-control span{font-size:13px!important}
+}

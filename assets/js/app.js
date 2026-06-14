@@ -102,11 +102,10 @@ function toast(m, type = 'info') {
 
 // ===== v9.2 Document Template Designer (Coordinate Override) =====
 const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_doc_template_overrides_v9_4';
-const PDF_DESIGNER_NUDGE_STEP = 8;
-const PDF_DESIGNER_FONT_STEP = 2;
+const PDF_DESIGNER_DEFAULT_STEP = 5;
 const PDF_DESIGNER_ZOOM_STEP = 0.25;
-const PDF_DESIGNER_MIN_ZOOM = 1;
-const PDF_DESIGNER_MAX_ZOOM = 2.5;
+const PDF_DESIGNER_MIN_ZOOM = 0.75;
+const PDF_DESIGNER_MAX_ZOOM = 4;
 const PDF_TEMPLATE_FIELD_LABELS = {
     'header.contractNo': 'เลขที่สัญญา',
     'header.place': 'สถานที่ทำสัญญา',
@@ -139,7 +138,7 @@ const PDF_TEMPLATE_FIELD_LABELS = {
     'signatures.witness2Name': 'ชื่อลายเซ็นพยาน 2',
     'signatures.writerName': 'ชื่อลายเซ็นผู้เขียน'
 };
-let pdfTemplateDesignerState = { selected: 'clause1.amountText', previewUrl: '', multi: new Set(), dragging: null, zoom: 1 };
+let pdfTemplateDesignerState = { selected: 'clause1.amountText', previewUrl: '', multi: new Set(), dragging: null, zoom: 1, step: PDF_DESIGNER_DEFAULT_STEP };
 function pdfTemplateLoadOverrides() {
     try { return JSON.parse(localStorage.getItem(PDF_TEMPLATE_OVERRIDE_LS) || '{}') || {}; }
     catch { return {}; }
@@ -175,6 +174,23 @@ function resetPdfOverrideField(path) {
     pdfTemplateSaveOverrides(overrides);
 }
 
+function pdfDesignerFormatNumber(n) {
+    const v = Number(n || 0);
+    if (!Number.isFinite(v)) return '0';
+    return String(Math.round(v * 1000) / 1000).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+}
+function pdfDesignerGetStep() {
+    const raw = $('pdfDesignerStep')?.value;
+    const step = Number(raw || pdfTemplateDesignerState.step || PDF_DESIGNER_DEFAULT_STEP);
+    const safe = Number.isFinite(step) && step > 0 ? step : PDF_DESIGNER_DEFAULT_STEP;
+    pdfTemplateDesignerState.step = safe;
+    return safe;
+}
+function pdfDesignerSyncStepLabel() {
+    const label = $('pdfDesignerStepLabel');
+    if (label) label.textContent = `Step ${pdfDesignerFormatNumber(pdfDesignerGetStep())}`;
+}
+
 function getPdfDesignerSelectedPaths() {
     const set = pdfTemplateDesignerState.multi instanceof Set ? pdfTemplateDesignerState.multi : new Set();
     const current = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
@@ -208,14 +224,16 @@ function pdfDesignerApplyPatchToPaths(paths, patch) {
 function pdfDesignerNudgePaths(paths, dx = 0, dy = 0) {
     (paths || []).forEach(path => {
         const base = getPdfFieldByPath(pdfDesignerCurrentMap(), path) || {};
-        setPdfOverrideField(path, { x: Math.round(Number(base.x || 0) + dx), y: Math.round(Number(base.y || 0) + dy) });
+        const x = Math.round((Number(base.x || 0) + dx) * 1000) / 1000;
+        const y = Math.round((Number(base.y || 0) + dy) * 1000) / 1000;
+        setPdfOverrideField(path, { x, y });
     });
 }
 function pdfDesignerResizeFontPaths(paths, delta = 0) {
     (paths || []).forEach(path => {
         const base = getPdfFieldByPath(pdfDesignerCurrentMap(), path) || {};
-        const size = Math.max(8, Number(base.size || 24) + delta);
-        const minSize = Math.max(8, Math.min(size, Number(base.minSize || size) + delta));
+        const size = Math.max(8, Math.round((Number(base.size || 24) + delta) * 1000) / 1000);
+        const minSize = Math.max(8, Math.min(size, Math.round((Number(base.minSize || size) + delta) * 1000) / 1000));
         setPdfOverrideField(path, { size, minSize });
     });
 }
@@ -239,7 +257,7 @@ function pdfDesignerUpdateSelectedStatus() {
     const field = getPdfFieldByPath(map, path) || {};
     const label = PDF_TEMPLATE_FIELD_LABELS[path] || path;
     const countText = paths.length > 1 ? ` • เลือก ${paths.length} ฟิลด์` : '';
-    box.innerHTML = `<strong>${escapeHtml(label)}</strong><span>X : ${Number(field.x || 0)} , Y : ${Number(field.y || 0)}${countText}</span>`;
+    box.innerHTML = `<strong>${escapeHtml(label)}</strong><span>X : ${pdfDesignerFormatNumber(field.x)} , Y : ${pdfDesignerFormatNumber(field.y)} , Size : ${pdfDesignerFormatNumber(field.size || 0)}px${countText}</span>`;
 }
 function pdfDesignerApplyZoom() {
     const img = $('pdfDesignerPreview');
@@ -248,9 +266,9 @@ function pdfDesignerApplyZoom() {
     if (!img) return;
     const z = Math.min(PDF_DESIGNER_MAX_ZOOM, Math.max(PDF_DESIGNER_MIN_ZOOM, Number(pdfTemplateDesignerState.zoom || 1)));
     pdfTemplateDesignerState.zoom = z;
-    img.style.width = (z * 100) + '%';
-    img.style.maxWidth = 'none';
-    img.style.height = 'auto';
+    img.style.setProperty('width', (z * 100) + '%', 'important');
+    img.style.setProperty('max-width', 'none', 'important');
+    img.style.setProperty('height', 'auto', 'important');
     if (zoomLabel) zoomLabel.textContent = Math.round(z * 100) + '%';
     requestAnimationFrame(pdfDesignerRenderOverlay);
     if (wrap) wrap.classList.toggle('is-zoomed', z > 1.01);
@@ -2432,11 +2450,11 @@ function pdfDesignerRenderOverlay() {
         btn.style.top = top + '%';
         btn.style.width = width + '%';
         btn.style.height = isSelected ? '22px' : '16px';
-        btn.title = `${PDF_TEMPLATE_FIELD_LABELS[path]} | X : ${Math.round(field.x || 0)} , Y : ${Math.round(field.y || 0)}`;
+        btn.title = `${PDF_TEMPLATE_FIELD_LABELS[path]} | X : ${pdfDesignerFormatNumber(field.x)} , Y : ${pdfDesignerFormatNumber(field.y)} , Size : ${pdfDesignerFormatNumber(field.size || 0)}px`;
         if (isSelected) {
             const tag = document.createElement('span');
             tag.className = 'pdf-field-label';
-            tag.textContent = `${PDF_TEMPLATE_FIELD_LABELS[path]}  X:${Math.round(field.x || 0)} Y:${Math.round(field.y || 0)}`;
+            tag.textContent = `${PDF_TEMPLATE_FIELD_LABELS[path]}  X:${pdfDesignerFormatNumber(field.x)} Y:${pdfDesignerFormatNumber(field.y)} Size:${pdfDesignerFormatNumber(field.size || 0)}px`;
             btn.appendChild(tag);
         }
         btn.dataset.path = path;
@@ -2460,13 +2478,13 @@ function pdfDesignerRenderOverlay() {
             const dx = ((e.clientX - d.startX) / rect.width) * naturalW;
             const dy = ((e.clientY - d.startY) / rect.height) * naturalH;
             if (Math.abs(dx) > 1 || Math.abs(dy) > 1) d.moved = true;
-            const nx = Math.round(d.baseX + dx), ny = Math.round(d.baseY + dy);
+            const nx = Math.round((d.baseX + dx) * 1000) / 1000, ny = Math.round((d.baseY + dy) * 1000) / 1000;
             if ($('pdfDesignerX')) $('pdfDesignerX').value = nx;
             if ($('pdfDesignerY')) $('pdfDesignerY').value = ny;
             btn.style.left = ((nx / naturalW) * 100) + '%';
             btn.style.top = (((ny - 28) / naturalH) * 100) + '%';
             const tag = btn.querySelector('.pdf-field-label');
-            if (tag) tag.textContent = `${PDF_TEMPLATE_FIELD_LABELS[path]}  X:${nx} Y:${ny}`;
+            if (tag) { const currentField = getPdfFieldByPath(pdfDesignerCurrentMap(), path) || field; tag.textContent = `${PDF_TEMPLATE_FIELD_LABELS[path]}  X:${pdfDesignerFormatNumber(nx)} Y:${pdfDesignerFormatNumber(ny)} Size:${pdfDesignerFormatNumber(currentField.size || 0)}px`; }
             pdfDesignerUpdateSelectedStatus();
         };
         btn.onpointerup = async (e) => {
@@ -2521,6 +2539,7 @@ async function openPdfTemplateDesigner() {
     await renderContractImageCanvas(row, debtor);
     const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, pdfTemplateDesignerState.selected);
     pdfDesignerFillInputs(field || {});
+    pdfDesignerSyncStepLabel();
     pdfDesignerUpdateSelectedStatus();
     await pdfDesignerRenderPreview();
 }
@@ -2530,6 +2549,7 @@ function bindPdfTemplateDesigner() {
     if ($('pdfDesignerField')) $('pdfDesignerField').onchange = e => pdfDesignerSelectField(e.target.value, false);
     if ($('savePdfDesignerBtn')) $('savePdfDesignerBtn').onclick = () => { pdfDesignerSaveSelectedSilent(); toast('บันทึกพิกัดเอกสารแล้ว'); };
     if ($('previewPdfDesignerBtn')) $('previewPdfDesignerBtn').onclick = () => pdfDesignerRenderPreview(true);
+    if ($('pdfDesignerStep')) $('pdfDesignerStep').onchange = () => { pdfDesignerSyncStepLabel(); };
     const nudge = (dx, dy) => async () => {
         const paths = getPdfDesignerSelectedPaths();
         if (!paths.length) return toast('กรุณาเลือกฟิลด์ก่อน');
@@ -2540,10 +2560,10 @@ function bindPdfTemplateDesigner() {
         pdfDesignerUpdateSelectedStatus();
         await pdfDesignerRenderPreview(false);
     };
-    if ($('pdfDesignerLeftBtn')) $('pdfDesignerLeftBtn').onclick = nudge(-PDF_DESIGNER_NUDGE_STEP, 0);
-    if ($('pdfDesignerRightBtn')) $('pdfDesignerRightBtn').onclick = nudge(PDF_DESIGNER_NUDGE_STEP, 0);
-    if ($('pdfDesignerUpBtn')) $('pdfDesignerUpBtn').onclick = nudge(0, -PDF_DESIGNER_NUDGE_STEP);
-    if ($('pdfDesignerDownBtn')) $('pdfDesignerDownBtn').onclick = nudge(0, PDF_DESIGNER_NUDGE_STEP);
+    if ($('pdfDesignerLeftBtn')) $('pdfDesignerLeftBtn').onclick = () => nudge(-pdfDesignerGetStep(), 0)();
+    if ($('pdfDesignerRightBtn')) $('pdfDesignerRightBtn').onclick = () => nudge(pdfDesignerGetStep(), 0)();
+    if ($('pdfDesignerUpBtn')) $('pdfDesignerUpBtn').onclick = () => nudge(0, -pdfDesignerGetStep())();
+    if ($('pdfDesignerDownBtn')) $('pdfDesignerDownBtn').onclick = () => nudge(0, pdfDesignerGetStep())();
     const resizeSelected = (delta) => async () => {
         const paths = getPdfDesignerSelectedPaths();
         if (!paths.length) return toast('กรุณาเลือกฟิลด์ก่อน');
@@ -2554,15 +2574,15 @@ function bindPdfTemplateDesigner() {
         pdfDesignerUpdateSelectedStatus();
         await pdfDesignerRenderPreview(false);
     };
-    if ($('pdfDesignerSizeMinusBtn')) $('pdfDesignerSizeMinusBtn').onclick = resizeSelected(-PDF_DESIGNER_FONT_STEP);
-    if ($('pdfDesignerSizePlusBtn')) $('pdfDesignerSizePlusBtn').onclick = resizeSelected(PDF_DESIGNER_FONT_STEP);
+    if ($('pdfDesignerSizeMinusBtn')) $('pdfDesignerSizeMinusBtn').onclick = () => resizeSelected(-pdfDesignerGetStep())();
+    if ($('pdfDesignerSizePlusBtn')) $('pdfDesignerSizePlusBtn').onclick = () => resizeSelected(pdfDesignerGetStep())();
     const bulkRun = async (fn) => { fn(pdfDesignerBulkPaths()); await pdfDesignerRenderPreview(false); };
-    if ($('pdfDesignerBulkLeftBtn')) $('pdfDesignerBulkLeftBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, -PDF_DESIGNER_NUDGE_STEP, 0));
-    if ($('pdfDesignerBulkRightBtn')) $('pdfDesignerBulkRightBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, PDF_DESIGNER_NUDGE_STEP, 0));
-    if ($('pdfDesignerBulkUpBtn')) $('pdfDesignerBulkUpBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, -PDF_DESIGNER_NUDGE_STEP));
-    if ($('pdfDesignerBulkDownBtn')) $('pdfDesignerBulkDownBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, PDF_DESIGNER_NUDGE_STEP));
-    if ($('pdfDesignerBulkSizeMinusBtn')) $('pdfDesignerBulkSizeMinusBtn').onclick = () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, -PDF_DESIGNER_FONT_STEP));
-    if ($('pdfDesignerBulkSizePlusBtn')) $('pdfDesignerBulkSizePlusBtn').onclick = () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, PDF_DESIGNER_FONT_STEP));
+    if ($('pdfDesignerBulkLeftBtn')) $('pdfDesignerBulkLeftBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, -pdfDesignerGetStep(), 0));
+    if ($('pdfDesignerBulkRightBtn')) $('pdfDesignerBulkRightBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, pdfDesignerGetStep(), 0));
+    if ($('pdfDesignerBulkUpBtn')) $('pdfDesignerBulkUpBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, -pdfDesignerGetStep()));
+    if ($('pdfDesignerBulkDownBtn')) $('pdfDesignerBulkDownBtn').onclick = () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, pdfDesignerGetStep()));
+    if ($('pdfDesignerBulkSizeMinusBtn')) $('pdfDesignerBulkSizeMinusBtn').onclick = () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, -pdfDesignerGetStep()));
+    if ($('pdfDesignerBulkSizePlusBtn')) $('pdfDesignerBulkSizePlusBtn').onclick = () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, pdfDesignerGetStep()));
     if ($('pdfDesignerZoomInBtn')) $('pdfDesignerZoomInBtn').onclick = () => pdfDesignerChangeZoom(PDF_DESIGNER_ZOOM_STEP);
     if ($('pdfDesignerZoomOutBtn')) $('pdfDesignerZoomOutBtn').onclick = () => pdfDesignerChangeZoom(-PDF_DESIGNER_ZOOM_STEP);
     if ($('pdfDesignerZoomResetBtn')) $('pdfDesignerZoomResetBtn').onclick = () => pdfDesignerResetZoom();
