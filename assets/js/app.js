@@ -391,7 +391,7 @@ async function confirmAction(options = {}) {
     const confirmButtonText = options.confirmButtonText || 'ยืนยัน';
     const cancelButtonText = options.cancelButtonText || 'ยกเลิก';
     const icon = options.icon || 'warning';
-    const confirmIcon = options.confirmIcon || (options.confirmButtonColor === '#dc2626' ? 'bi-trash' : icon === 'warning' ? 'bi-check-circle' : 'bi-check-circle');
+    const confirmIcon = options.confirmIcon || (options.confirmButtonColor === '#dc2626' ? 'bi-trash-fill' : icon === 'warning' ? 'bi-check2-circle' : 'bi-check2-circle');
     const cancelIcon = options.cancelIcon || 'bi-x-circle';
     const swalBtn = (bi, label) => `<span class="dc-swal-btn-icon"><i class="bi ${bi}"></i><span>${escapeHtml(label)}</span></span>`;
     const isLockDocumentConfirm = options.lockDocumentConfirm === true;
@@ -2232,9 +2232,12 @@ async function renderContractImageCanvas(row, debtor) {
     const district = debtor.district || parsedAddress.district || '';
     const province = debtor.province || parsedAddress.province || '';
     const showFullAddress = privacySettings().showFullAddress;
-    const pdfSubDistrict = showFullAddress ? subDistrict : '-';
-    const pdfDistrict = showFullAddress ? district : '-';
-    const pdfProvince = showFullAddress ? province : '-';
+    // Privacy rule for PDF must match UI: hide only house number and subdistrict.
+    // District and province remain visible even when address privacy is off.
+    const pdfHouseNo = showFullAddress ? houseNo : '*****';
+    const pdfSubDistrict = showFullAddress ? subDistrict : '*******';
+    const pdfDistrict = district || '-';
+    const pdfProvince = province || '-';
     const borrowerNameWithId = displayIdCard(debtor.idCard) !== '-' ? `${borrowerName} เลขประจำตัวประชาชน ${displayIdCard(debtor.idCard)}`.replace(/\s+/g, ' ').trim() : borrowerName;
     const lenderNameWithId = displayIdCard(row.lenderIdCard) !== '-' ? `${lenderName} เลขประจำตัวประชาชน ${displayIdCard(row.lenderIdCard)}`.replace(/\s+/g, ' ').trim() : lenderName;
     const amountParts = contractAmountTextParts(row.amount);
@@ -2330,7 +2333,7 @@ async function renderContractImageCanvas(row, debtor) {
     // Borrower section
     drawF(borrowerName, F.borrower.name);
     drawF(borrowerAge || '-', F.borrower.age);
-    drawF(houseNo, F.borrower.houseNo);
+    drawF(pdfHouseNo, F.borrower.houseNo);
     drawF(pdfSubDistrict || '-', F.borrower.subDistrict);
     drawF(pdfDistrict || '-', F.borrower.district);
     drawF(pdfProvince || '-', F.borrower.province);
@@ -2845,9 +2848,7 @@ window.lockContractDocument = async id => {
         checkboxText: 'ฉันเข้าใจแล้ว และต้องการล็อกเอกสาร',
         checkboxError: 'กรุณายืนยันก่อนล็อกเอกสาร',
         confirmButtonText: 'ยืนยันการล็อก',
-        confirmIcon: 'bi-check-circle',
         cancelButtonText: 'ยกเลิก',
-        cancelIcon: 'bi-x-circle',
         confirmButtonColor: '#dc2626'
     });
     if (!ok) return toast('ยกเลิกการล็อกเอกสาร');
@@ -3052,6 +3053,13 @@ function initSettingsAccordion() {
         head.addEventListener('click', (e) => {
             if (e.target.closest('button,input,select,textarea,a,label')) return;
             card.classList.toggle('collapsed');
+
+            // When the PDF coordinate designer menu is collapsed, also close its floating/standalone panel.
+            // The panel sits outside #pdfTemplateDesignerCard, so it does not collapse automatically with the card body.
+            if (card.id === 'pdfTemplateDesignerCard' && card.classList.contains('collapsed')) {
+                $('pdfDesignerPanel')?.classList.add('hidden');
+                pdfDesignerStopHold?.();
+            }
         });
     });
 }
