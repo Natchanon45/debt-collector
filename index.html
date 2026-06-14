@@ -600,57 +600,51 @@
                             </select></div>
                     </div>
 
-                    <div class="pdf-designer-top-tools pdf-designer-mobile-clean">
+                    <div class="pdf-designer-top-tools pdf-designer-mobile-card-controls">
+                        <div class="pdf-compact-settings-row pdf-font-control-row" aria-label="เครื่องมือปรับขนาดตัวอักษร">
+                            <div class="pdf-row-left-tools" aria-label="เครื่องมือฟิลด์ที่เลือก">
+                                <button id="pdfDesignerModeBtn" class="secondary pdf-circle-tool pdf-designer-mode-btn" type="button" title="สลับโหมดเลื่อนเอกสาร/แก้ฟิลด์"><i class="bi bi-hand-index-thumb"></i></button>
+                                <button id="pdfDesignerSizeMinusBtn" class="secondary pdf-circle-tool pdf-size-tool" type="button" title="ลดขนาดฟอนต์ฟิลด์ที่เลือก"><strong>A-</strong></button>
+                                <button id="pdfDesignerSizePlusBtn" class="secondary pdf-circle-tool pdf-size-tool" type="button" title="เพิ่มขนาดฟอนต์ฟิลด์ที่เลือก"><strong>A+</strong></button>
+                                <button id="pdfDesignerMoreToolsBtn" class="secondary pdf-circle-tool pdf-more-tools-btn" type="button" title="เครื่องมือเพิ่มเติม"><i class="bi bi-three-dots-vertical"></i></button>
+                            </div>
+
+                            <div class="pdf-font-all-compact" aria-label="ปรับฟอนต์ทุกฟิลด์">
+                                <i class="bi bi-type" title="Font ทุกฟิลด์"></i>
+                                <input id="pdfDesignerAllFontSize" class="input" type="number" inputmode="numeric" min="8" max="80" step="1" placeholder="30" title="ขนาด Font ทุกฟิลด์">
+                                <button id="pdfDesignerApplyAllFontBtn" class="primary" type="button" title="ปรับใช้ทุกฟิลด์"><i class="bi bi-check-lg"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="pdf-compact-settings-row pdf-move-control-row" aria-label="เครื่องมือขยับตำแหน่ง">
+                            <div class="pdf-step-compact" aria-label="กำหนดระยะขยับ">
+                                <span id="pdfDesignerStepLabel" title="ระยะขยับปัจจุบัน">1x</span>
+                                <button id="pdfDesignerStepMinusBtn" type="button" class="secondary" title="ลดระยะขยับ">−</button>
+                                <input id="pdfDesignerStep" class="input" type="text" inputmode="decimal" pattern="[0-9.]*" value="1" placeholder="1" title="กรอกได้เฉพาะตัวเลขและจุดทศนิยม เช่น 0.5, 2.5, 8">
+                                <button id="pdfDesignerStepPlusBtn" type="button" class="secondary" title="เพิ่มระยะขยับ">+</button>
+                            </div>
+
+                            <div class="pdf-nudge-compact" aria-label="ขยับฟิลด์ที่เลือก">
+                                <button id="pdfDesignerLeftBtn" class="secondary" type="button" title="ซ้าย"><i class="bi bi-arrow-left"></i></button>
+                                <button id="pdfDesignerUpBtn" class="secondary" type="button" title="ขึ้น"><i class="bi bi-arrow-up"></i></button>
+                                <button id="pdfDesignerDownBtn" class="secondary" type="button" title="ลง"><i class="bi bi-arrow-down"></i></button>
+                                <button id="pdfDesignerRightBtn" class="secondary" type="button" title="ขวา"><i class="bi bi-arrow-right"></i></button>
+                            </div>
+                        </div>
+
                         <div class="pdf-mode-segment hidden" aria-label="เลือกโหมดการใช้งาน">
                             <button id="pdfDesignerPanModeBtn" class="secondary" type="button" title="ลากเพื่อเลื่อนเอกสาร ไม่ขยับฟิลด์"><i class="bi bi-hand-index-thumb"></i><span>เลื่อนเอกสาร</span></button>
                             <button id="pdfDesignerEditModeBtn" class="secondary" type="button" title="แตะ/ลากเพื่อแก้ตำแหน่งฟิลด์"><i class="bi bi-cursor"></i><span>แก้ฟิลด์</span></button>
                         </div>
 
-                        <div class="pdf-designer-toolbar-row" aria-label="เครื่องมือหลัก">
-                            <button id="pdfDesignerModeBtn" class="secondary pdf-designer-mode-btn" type="button" title="สลับโหมดเลื่อนเอกสาร/แก้ฟิลด์"><i class="bi bi-hand-index-thumb"></i></button>
-
-                            <div class="pdf-selected-font-tools" aria-label="ปรับขนาดตัวอักษรฟิลด์ที่เลือก">
-                                <button id="pdfDesignerSizeMinusBtn" class="secondary" type="button">A-</button>
-                                <button id="pdfDesignerSizePlusBtn" class="secondary" type="button">A+</button>
-                            </div>
-
-                            <button id="pdfDesignerMoreToolsBtn" class="secondary pdf-more-tools-btn" type="button" title="เครื่องมือเพิ่มเติม"><i class="bi bi-tools"></i></button>
-                        </div>
-
-                        <div class="pdf-primary-controls pdf-keyboard-controls pdf-keyboard-controls-v954" aria-label="ขยับฟิลด์ที่เลือก">
-                            <div class="pdf-arrow-pad pdf-dpad keyboard-dpad" aria-label="ขยับฟิลด์ที่เลือก">
-                                <button id="pdfDesignerUpBtn" class="secondary" type="button"><i class="bi bi-arrow-up"></i></button>
-                                <button id="pdfDesignerLeftBtn" class="secondary" type="button"><i class="bi bi-arrow-left"></i></button>
-                                <button id="pdfDesignerRightBtn" class="secondary" type="button"><i class="bi bi-arrow-right"></i></button>
-                                <button id="pdfDesignerDownBtn" class="secondary" type="button"><i class="bi bi-arrow-down"></i></button>
-                            </div>
-
-                            <div class="pdf-step-control pdf-step-separated pdf-step-mini" aria-label="กำหนดระยะขยับ">
-                                <span id="pdfDesignerStepLabel">Step</span>
-                                <button type="button" class="secondary pdf-step-btn" onclick="pdfDesignerChangeStep(-1)" title="ลดระยะขยับ">−</button>
-                                <input id="pdfDesignerStep" class="input" type="text" inputmode="decimal" pattern="[0-9.]*" value="1" placeholder="1" title="กรอกได้เฉพาะตัวเลขและจุดทศนิยม เช่น 0.5, 2.5, 8">
-                                <button type="button" class="secondary pdf-step-btn" onclick="pdfDesignerChangeStep(1)" title="เพิ่มระยะขยับ">+</button>
-                                <small>px</small>
-                                <datalist id="pdfDesignerStepPresets">
-                                    <option value="0.001"></option>
-                                    <option value="0.01"></option>
-                                    <option value="0.1"></option>
-                                    <option value="1"></option>
-                                    <option value="5"></option>
-                                    <option value="10"></option>
-                                    <option value="20"></option>
-                                </datalist>
-                            </div>
-                        </div>
-
                         <div id="pdfDesignerMoreToolsPanel" class="pdf-designer-more-panel hidden">
                             <div class="pdf-copy-tools" aria-label="คัดลอกตำแหน่งและรูปแบบ">
                                 <select id="pdfDesignerCopyMode" class="input" title="เลือกค่าที่ต้องการคัดลอก">
-                                    <option value="xSize">X + Font</option>
-                                    <option value="ySize">Y + Font</option>
-                                    <option value="size">Font เท่านั้น</option>
-                                    <option value="x">X เท่านั้น</option>
-                                    <option value="y">Y เท่านั้น</option>
+                                    <option value="xSize">แกน X + ฟอนต์</option>
+                                    <option value="ySize">แกน Y + ฟอนต์</option>
+                                    <option value="size">ฟอนต์ เท่านั้น</option>
+                                    <option value="x">แกน X เท่านั้น</option>
+                                    <option value="y">แกน Y เท่านั้น</option>
                                 </select>
                                 <button id="pdfDesignerCopyBtn" class="secondary" type="button" title="คัดลอกค่าจากฟิลด์ปัจจุบัน"><i class="bi bi-clipboard"></i></button>
                                 <button id="pdfDesignerPasteBtn" class="secondary" type="button" title="วางค่าที่คัดลอกไว้ให้ฟิลด์ที่เลือก"><i class="bi bi-clipboard-check"></i></button>

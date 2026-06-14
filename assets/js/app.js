@@ -288,6 +288,34 @@ function pdfDesignerResizeFontPaths(paths, delta = 0) {
         setPdfOverrideField(path, { size, minSize });
     });
 }
+function pdfDesignerChangeStep(delta) {
+    const input = $('pdfDesignerStep');
+    if (!input) return;
+    const current = Number(pdfDesignerSanitizeDecimalValue(input.value) || pdfTemplateDesignerState.step || PDF_DESIGNER_DEFAULT_STEP);
+    const next = Math.max(0.001, Math.round((current + Number(delta || 0)) * 1000) / 1000);
+    input.value = pdfDesignerFormatNumber(next);
+    pdfDesignerSyncStepLabel({ forceDefault: true });
+}
+
+if (typeof window !== 'undefined') {
+    window.pdfDesignerChangeStep = pdfDesignerChangeStep;
+}
+
+function pdfDesignerApplyAllFontSize() {
+    const input = $('pdfDesignerAllFontSize');
+    const size = Number(input?.value || 0);
+    if (!Number.isFinite(size) || size < 8 || size > 80) {
+        return toast('กรุณากรอกขนาด Font ระหว่าง 8 - 80');
+    }
+    const map = window.__lastContractPdfFieldMap || pdfDesignerCurrentMap() || {};
+    const paths = flattenPdfFieldMap(map).map(([path]) => path).filter(path => PDF_TEMPLATE_FIELD_LABELS[path]);
+    if (!paths.length) return toast('ยังไม่พบฟิลด์ในเอกสาร');
+    paths.forEach(path => setPdfOverrideField(path, { size, minSize: Math.min(size, Math.max(8, size - 4)) }));
+    if ($('pdfDesignerSize')) $('pdfDesignerSize').value = size;
+    pdfDesignerRefreshAfterMutation(true);
+    toast(`ปรับ Font ทุกฟิลด์เป็น ${pdfDesignerFormatNumber(size)} px แล้ว`);
+}
+
 function pdfDesignerBulkPaths() {
     const scope = $('pdfDesignerBulkScope')?.value || 'selected';
     const all = flattenPdfFieldMap(window.__lastContractPdfFieldMap || {}).map(([path]) => path).filter(path => PDF_TEMPLATE_FIELD_LABELS[path]);
@@ -2639,6 +2667,8 @@ async function openPdfTemplateDesigner() {
     await renderContractImageCanvas(row, debtor);
     const field = getPdfFieldByPath(window.__lastContractPdfFieldMap || {}, pdfTemplateDesignerState.selected);
     pdfDesignerFillInputs(field || {});
+    if ($('pdfDesignerAllFontSize')) $('pdfDesignerAllFontSize').value = field?.size ? pdfDesignerFormatNumber(field.size) : '';
+    $('pdfDesignerPanel')?.classList.add('pdf-mobile-clean-ready');
     pdfDesignerSyncStepLabel();
     pdfDesignerUpdateSelectedStatus();
     await pdfDesignerRenderPreview();
@@ -2724,6 +2754,12 @@ function bindPdfTemplateDesigner() {
     if ($('pdfDesignerStep')) {
         $('pdfDesignerStep').oninput = (e) => { e.target.value = pdfDesignerSanitizeDecimalValue(e.target.value); pdfDesignerSyncStepLabel(); };
         $('pdfDesignerStep').onchange = (e) => { e.target.value = pdfDesignerSanitizeDecimalValue(e.target.value) || pdfDesignerFormatNumber(PDF_DESIGNER_DEFAULT_STEP); pdfDesignerSyncStepLabel({ forceDefault: true }); };
+    }
+    if ($('pdfDesignerStepMinusBtn')) $('pdfDesignerStepMinusBtn').onclick = () => pdfDesignerChangeStep(-1);
+    if ($('pdfDesignerStepPlusBtn')) $('pdfDesignerStepPlusBtn').onclick = () => pdfDesignerChangeStep(1);
+    if ($('pdfDesignerApplyAllFontBtn')) $('pdfDesignerApplyAllFontBtn').onclick = pdfDesignerApplyAllFontSize;
+    if ($('pdfDesignerAllFontSize')) {
+        $('pdfDesignerAllFontSize').onkeydown = (e) => { if (e.key === 'Enter') pdfDesignerApplyAllFontSize(); };
     }
     const nudge = (dx, dy) => async () => {
         const paths = getPdfDesignerSelectedPaths();
@@ -3032,22 +3068,3 @@ try {
     console.error('App init error:', e);
     toast('โหลดระบบไม่สำเร็จ: ' + e.message);
 }
-
-
-// FINAL FIX v9.5.3: step +/- buttons for mobile PDF Designer
-function pdfDesignerChangeStep(delta) {
-    const input = document.getElementById('pdfDesignerStep');
-    if (!input) return;
-    const cleaned = (typeof pdfDesignerSanitizeDecimalValue === 'function')
-        ? pdfDesignerSanitizeDecimalValue(input.value || '1')
-        : String(input.value || '1').replace(/[^0-9.]/g, '');
-    const current = parseFloat(cleaned || '1') || 1;
-    let next = current + Number(delta || 0);
-    if (!Number.isFinite(next) || next <= 0) next = 0.001;
-    if (next >= 1) next = Math.round(next);
-    input.value = Number.isInteger(next) ? String(next) : next.toFixed(3).replace(/\.?0+$/, '');
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    if (typeof pdfDesignerSyncStepLabel === 'function') pdfDesignerSyncStepLabel({ forceDefault: true });
-}
-window.pdfDesignerChangeStep = pdfDesignerChangeStep;
