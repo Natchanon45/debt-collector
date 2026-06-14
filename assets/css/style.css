@@ -3811,8 +3811,8 @@ body.signature-drawing{overflow:hidden!important;touch-action:none!important}
     transform-origin:top left!important;
 }
 .pdf-step-control input.input{
-    width:96px!important;
-    min-width:96px!important;
+    /* width:96px!important; */
+    /* min-width:96px!important; */
     height:38px!important;
     min-height:38px!important;
     padding:0 8px!important;
