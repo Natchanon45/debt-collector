@@ -1,11 +1,11 @@
 export const APP_INFO = {
-    version: '9.5.8',
+    version: '9.5.9',
     authorized: 'นายณัฐชนน ศรีเปล่ง',
     year: new Date().getFullYear()
 };
 
 export const APP_VERSION = APP_INFO.version;
-export const LS = 'debt_collector_phase3_v9.5.8';
+export const LS = 'debt_collector_phase3_v9.5.9';
 
 export const blank = {
     debtors: [],

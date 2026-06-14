@@ -391,7 +391,7 @@ async function confirmAction(options = {}) {
     const confirmButtonText = options.confirmButtonText || 'ยืนยัน';
     const cancelButtonText = options.cancelButtonText || 'ยกเลิก';
     const icon = options.icon || 'warning';
-    const confirmIcon = options.confirmIcon || (options.confirmButtonColor === '#dc2626' ? 'bi-trash-fill' : icon === 'warning' ? 'bi-check2-circle' : 'bi-check2-circle');
+    const confirmIcon = options.confirmIcon || (options.confirmButtonColor === '#dc2626' ? 'bi-trash' : icon === 'warning' ? 'bi-check-circle' : 'bi-check-circle');
     const cancelIcon = options.cancelIcon || 'bi-x-circle';
     const swalBtn = (bi, label) => `<span class="dc-swal-btn-icon"><i class="bi ${bi}"></i><span>${escapeHtml(label)}</span></span>`;
     const isLockDocumentConfirm = options.lockDocumentConfirm === true;
@@ -2845,7 +2845,9 @@ window.lockContractDocument = async id => {
         checkboxText: 'ฉันเข้าใจแล้ว และต้องการล็อกเอกสาร',
         checkboxError: 'กรุณายืนยันก่อนล็อกเอกสาร',
         confirmButtonText: 'ยืนยันการล็อก',
+        confirmIcon: 'bi-check-circle',
         cancelButtonText: 'ยกเลิก',
+        cancelIcon: 'bi-x-circle',
         confirmButtonColor: '#dc2626'
     });
     if (!ok) return toast('ยกเลิกการล็อกเอกสาร');
