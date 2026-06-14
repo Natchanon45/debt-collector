@@ -1,5 +1,5 @@
-const APP_VERSION = '9.4.7';
-const CACHE_NAME = 'debt-collector-v9.4.7';
+const APP_VERSION = '9.5.1';
+const CACHE_NAME = 'debt-collector-v9.5.1';
 const ASSETS = ['./', './index.html', './manifest.json', './assets/css/style.css', './assets/css/navigation.css', './assets/css/followup.css', './assets/css/ui-hotfix.css', './assets/js/app.js', './assets/js/config.js', './assets/js/utils.js', './assets/js/calculate.js', './assets/js/theme.js', './assets/js/firebase-config.js', './assets/icons/icon-192.png', './assets/icons/icon-512.png', './assets/img/loan-contract-template-a4.png'];
 
 const isHttp = url => url.protocol === 'http:' || url.protocol === 'https:';

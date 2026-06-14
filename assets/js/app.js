@@ -102,7 +102,7 @@ function toast(m, type = 'info') {
 
 // ===== v9.2 Document Template Designer (Coordinate Override) =====
 const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_doc_template_overrides_v9_4';
-const PDF_DESIGNER_DEFAULT_STEP = 5;
+const PDF_DESIGNER_DEFAULT_STEP = 1;
 const PDF_DESIGNER_DEFAULT_MODE = (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) ? 'pan' : 'edit';
 const PDF_DESIGNER_ZOOM_STEP = 0.25;
 const PDF_DESIGNER_MIN_ZOOM = 0.75;
@@ -196,11 +196,23 @@ function pdfDesignerGetStep() {
     pdfTemplateDesignerState.step = safe;
     return safe;
 }
-function pdfDesignerSyncStepLabel() {
+function pdfDesignerSyncStepLabel(options = {}) {
     const input = $('pdfDesignerStep');
     const label = $('pdfDesignerStepLabel');
+    const raw = input ? pdfDesignerSanitizeDecimalValue(input.value) : '';
+    if (input && input.value !== raw) input.value = raw;
+
+    // While typing, allow the box to be temporarily empty.
+    // Previously this function immediately restored the default value (5),
+    // so users could not delete it and type a custom scale.
+    if (input && raw === '' && !options.forceDefault) {
+        if (label) label.textContent = 'Step -';
+        pdfDesignerUpdateSelectedStatus();
+        return;
+    }
+
     const step = pdfDesignerGetStep();
-    if (input && !input.value) input.value = pdfDesignerFormatNumber(step);
+    if (input && raw === '' && options.forceDefault) input.value = pdfDesignerFormatNumber(step);
     if (label) label.textContent = `Step ${pdfDesignerFormatNumber(step)}`;
     pdfDesignerUpdateSelectedStatus();
 }
@@ -208,13 +220,20 @@ function pdfDesignerSetMode(mode) {
     pdfTemplateDesignerState.mode = mode === 'edit' ? 'edit' : 'pan';
     const panel = $('pdfDesignerPanel');
     const btn = $('pdfDesignerModeBtn');
+    const panBtn = $('pdfDesignerPanModeBtn');
+    const editBtn = $('pdfDesignerEditModeBtn');
     panel?.classList.toggle('designer-edit-mode', pdfTemplateDesignerState.mode === 'edit');
     panel?.classList.toggle('designer-pan-mode', pdfTemplateDesignerState.mode !== 'edit');
+    panBtn?.classList.toggle('active', pdfTemplateDesignerState.mode !== 'edit');
+    editBtn?.classList.toggle('active', pdfTemplateDesignerState.mode === 'edit');
+    if (panBtn) panBtn.setAttribute('aria-pressed', pdfTemplateDesignerState.mode !== 'edit' ? 'true' : 'false');
+    if (editBtn) editBtn.setAttribute('aria-pressed', pdfTemplateDesignerState.mode === 'edit' ? 'true' : 'false');
     if (btn) {
         btn.dataset.mode = pdfTemplateDesignerState.mode;
         btn.innerHTML = pdfTemplateDesignerState.mode === 'edit'
-            ? '<i class="bi bi-cursor"></i><span>แก้ฟิลด์</span>'
-            : '<i class="bi bi-hand-index-thumb"></i><span>เลื่อนเอกสาร</span>';
+            ? '<i class="bi bi-cursor"></i>'
+            : '<i class="bi bi-hand-index-thumb"></i>';
+        btn.setAttribute('aria-label', pdfTemplateDesignerState.mode === 'edit' ? 'แก้ฟิลด์' : 'เลื่อนเอกสาร');
         btn.title = pdfTemplateDesignerState.mode === 'edit' ? 'โหมดแก้ฟิลด์: แตะ/ลากฟิลด์ได้' : 'โหมดเลื่อนเอกสาร: ลากเพื่อเลื่อน ไม่โดนฟิลด์';
     }
     pdfDesignerRenderOverlay();
@@ -2571,8 +2590,48 @@ async function pdfDesignerRenderPreview(saveBeforeRender = false) {
         img.src = pdfTemplateDesignerState.previewUrl;
     }, 'image/jpeg', 0.9);
 }
+
+function bindPdfDesignerPanDragScroll() {
+    const wrap = $('pdfDesignerPreviewWrap');
+    if (!wrap || wrap.dataset.panDragBound === '1') return;
+    wrap.dataset.panDragBound = '1';
+    let drag = null;
+    const isPanMode = () => pdfTemplateDesignerState.mode !== 'edit';
+    wrap.addEventListener('pointerdown', (e) => {
+        if (!isPanMode()) return;
+        // In pan mode, touches/mouse drags should move the preview viewport, not field objects.
+        if (!['touch', 'pen', 'mouse'].includes(e.pointerType || 'mouse')) return;
+        drag = {
+            id: e.pointerId,
+            x: e.clientX,
+            y: e.clientY,
+            left: wrap.scrollLeft,
+            top: wrap.scrollTop,
+            moved: false
+        };
+        wrap.classList.add('is-panning');
+        wrap.setPointerCapture?.(e.pointerId);
+    }, { passive: true });
+    wrap.addEventListener('pointermove', (e) => {
+        if (!drag || drag.id !== e.pointerId || !isPanMode()) return;
+        const dx = e.clientX - drag.x;
+        const dy = e.clientY - drag.y;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) drag.moved = true;
+        wrap.scrollLeft = drag.left - dx;
+        wrap.scrollTop = drag.top - dy;
+        // Prevent the page behind the designer from rubber-band scrolling on mobile.
+        if (drag.moved && e.cancelable) e.preventDefault();
+    }, { passive: false });
+    const stop = (e) => {
+        if (!drag || (e && drag.id !== e.pointerId)) return;
+        wrap.classList.remove('is-panning');
+        drag = null;
+    };
+    ['pointerup', 'pointercancel', 'lostpointercapture', 'pointerleave'].forEach(ev => wrap.addEventListener(ev, stop));
+}
+
 async function openPdfTemplateDesigner() {
-    $('pdfDesignerPanel')?.classList.remove('hidden'); bindNoZoomDesigner(); pdfDesignerSetMode(pdfTemplateDesignerState.mode || PDF_DESIGNER_DEFAULT_MODE);
+    $('pdfDesignerPanel')?.classList.remove('hidden'); bindNoZoomDesigner(); bindPdfDesignerPanDragScroll(); pdfDesignerSetMode(pdfTemplateDesignerState.mode || PDF_DESIGNER_DEFAULT_MODE);
     const sel = $('pdfDesignerField');
     if (sel && !sel.options.length) sel.innerHTML = pdfDesignerFieldOptions();
     if (sel) sel.value = pdfTemplateDesignerState.selected;
@@ -2664,7 +2723,7 @@ function bindPdfTemplateDesigner() {
     if ($('previewPdfDesignerBtn')) $('previewPdfDesignerBtn').onclick = () => pdfDesignerRenderPreview(true);
     if ($('pdfDesignerStep')) {
         $('pdfDesignerStep').oninput = (e) => { e.target.value = pdfDesignerSanitizeDecimalValue(e.target.value); pdfDesignerSyncStepLabel(); };
-        $('pdfDesignerStep').onchange = (e) => { e.target.value = pdfDesignerSanitizeDecimalValue(e.target.value) || pdfDesignerFormatNumber(PDF_DESIGNER_DEFAULT_STEP); pdfDesignerSyncStepLabel(); };
+        $('pdfDesignerStep').onchange = (e) => { e.target.value = pdfDesignerSanitizeDecimalValue(e.target.value) || pdfDesignerFormatNumber(PDF_DESIGNER_DEFAULT_STEP); pdfDesignerSyncStepLabel({ forceDefault: true }); };
     }
     const nudge = (dx, dy) => async () => {
         const paths = getPdfDesignerSelectedPaths();
@@ -2692,6 +2751,15 @@ function bindPdfTemplateDesigner() {
     bindPdfDesignerHoldButton('pdfDesignerBulkSizeMinusBtn', () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, -pdfDesignerGetStep())));
     bindPdfDesignerHoldButton('pdfDesignerBulkSizePlusBtn', () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, pdfDesignerGetStep())));
     if ($('pdfDesignerModeBtn')) $('pdfDesignerModeBtn').onclick = pdfDesignerToggleMode;
+    if ($('pdfDesignerPanModeBtn')) $('pdfDesignerPanModeBtn').onclick = () => pdfDesignerSetMode('pan');
+    if ($('pdfDesignerEditModeBtn')) $('pdfDesignerEditModeBtn').onclick = () => pdfDesignerSetMode('edit');
+    if ($('pdfDesignerMoreToolsBtn')) $('pdfDesignerMoreToolsBtn').onclick = () => {
+        const panel = $('pdfDesignerPanel');
+        const more = $('pdfDesignerMoreToolsPanel');
+        const open = more?.classList.contains('hidden');
+        more?.classList.toggle('hidden', !open);
+        panel?.classList.toggle('designer-more-open', !!open);
+    };
     if ($('pdfDesignerCopyBtn')) $('pdfDesignerCopyBtn').onclick = pdfDesignerCopyTemplate;
     if ($('pdfDesignerPasteBtn')) $('pdfDesignerPasteBtn').onclick = () => pdfDesignerPasteTemplate();
     if ($('pdfDesignerZoomInBtn')) $('pdfDesignerZoomInBtn').onclick = () => pdfDesignerChangeZoom(PDF_DESIGNER_ZOOM_STEP);
