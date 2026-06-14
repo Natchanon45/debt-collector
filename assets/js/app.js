@@ -103,6 +103,7 @@ function toast(m, type = 'info') {
 // ===== v9.2 Document Template Designer (Coordinate Override) =====
 const PDF_TEMPLATE_OVERRIDE_LS = 'debt_collector_doc_template_overrides_v9_4';
 const PDF_DESIGNER_DEFAULT_STEP = 5;
+const PDF_DESIGNER_DEFAULT_MODE = (window.matchMedia && window.matchMedia('(max-width: 640px)').matches) ? 'pan' : 'edit';
 const PDF_DESIGNER_ZOOM_STEP = 0.25;
 const PDF_DESIGNER_MIN_ZOOM = 0.75;
 const PDF_DESIGNER_MAX_ZOOM = 4;
@@ -138,7 +139,7 @@ const PDF_TEMPLATE_FIELD_LABELS = {
     'signatures.witness2Name': 'ชื่อลายเซ็นพยาน 2',
     'signatures.writerName': 'ชื่อลายเซ็นผู้เขียน'
 };
-let pdfTemplateDesignerState = { selected: 'clause1.amountText', previewUrl: '', multi: new Set(), dragging: null, zoom: 1, step: PDF_DESIGNER_DEFAULT_STEP, clipboard: null, holdTimer: null, holdDelayTimer: null, renderTimer: null };
+let pdfTemplateDesignerState = { selected: 'clause1.amountText', previewUrl: '', multi: new Set(), dragging: null, zoom: 1, step: PDF_DESIGNER_DEFAULT_STEP, mode: PDF_DESIGNER_DEFAULT_MODE, clipboard: null, holdTimer: null, holdDelayTimer: null, renderTimer: null };
 function pdfTemplateLoadOverrides() {
     try { return JSON.parse(localStorage.getItem(PDF_TEMPLATE_OVERRIDE_LS) || '{}') || {}; }
     catch { return {}; }
@@ -179,8 +180,17 @@ function pdfDesignerFormatNumber(n) {
     if (!Number.isFinite(v)) return '0';
     return String(Math.round(v * 1000) / 1000).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
 }
+function pdfDesignerSanitizeDecimalValue(value) {
+    let text = String(value || '').replace(/[^0-9.]/g, '');
+    const firstDot = text.indexOf('.');
+    if (firstDot !== -1) text = text.slice(0, firstDot + 1) + text.slice(firstDot + 1).replace(/\./g, '');
+    if (text.startsWith('.')) text = '0' + text;
+    return text;
+}
 function pdfDesignerGetStep() {
-    const raw = $('pdfDesignerStep')?.value;
+    const input = $('pdfDesignerStep');
+    const raw = input ? pdfDesignerSanitizeDecimalValue(input.value) : '';
+    if (input && input.value !== raw) input.value = raw;
     const step = Number(raw || pdfTemplateDesignerState.step || PDF_DESIGNER_DEFAULT_STEP);
     const safe = Number.isFinite(step) && step > 0 ? step : PDF_DESIGNER_DEFAULT_STEP;
     pdfTemplateDesignerState.step = safe;
@@ -190,9 +200,27 @@ function pdfDesignerSyncStepLabel() {
     const input = $('pdfDesignerStep');
     const label = $('pdfDesignerStepLabel');
     const step = pdfDesignerGetStep();
-    if (input && (!input.value || Number(input.value) <= 0)) input.value = step;
+    if (input && !input.value) input.value = pdfDesignerFormatNumber(step);
     if (label) label.textContent = `Step ${pdfDesignerFormatNumber(step)}`;
     pdfDesignerUpdateSelectedStatus();
+}
+function pdfDesignerSetMode(mode) {
+    pdfTemplateDesignerState.mode = mode === 'edit' ? 'edit' : 'pan';
+    const panel = $('pdfDesignerPanel');
+    const btn = $('pdfDesignerModeBtn');
+    panel?.classList.toggle('designer-edit-mode', pdfTemplateDesignerState.mode === 'edit');
+    panel?.classList.toggle('designer-pan-mode', pdfTemplateDesignerState.mode !== 'edit');
+    if (btn) {
+        btn.dataset.mode = pdfTemplateDesignerState.mode;
+        btn.innerHTML = pdfTemplateDesignerState.mode === 'edit'
+            ? '<i class="bi bi-cursor"></i><span>แก้ฟิลด์</span>'
+            : '<i class="bi bi-hand-index-thumb"></i><span>เลื่อนเอกสาร</span>';
+        btn.title = pdfTemplateDesignerState.mode === 'edit' ? 'โหมดแก้ฟิลด์: แตะ/ลากฟิลด์ได้' : 'โหมดเลื่อนเอกสาร: ลากเพื่อเลื่อน ไม่โดนฟิลด์';
+    }
+    pdfDesignerRenderOverlay();
+}
+function pdfDesignerToggleMode() {
+    pdfDesignerSetMode(pdfTemplateDesignerState.mode === 'edit' ? 'pan' : 'edit');
 }
 
 function getPdfDesignerSelectedPaths() {
@@ -2468,10 +2496,12 @@ function pdfDesignerRenderOverlay() {
         }
         btn.dataset.path = path;
         btn.onclick = (e) => {
+            if (pdfTemplateDesignerState.mode !== 'edit') return;
             if (pdfTemplateDesignerState.dragging?.moved) return;
             pdfDesignerSelectField(path, false, e.shiftKey || e.ctrlKey || e.metaKey);
         };
         btn.onpointerdown = (e) => {
+            if (pdfTemplateDesignerState.mode !== 'edit') return;
             e.preventDefault();
             btn.setPointerCapture?.(e.pointerId);
             pdfDesignerSelectField(path, false, e.shiftKey || e.ctrlKey || e.metaKey);
@@ -2482,6 +2512,7 @@ function pdfDesignerRenderOverlay() {
             };
         };
         btn.onpointermove = (e) => {
+            if (pdfTemplateDesignerState.mode !== 'edit') return;
             const d = pdfTemplateDesignerState.dragging;
             if (!d || d.path !== path) return;
             const dx = ((e.clientX - d.startX) / rect.width) * naturalW;
@@ -2497,6 +2528,7 @@ function pdfDesignerRenderOverlay() {
             pdfDesignerUpdateSelectedStatus();
         };
         btn.onpointerup = async (e) => {
+            if (pdfTemplateDesignerState.mode !== 'edit') return;
             const d = pdfTemplateDesignerState.dragging;
             if (!d || d.path !== path) return;
             pdfTemplateDesignerState.dragging = null;
@@ -2540,7 +2572,7 @@ async function pdfDesignerRenderPreview(saveBeforeRender = false) {
     }, 'image/jpeg', 0.9);
 }
 async function openPdfTemplateDesigner() {
-    $('pdfDesignerPanel')?.classList.remove('hidden'); bindNoZoomDesigner();
+    $('pdfDesignerPanel')?.classList.remove('hidden'); bindNoZoomDesigner(); pdfDesignerSetMode(pdfTemplateDesignerState.mode || PDF_DESIGNER_DEFAULT_MODE);
     const sel = $('pdfDesignerField');
     if (sel && !sel.options.length) sel.innerHTML = pdfDesignerFieldOptions();
     if (sel) sel.value = pdfTemplateDesignerState.selected;
@@ -2573,28 +2605,33 @@ async function pdfDesignerRefreshAfterMutation(render = true) {
     pdfDesignerAfterMutation();
     if (render) await pdfDesignerRenderPreview(false);
 }
+function pdfDesignerCopyModeLabel(mode) {
+    return ({ xSize: 'แกน X + ขนาด Font', ySize: 'แกน Y + ขนาด Font', size: 'ขนาด Font', x: 'แกน X', y: 'แกน Y' })[mode] || 'แกน X + ขนาด Font';
+}
 function pdfDesignerCopyTemplate() {
     const path = $('pdfDesignerField')?.value || pdfTemplateDesignerState.selected;
     const field = getPdfFieldByPath(pdfDesignerCurrentMap(), path);
     if (!field) return toast('กรุณาเลือกฟิลด์ก่อน');
-    pdfTemplateDesignerState.clipboard = {
-        x: Number(field.x || 0),
-        y: Number(field.y || 0),
-        size: Number(field.size || 0),
-        minSize: Number(field.minSize || field.size || 0),
-        maxWidth: Number(field.maxWidth || 0),
-        align: field.align || 'left'
-    };
-    toast('คัดลอกตำแหน่งและรูปแบบแล้ว');
+    const mode = $('pdfDesignerCopyMode')?.value || 'xSize';
+    const size = Number(field.size || 0);
+    const minSize = Number(field.minSize || field.size || 0);
+    const clip = { mode };
+    if (mode === 'xSize' || mode === 'x') clip.x = Number(field.x || 0);
+    if (mode === 'ySize' || mode === 'y') clip.y = Number(field.y || 0);
+    if (mode === 'xSize' || mode === 'ySize' || mode === 'size') { clip.size = size; clip.minSize = minSize; }
+    pdfTemplateDesignerState.clipboard = clip;
+    toast(`คัดลอก ${pdfDesignerCopyModeLabel(mode)} แล้ว`);
 }
 async function pdfDesignerPasteTemplate() {
     const clip = pdfTemplateDesignerState.clipboard;
     if (!clip) return toast('ยังไม่มีค่าที่คัดลอกไว้');
     const paths = getPdfDesignerSelectedPaths();
     if (!paths.length) return toast('กรุณาเลือกฟิลด์ก่อน');
-    paths.forEach(path => setPdfOverrideField(path, { ...clip }));
+    const patch = {};
+    ['x','y','size','minSize'].forEach(k => { if (clip[k] != null) patch[k] = clip[k]; });
+    paths.forEach(path => setPdfOverrideField(path, patch));
     await pdfDesignerRefreshAfterMutation(true);
-    toast(`วางค่ากับ ${paths.length} ฟิลด์แล้ว`);
+    toast(`วาง ${pdfDesignerCopyModeLabel(clip.mode)} กับ ${paths.length} ฟิลด์แล้ว`);
 }
 function pdfDesignerStopHold() {
     clearTimeout(pdfTemplateDesignerState.holdDelayTimer);
@@ -2626,8 +2663,8 @@ function bindPdfTemplateDesigner() {
     if ($('savePdfDesignerBtn')) $('savePdfDesignerBtn').onclick = () => { pdfDesignerSaveSelectedSilent(); toast('บันทึกพิกัดเอกสารแล้ว'); };
     if ($('previewPdfDesignerBtn')) $('previewPdfDesignerBtn').onclick = () => pdfDesignerRenderPreview(true);
     if ($('pdfDesignerStep')) {
-        $('pdfDesignerStep').oninput = () => { pdfDesignerSyncStepLabel(); };
-        $('pdfDesignerStep').onchange = () => { pdfDesignerSyncStepLabel(); };
+        $('pdfDesignerStep').oninput = (e) => { e.target.value = pdfDesignerSanitizeDecimalValue(e.target.value); pdfDesignerSyncStepLabel(); };
+        $('pdfDesignerStep').onchange = (e) => { e.target.value = pdfDesignerSanitizeDecimalValue(e.target.value) || pdfDesignerFormatNumber(PDF_DESIGNER_DEFAULT_STEP); pdfDesignerSyncStepLabel(); };
     }
     const nudge = (dx, dy) => async () => {
         const paths = getPdfDesignerSelectedPaths();
@@ -2654,6 +2691,7 @@ function bindPdfTemplateDesigner() {
     bindPdfDesignerHoldButton('pdfDesignerBulkDownBtn', () => bulkRun(paths => pdfDesignerNudgePaths(paths, 0, pdfDesignerGetStep())));
     bindPdfDesignerHoldButton('pdfDesignerBulkSizeMinusBtn', () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, -pdfDesignerGetStep())));
     bindPdfDesignerHoldButton('pdfDesignerBulkSizePlusBtn', () => bulkRun(paths => pdfDesignerResizeFontPaths(paths, pdfDesignerGetStep())));
+    if ($('pdfDesignerModeBtn')) $('pdfDesignerModeBtn').onclick = pdfDesignerToggleMode;
     if ($('pdfDesignerCopyBtn')) $('pdfDesignerCopyBtn').onclick = pdfDesignerCopyTemplate;
     if ($('pdfDesignerPasteBtn')) $('pdfDesignerPasteBtn').onclick = () => pdfDesignerPasteTemplate();
     if ($('pdfDesignerZoomInBtn')) $('pdfDesignerZoomInBtn').onclick = () => pdfDesignerChangeZoom(PDF_DESIGNER_ZOOM_STEP);

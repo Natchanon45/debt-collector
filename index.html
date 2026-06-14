@@ -601,9 +601,10 @@
                     </div>
 
                     <div class="pdf-designer-top-tools">
+                        <button id="pdfDesignerModeBtn" class="secondary pdf-designer-mode-btn" type="button" title="สลับโหมดเลื่อนเอกสาร/แก้ฟิลด์"><i class="bi bi-hand-index-thumb"></i><span>เลื่อนเอกสาร</span></button>
                         <div class="pdf-step-control" aria-label="กำหนดระยะขยับ">
                             <span id="pdfDesignerStepLabel">Step 5</span>
-                            <input id="pdfDesignerStep" class="input" type="number" min="0.001" step="0.001" value="5" list="pdfDesignerStepPresets" title="กำหนดสเกลการขยับเอง เช่น 0.5, 2.5, 8">
+                            <input id="pdfDesignerStep" class="input" type="text" inputmode="decimal" pattern="[0-9.]*" value="5" placeholder="เช่น 0.5" title="กรอกได้เฉพาะตัวเลขและจุดทศนิยม เช่น 0.5, 2.5, 8">
                             <datalist id="pdfDesignerStepPresets">
                                 <option value="0.001"></option>
                                 <option value="0.01"></option>
@@ -629,6 +630,13 @@
                             <button id="pdfDesignerSizePlusBtn" class="secondary" type="button">A+</button>
                         </div>
                         <div class="pdf-copy-tools" aria-label="คัดลอกตำแหน่งและรูปแบบ">
+                            <select id="pdfDesignerCopyMode" class="input" title="เลือกค่าที่ต้องการคัดลอก">
+                                <option value="xSize">X + Font</option>
+                                <option value="ySize">Y + Font</option>
+                                <option value="size">Font เท่านั้น</option>
+                                <option value="x">X เท่านั้น</option>
+                                <option value="y">Y เท่านั้น</option>
+                            </select>
                             <button id="pdfDesignerCopyBtn" class="secondary" type="button" title="คัดลอกค่าจากฟิลด์ปัจจุบัน"><i class="bi bi-clipboard"></i></button>
                             <button id="pdfDesignerPasteBtn" class="secondary" type="button" title="วางค่าที่คัดลอกไว้ให้ฟิลด์ที่เลือก"><i class="bi bi-clipboard-check"></i></button>
                         </div>
