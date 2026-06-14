@@ -206,14 +206,14 @@ function pdfDesignerSyncStepLabel(options = {}) {
     // Previously this function immediately restored the default value (5),
     // so users could not delete it and type a custom scale.
     if (input && raw === '' && !options.forceDefault) {
-        if (label) label.textContent = 'Step -';
+        if (label) label.textContent = '-x';
         pdfDesignerUpdateSelectedStatus();
         return;
     }
 
     const step = pdfDesignerGetStep();
     if (input && raw === '' && options.forceDefault) input.value = pdfDesignerFormatNumber(step);
-    if (label) label.textContent = `Step ${pdfDesignerFormatNumber(step)}`;
+    if (label) label.textContent = `${pdfDesignerFormatNumber(step)}x`;
     pdfDesignerUpdateSelectedStatus();
 }
 function pdfDesignerSetMode(mode) {
@@ -3032,3 +3032,22 @@ try {
     console.error('App init error:', e);
     toast('โหลดระบบไม่สำเร็จ: ' + e.message);
 }
+
+
+// FINAL FIX v9.5.3: step +/- buttons for mobile PDF Designer
+function pdfDesignerChangeStep(delta) {
+    const input = document.getElementById('pdfDesignerStep');
+    if (!input) return;
+    const cleaned = (typeof pdfDesignerSanitizeDecimalValue === 'function')
+        ? pdfDesignerSanitizeDecimalValue(input.value || '1')
+        : String(input.value || '1').replace(/[^0-9.]/g, '');
+    const current = parseFloat(cleaned || '1') || 1;
+    let next = current + Number(delta || 0);
+    if (!Number.isFinite(next) || next <= 0) next = 0.001;
+    if (next >= 1) next = Math.round(next);
+    input.value = Number.isInteger(next) ? String(next) : next.toFixed(3).replace(/\.?0+$/, '');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    if (typeof pdfDesignerSyncStepLabel === 'function') pdfDesignerSyncStepLabel({ forceDefault: true });
+}
+window.pdfDesignerChangeStep = pdfDesignerChangeStep;
