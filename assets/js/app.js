@@ -457,6 +457,41 @@ async function alertAction(options = {}) {
     }
     toast(title || text);
 }
+
+function showBlockingLoader(title = 'กำลังดำเนินการ', detail = 'กรุณารอสักครู่...') {
+    if (!window.Swal?.fire) {
+        toast(title);
+        return;
+    }
+    cleanupSwalCheckboxLeak();
+    window.Swal.fire({
+        title,
+        html: `
+            <div class="dc-blocking-loader-content">
+                <div class="dc-blocking-spinner" aria-hidden="true"></div>
+                <div class="dc-blocking-loader-detail">${escapeHtml(detail)}</div>
+            </div>
+        `,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        heightAuto: false,
+        backdrop: true,
+        customClass: {
+            container: 'dc-blocking-loader-container',
+            popup: 'dc-blocking-loader-popup'
+        },
+        didOpen: () => {
+            cleanupSwalCheckboxLeak(false);
+        },
+        willClose: () => cleanupSwalCheckboxLeak(),
+        didClose: () => cleanupSwalCheckboxLeak()
+    });
+}
+
+function hideBlockingLoader() {
+    if (window.Swal?.close) window.Swal.close();
+}
 function getProfileName() {
     const p = (latestData?.settings?.profile) || latestData?.settings || {};
     return p.alias || p.displayName || currentUser?.displayName || currentUser?.email || 'ผู้ใช้งาน';
@@ -1402,7 +1437,7 @@ const contractSigState = {};
 let editingContractNo = '';
 let editingContractId = '';
 const SIG_IDS = ['sigLender', 'sigBorrower', 'sigWitness1', 'sigWitness2', 'sigWriter'];
-const SIGNATURE_CANVAS_RATIO = 2; // v8.0.1: fixed ratio so PC/Mobile signatures render consistently
+const SIGNATURE_CANVAS_RATIO = Math.max(window.devicePixelRatio || 1, 3); // v9.6.3: higher resolution for sharper PC/Mobile signatures
 function signatureState(id) {
     const c = $(id);
     if (!c) return null;
@@ -1962,8 +1997,7 @@ async function ensureAutoDebtForLockedContract(contract) {
     if (latestData?.contracts) {
         latestData.contracts = latestData.contracts.map(x => x.id === contract.id ? { ...x, status: 'locked', locked: true, autoDebtCreated: true, debtGeneratedDate: today(), installmentCount: installments.length, totalDebtAmount } : x);
     }
-    toast(`ล็อกเอกสารแล้ว และสร้างก้อนหนี้ ${installments.length} งวดแล้ว`);
-    return true;
+    return { created: true, count: installments.length, totalDebtAmount };
 }
 
 async function saveContractPdf(row, blob) {
@@ -2393,7 +2427,7 @@ async function buildContractPdfBlob(row, debtor) {
     const canvas = await renderContractImageCanvas(row, debtor);
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
-    pdf.addImage(canvas.toDataURL('image/jpeg', 0.86), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'SLOW');
     return pdf.output('blob');
 }
 
@@ -2419,11 +2453,13 @@ async function generateContract() {
     const p = currentProfile();
     await saveSettings({ profile: { ...p, lenderName: row.lenderName, phone: row.lenderPhone || p.phone || '', lenderIdCard: row.lenderIdCard, lenderAddress: row.lenderAddress } });
     try {
-        toast('กำลังสร้างเอกสาร...');
+        showBlockingLoader('กำลังสร้างเอกสารสัญญา', 'ระบบกำลังสร้าง PDF และบันทึกข้อมูล กรุณารอจนกว่าจะเสร็จ');
         const blob = await buildContractPdfBlob(row, debtor);
         await saveContractPdf(row, blob);
+        latestData = await getData();
+        hideBlockingLoader();
         toast(editingContractId ? 'บันทึกแก้ไขสัญญาแล้ว' : 'สร้างและบันทึกสัญญาแล้ว'); editingContractId = ''; editingContractNo = ''; $('contractFormCard').classList.add('hidden'); render(); switchTab('contracts');
-    } catch (e) { console.error(e); toast('สร้างสัญญาไม่สำเร็จ: ' + e.message); }
+    } catch (e) { console.error(e); hideBlockingLoader(); toast('สร้างสัญญาไม่สำเร็จ: ' + e.message); }
 }
 
 
@@ -2854,13 +2890,33 @@ window.lockContractDocument = async id => {
         confirmButtonColor: '#16a34a'
     });
     if (!ok) return toast('ยกเลิกการล็อกเอกสาร');
-    await updateRow('contracts', id, { status: 'locked', locked: true, lockedDate: today(), updatedDate: today() });
-    latestData = await getData();
-    const lockedRow = (latestData.contracts || []).find(x => x.id === id) || { ...row, status: 'locked', locked: true };
-    await ensureAutoDebtForLockedContract(lockedRow);
-    latestData = await getData();
-    await alertAction({ icon: 'success', title: 'ล็อกเอกสารสำเร็จ', text: 'เอกสารถูกล็อกเรียบร้อยแล้ว ไม่สามารถแก้ไขข้อมูลใดๆ ได้อีก' });
-    render();
+
+    showBlockingLoader('กำลังสร้างเอกสารสัญญา', 'ระบบกำลังล็อกเอกสารและสร้างรายการชำระ กรุณารอจนกว่าจะเสร็จ');
+    try {
+        await updateRow('contracts', id, { status: 'locked', locked: true, lockedDate: today(), updatedDate: today() });
+        latestData = await getData();
+        const lockedRow = (latestData.contracts || []).find(x => x.id === id) || { ...row, status: 'locked', locked: true };
+        const debtResult = await ensureAutoDebtForLockedContract(lockedRow);
+        latestData = await getData();
+        render();
+        hideBlockingLoader();
+        const installmentText = debtResult?.created
+            ? `สร้างรายการชำระ ${debtResult.count || 0} งวดเรียบร้อยแล้ว`
+            : 'ตรวจพบว่ามีรายการชำระของสัญญานี้อยู่แล้ว';
+        await alertAction({
+            icon: 'success',
+            title: 'สร้างเอกสารสัญญาสำเร็จ',
+            text: `เอกสารถูกล็อกเรียบร้อยแล้ว ไม่สามารถแก้ไขข้อมูลใดๆ ได้อีก และ${installmentText}`
+        });
+    } catch (e) {
+        console.error(e);
+        hideBlockingLoader();
+        await alertAction({
+            icon: 'error',
+            title: 'ล็อกเอกสารไม่สำเร็จ',
+            text: e?.message || 'ไม่สามารถล็อกเอกสารหรือสร้างรายการชำระได้'
+        });
+    }
 };
 
 window.openContractPdf = async id => {
@@ -2878,7 +2934,7 @@ window.openContractPdf = async id => {
         const canvas = await renderContractImageCanvas(row, debtor);
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.86), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297, undefined, 'SLOW');
         const blobUrl = URL.createObjectURL(pdf.output('blob'));
         showPreviewModal(row.fileName || 'สัญญากู้ยืมเงิน.pdf', blobUrl, 'application/pdf', row.fileName || 'loan-contract.pdf');
     } catch (e) {

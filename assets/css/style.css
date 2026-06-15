@@ -5124,3 +5124,35 @@ body.signature-drawing{overflow:hidden!important;touch-action:none!important}
     #pdfDesignerPanel .pdf-step-compact #pdfDesignerStep{width:38px!important;min-width:38px!important;max-width:38px!important;flex-basis:38px!important;}
     #pdfDesignerPanel .pdf-nudge-compact{gap:4px!important;}
 }
+
+/* ===== v9.6.3 Blocking loader for long PDF/lock operations ===== */
+.dc-blocking-loader-container.swal2-container {
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+.dc-blocking-loader-popup.swal2-popup {
+    border-radius: 22px !important;
+    padding: 22px 20px !important;
+}
+.dc-blocking-loader-content {
+    display: grid;
+    place-items: center;
+    gap: 12px;
+    padding: 6px 0 2px;
+}
+.dc-blocking-spinner {
+    width: 46px;
+    height: 46px;
+    border: 4px solid rgba(22, 163, 74, .18);
+    border-top-color: #16a34a;
+    border-radius: 50%;
+    animation: dcBlockingSpin .8s linear infinite;
+}
+.dc-blocking-loader-detail {
+    color: #475569;
+    font-weight: 800;
+    line-height: 1.55;
+}
+@keyframes dcBlockingSpin {
+    to { transform: rotate(360deg); }
+}
