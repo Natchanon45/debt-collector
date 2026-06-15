@@ -463,26 +463,57 @@
                         <button id="newGenericDocBtn" class="round-action" type="button"><i class="bi bi-plus-circle"></i> สร้างเอกสาร</button>
                     </div>
                     <p class="note">สร้างเอกสารแบบพิมพ์เองได้ทั้งหมด คล้าย Microsoft Word ใช้เป็นสัญญาซื้อขายทั่วไป หนังสือรับรอง หรือเอกสารอื่น ๆ พร้อมส่งลิงก์ให้คู่สัญญาเซ็น</p>
-                    <div class="generic-doc-toolbar generic-doc-toolbar-phase2" aria-label="เครื่องมือเอกสารทั่วไป">
-                        <button type="button" data-gdoc-cmd="bold" title="ตัวหนา"><i class="bi bi-type-bold"></i></button>
-                        <button type="button" data-gdoc-cmd="italic" title="ตัวเอียง"><i class="bi bi-type-italic"></i></button>
-                        <button type="button" data-gdoc-cmd="underline" title="ขีดเส้นใต้"><i class="bi bi-type-underline"></i></button>
-                        <button type="button" id="genericDocFontMinusBtn" title="ลดขนาดฟอนต์"><strong>A-</strong></button>
-                        <button type="button" id="genericDocFontPlusBtn" title="เพิ่มขนาดฟอนต์"><strong>A+</strong></button>
-                        <label class="generic-font-control" title="ขนาดฟอนต์เริ่มต้นของเอกสาร"><i class="bi bi-type"></i><input id="genericDocBaseFontSize" class="input" type="number" min="10" max="72" step="1" value="18"></label>
-                        <select id="genericDocFormatSelect" class="input generic-format-select" title="รูปแบบหัวข้อ">
-                            <option value="P">ย่อหน้า</option>
-                            <option value="H1">หัวข้อ 1</option>
-                            <option value="H2">หัวข้อ 2</option>
-                            <option value="H3">หัวข้อ 3</option>
-                        </select>
-                        <button type="button" data-gdoc-cmd="justifyLeft" title="ชิดซ้าย"><i class="bi bi-text-left"></i></button>
-                        <button type="button" data-gdoc-cmd="justifyCenter" title="กึ่งกลาง"><i class="bi bi-text-center"></i></button>
-                        <button type="button" data-gdoc-cmd="justifyRight" title="ชิดขวา"><i class="bi bi-text-right"></i></button>
-                        <button type="button" data-gdoc-cmd="insertUnorderedList" title="รายการจุด"><i class="bi bi-list-ul"></i></button>
-                        <button type="button" data-gdoc-cmd="insertOrderedList" title="รายการเลข"><i class="bi bi-list-ol"></i></button>
-                        <button type="button" id="genericDocLinkBtn" title="แทรกลิงก์"><i class="bi bi-link-45deg"></i></button>
-                        <button type="button" id="genericDocInsertSignatureBlockBtn" title="ช่องลายเซ็น"><i class="bi bi-pen"></i></button>
+                    <div class="generic-doc-toolbar generic-doc-toolbar-phase3" aria-label="เครื่องมือเอกสารทั่วไป">
+                        <div class="gdoc-toolbar-group">
+                            <button type="button" data-gdoc-cmd="undo" title="ย้อนกลับ"><i class="bi bi-arrow-counterclockwise"></i></button>
+                            <button type="button" data-gdoc-cmd="redo" title="ทำซ้ำ"><i class="bi bi-arrow-clockwise"></i></button>
+                        </div>
+                        <div class="gdoc-toolbar-group gdoc-toolbar-format">
+                            <select id="genericDocFormatSelect" class="input generic-format-select" title="รูปแบบข้อความ">
+                                <option value="P">ย่อหน้า</option>
+                                <option value="H1">หัวข้อ 1</option>
+                                <option value="H2">หัวข้อ 2</option>
+                                <option value="H3">หัวข้อ 3</option>
+                                <option value="BLOCKQUOTE">อ้างอิง</option>
+                            </select>
+                            <select id="genericDocFontFamilySelect" class="input generic-font-family-select" title="ฟอนต์">
+                                <option value="Sarabun">Sarabun</option>
+                                <option value="Noto Sans Thai">Noto Sans Thai</option>
+                                <option value="TH Sarabun New">TH Sarabun</option>
+                                <option value="Arial">Arial</option>
+                                <option value="Tahoma">Tahoma</option>
+                            </select>
+                            <button type="button" id="genericDocFontMinusBtn" class="gdoc-a-btn" title="ลดขนาดฟอนต์"><strong>A-</strong></button>
+                            <input id="genericDocBaseFontSize" class="input gdoc-font-size-input" type="number" min="10" max="72" step="1" value="18" title="ขนาดฟอนต์">
+                            <button type="button" id="genericDocFontPlusBtn" class="gdoc-a-btn" title="เพิ่มขนาดฟอนต์"><strong>A+</strong></button>
+                        </div>
+                        <div class="gdoc-toolbar-group">
+                            <button type="button" data-gdoc-cmd="bold" title="ตัวหนา"><i class="bi bi-type-bold"></i></button>
+                            <button type="button" data-gdoc-cmd="italic" title="ตัวเอียง"><i class="bi bi-type-italic"></i></button>
+                            <button type="button" data-gdoc-cmd="underline" title="ขีดเส้นใต้"><i class="bi bi-type-underline"></i></button>
+                            <button type="button" data-gdoc-cmd="strikeThrough" title="ขีดฆ่า"><i class="bi bi-type-strikethrough"></i></button>
+                            <button type="button" id="genericDocTextColorBtn" title="สีตัวอักษร"><i class="bi bi-palette"></i></button>
+                            <input id="genericDocTextColor" type="color" value="#111827" title="เลือกสีตัวอักษร">
+                        </div>
+                        <div class="gdoc-toolbar-group">
+                            <button type="button" data-gdoc-cmd="justifyLeft" title="ชิดซ้าย"><i class="bi bi-text-left"></i></button>
+                            <button type="button" data-gdoc-cmd="justifyCenter" title="กึ่งกลาง"><i class="bi bi-text-center"></i></button>
+                            <button type="button" data-gdoc-cmd="justifyRight" title="ชิดขวา"><i class="bi bi-text-right"></i></button>
+                            <button type="button" data-gdoc-cmd="justifyFull" title="เต็มบรรทัด"><i class="bi bi-justify"></i></button>
+                        </div>
+                        <div class="gdoc-toolbar-group">
+                            <button type="button" data-gdoc-cmd="insertUnorderedList" title="รายการจุด"><i class="bi bi-list-ul"></i></button>
+                            <button type="button" data-gdoc-cmd="insertOrderedList" title="รายการเลข"><i class="bi bi-list-ol"></i></button>
+                            <button type="button" data-gdoc-cmd="outdent" title="ลดย่อหน้า"><i class="bi bi-text-indent-right"></i></button>
+                            <button type="button" data-gdoc-cmd="indent" title="เพิ่มย่อหน้า"><i class="bi bi-text-indent-left"></i></button>
+                        </div>
+                        <div class="gdoc-toolbar-group">
+                            <button type="button" id="genericDocLinkBtn" title="แทรกลิงก์"><i class="bi bi-link-45deg"></i></button>
+                            <button type="button" id="genericDocHrBtn" title="เส้นคั่น"><i class="bi bi-dash-lg"></i></button>
+                            <button type="button" id="genericDocTableBtn" title="ตาราง"><i class="bi bi-table"></i></button>
+                            <button type="button" id="genericDocInsertSignatureBlockBtn" title="ช่องลายเซ็น"><i class="bi bi-pen"></i></button>
+                            <button type="button" data-gdoc-cmd="removeFormat" title="ล้างรูปแบบ"><i class="bi bi-eraser"></i></button>
+                        </div>
                     </div>
                 </div>
 

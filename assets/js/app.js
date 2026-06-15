@@ -1927,6 +1927,27 @@ function genericDocApplyFormat(tag) {
     genericDocFocusEditor();
     document.execCommand('formatBlock', false, tag || 'P');
 }
+function genericDocApplyFontFamily(family) {
+    const editor = genericDocFocusEditor();
+    if (!editor) return;
+    const safeFamily = String(family || 'Sarabun').replace(/[\"']/g, '').trim() || 'Sarabun';
+    const sel = window.getSelection?.();
+    const hasSelection = sel && sel.rangeCount && !sel.getRangeAt(0).collapsed && editor.contains(sel.anchorNode) && editor.contains(sel.focusNode);
+    if (!hasSelection) {
+        editor.style.fontFamily = `'${safeFamily}', 'Noto Sans Thai', sans-serif`;
+        return;
+    }
+    document.execCommand('fontName', false, safeFamily);
+}
+function genericDocApplyTextColor(color) {
+    genericDocFocusEditor();
+    const safeColor = /^#[0-9a-fA-F]{6}$/.test(String(color || '')) ? color : '#111827';
+    document.execCommand('foreColor', false, safeColor);
+}
+function genericDocInsertHtml(html) {
+    genericDocFocusEditor();
+    document.execCommand('insertHTML', false, html);
+}
 function genericDocCreateLink() {
     genericDocFocusEditor();
     const url = prompt('กรอกลิงก์ URL');
@@ -1943,10 +1964,18 @@ function bindGenericDocumentUi() {
     document.querySelectorAll('[data-gdoc-cmd]').forEach(btn => btn.onclick = () => { genericDocFocusEditor(); document.execCommand(btn.dataset.gdocCmd, false, null); });
     if ($('genericDocFontMinusBtn')) $('genericDocFontMinusBtn').onclick = () => genericDocChangeFont(-1);
     if ($('genericDocFontPlusBtn')) $('genericDocFontPlusBtn').onclick = () => genericDocChangeFont(1);
-    if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').onchange = e => genericDocApplyFontSize(e.target.value);
+    if ($('genericDocBaseFontSize')) {
+        $('genericDocBaseFontSize').onchange = e => genericDocApplyFontSize(e.target.value);
+        $('genericDocBaseFontSize').oninput = e => { const v = Number(e.target.value || 18); if (v >= 10 && v <= 72) genericDocApplyFontSize(v); };
+    }
     if ($('genericDocFormatSelect')) $('genericDocFormatSelect').onchange = e => genericDocApplyFormat(e.target.value);
+    if ($('genericDocFontFamilySelect')) $('genericDocFontFamilySelect').onchange = e => genericDocApplyFontFamily(e.target.value);
+    if ($('genericDocTextColor')) $('genericDocTextColor').onchange = e => genericDocApplyTextColor(e.target.value);
+    if ($('genericDocTextColorBtn')) $('genericDocTextColorBtn').onclick = () => $('genericDocTextColor')?.click();
     if ($('genericDocLinkBtn')) $('genericDocLinkBtn').onclick = genericDocCreateLink;
-    if ($('genericDocInsertSignatureBlockBtn')) $('genericDocInsertSignatureBlockBtn').onclick = () => { genericDocFocusEditor(); document.execCommand('insertHTML', false, `<div data-signature-block="true" style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:42px;text-align:center"><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 1<br>(........................................)</div><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 2<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 1<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 2<br>(........................................)</div></div>`); };
+    if ($('genericDocHrBtn')) $('genericDocHrBtn').onclick = () => genericDocInsertHtml('<hr style="border:0;border-top:1px solid #cbd5e1;margin:18px 0">');
+    if ($('genericDocTableBtn')) $('genericDocTableBtn').onclick = () => genericDocInsertHtml('<table style="width:100%;border-collapse:collapse;margin:14px 0"><tbody><tr><td style="border:1px solid #cbd5e1;padding:8px">หัวข้อ</td><td style="border:1px solid #cbd5e1;padding:8px">รายละเอียด</td></tr><tr><td style="border:1px solid #cbd5e1;padding:8px">&nbsp;</td><td style="border:1px solid #cbd5e1;padding:8px">&nbsp;</td></tr></tbody></table>');
+    if ($('genericDocInsertSignatureBlockBtn')) $('genericDocInsertSignatureBlockBtn').onclick = () => { genericDocInsertHtml(`<div data-signature-block="true" style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:42px;text-align:center"><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 1<br>(........................................)</div><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 2<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 1<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 2<br>(........................................)</div></div>`); };
 }
 
 async function initFirebase() {
