@@ -478,6 +478,113 @@ async function alertAction(options = {}) {
     toast(title || text);
 }
 
+
+async function copyTextForMobile(text, inputEl = null) {
+    const value = String(text || '');
+    if (!value) return false;
+    try {
+        if (navigator.clipboard?.writeText && window.isSecureContext) {
+            await navigator.clipboard.writeText(value);
+            return true;
+        }
+    } catch (e) {
+        console.warn('Clipboard API failed, using fallback', e);
+    }
+    try {
+        const el = inputEl || document.createElement('textarea');
+        const shouldAppend = !inputEl;
+        if (shouldAppend) {
+            el.value = value;
+            el.setAttribute('readonly', 'readonly');
+            el.style.position = 'fixed';
+            el.style.left = '-9999px';
+            el.style.top = '0';
+            document.body.appendChild(el);
+        }
+        el.focus();
+        el.select();
+        if (typeof el.setSelectionRange === 'function') el.setSelectionRange(0, value.length);
+        const ok = document.execCommand('copy');
+        if (shouldAppend) document.body.removeChild(el);
+        return !!ok;
+    } catch (e) {
+        console.warn('Fallback copy failed', e);
+        return false;
+    }
+}
+
+async function shareOrCopySigningLink(link, title = 'ลิงก์สำหรับลงนามเอกสาร', text = 'กรุณาตรวจสอบและลงนามเอกสาร') {
+    const url = String(link || '').trim();
+    if (!url) return toast('ไม่พบลิงก์สำหรับลงนาม');
+
+    if (!window.Swal?.fire) {
+        const ok = await copyTextForMobile(url);
+        if (ok) toast('คัดลอกลิงก์แล้ว');
+        else window.prompt('คัดลอกลิงก์นี้', url);
+        return;
+    }
+
+    await window.Swal.fire({
+        icon: 'success',
+        title,
+        html: `
+            <div class="sign-link-dialog">
+                <p class="sign-link-help">ส่งลิงก์นี้ให้คู่สัญญาหรือพยานเปิดดูเอกสารและวาดลายเซ็น</p>
+                <input id="signLinkCopyInput" class="input sign-link-input" value="${escapeHtml(url)}" readonly>
+                <div class="sign-link-actions">
+                    <button type="button" id="signLinkShareBtn" class="primary"><i class="bi bi-share"></i> แชร์</button>
+                    <button type="button" id="signLinkCopyBtn" class="secondary"><i class="bi bi-link-45deg"></i> คัดลอก</button>
+                </div>
+                <small class="sign-link-note">บน iPhone แนะนำให้กด “แชร์” เพื่อส่งผ่าน LINE, Messages หรือ Mail</small>
+            </div>
+        `,
+        showConfirmButton: true,
+        confirmButtonText: `<span class="dc-swal-btn-icon"><i class="bi bi-check-circle"></i><span>ตกลง</span></span>`,
+        confirmButtonColor: '#16a34a',
+        heightAuto: false,
+        didOpen: (popup) => {
+            cleanupSwalCheckboxLeak(false);
+            const input = popup.querySelector('#signLinkCopyInput');
+            const copyBtn = popup.querySelector('#signLinkCopyBtn');
+            const shareBtn = popup.querySelector('#signLinkShareBtn');
+            const selectLink = () => {
+                if (!input) return;
+                input.focus();
+                input.select();
+                if (typeof input.setSelectionRange === 'function') input.setSelectionRange(0, url.length);
+            };
+            input?.addEventListener('click', selectLink);
+            copyBtn?.addEventListener('click', async () => {
+                const ok = await copyTextForMobile(url, input);
+                if (ok) toast('คัดลอกลิงก์แล้ว');
+                else {
+                    selectLink();
+                    toast('คัดลอกอัตโนมัติไม่ได้ กรุณากดค้างที่ลิงก์แล้วคัดลอก');
+                }
+            });
+            shareBtn?.addEventListener('click', async () => {
+                try {
+                    if (navigator.share) {
+                        await navigator.share({ title, text, url });
+                        toast('เปิดเมนูแชร์แล้ว');
+                    } else {
+                        const ok = await copyTextForMobile(url, input);
+                        toast(ok ? 'คัดลอกลิงก์แล้ว' : 'อุปกรณ์นี้ไม่รองรับการแชร์');
+                    }
+                } catch (e) {
+                    if (e?.name !== 'AbortError') {
+                        const ok = await copyTextForMobile(url, input);
+                        toast(ok ? 'คัดลอกลิงก์แล้ว' : 'ไม่สามารถแชร์ลิงก์ได้');
+                    }
+                }
+            });
+            setTimeout(selectLink, 80);
+        },
+        willClose: () => cleanupSwalCheckboxLeak(),
+        didClose: () => cleanupSwalCheckboxLeak()
+    });
+}
+
 function showBlockingLoader(title = 'กำลังดำเนินการ', detail = 'กรุณารอสักครู่...') {
     if (!window.Swal?.fire) {
         toast(title);
@@ -551,7 +658,7 @@ function setLocal(d) {
     safeLocalStorageSet(LS, JSON.stringify(stripHeavyLocalCache(merged)));
 }
 
-async function getData() { if (demoMode) return local(); const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const names = ['debtors', 'debts', 'payments', 'followups', 'documents', 'contracts', 'settings']; const result = {}; for (const n of names) { const snap = await getDocs(collection(db, `users/${currentUser.uid}/${n}`)); result[n] = snap.docs.map(d => ({ id: d.id, ...d.data() })) } result.settings = (result.settings || []).reduce((acc, x) => ({ ...acc, ...x, profile: { ...(acc.profile || {}), ...(x.profile || {}) } }), {}); return { ...blank, ...result } }
+async function getData() { if (demoMode) return local(); const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const names = ['debtors', 'debts', 'payments', 'followups', 'documents', 'contracts', 'documentTemplates', 'genericDocuments', 'settings']; const result = {}; for (const n of names) { const snap = await getDocs(collection(db, `users/${currentUser.uid}/${n}`)); result[n] = snap.docs.map(d => ({ id: d.id, ...d.data() })) } result.settings = (result.settings || []).reduce((acc, x) => ({ ...acc, ...x, profile: { ...(acc.profile || {}), ...(x.profile || {}) } }), {}); return { ...blank, ...result } }
 async function add(type, row) { if (demoMode) { const d = local(); const id = uid(); d[type].push({ id, ...row }); setLocal(d); return id } const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const ref = await addDoc(collection(db, `users/${currentUser.uid}/${type}`), { ...row, createdAt: serverTimestamp() }); return ref.id }
 async function addMany(type, rows) {
     const list = Array.isArray(rows) ? rows : [];
@@ -723,6 +830,7 @@ async function render() {
         : '<div class="empty">ยังไม่มีลูกหนี้</div>';
     fillSelects(d, c);
     fillLists(d, c); renderContractList(d, c);
+    renderGenericDocuments(d);
     fillSettings(d.settings || {});
     if (typeof decorateButtons === 'function') setTimeout(() => { decorateButtons(); restoreUiChrome(); }, 0);
 }
@@ -1583,8 +1691,266 @@ async function openPublicSignaturePage(token) {
     }
 }
 
+
+
+/* ===== Generic Documents / Template + Public Draw Signature v9.6.5 ===== */
+let editingGenericDocId = '';
+let editingGenericTemplateId = '';
+function genericDefaultHtml() {
+    const dateText = formatDate(today());
+    return `<h2 style="text-align:center">สัญญาซื้อขายทั่วไป</h2>
+<p>ทำที่ ........................................................ วันที่ ${dateText}</p>
+<p>สัญญาฉบับนี้ทำขึ้นระหว่าง <strong>........................................................</strong> ซึ่งต่อไปนี้เรียกว่า “ผู้ขาย” ฝ่ายหนึ่ง กับ <strong>........................................................</strong> ซึ่งต่อไปนี้เรียกว่า “ผู้ซื้อ” อีกฝ่ายหนึ่ง</p>
+<p>คู่สัญญาทั้งสองฝ่ายตกลงทำสัญญาซื้อขายทรัพย์สิน/สินค้า ดังต่อไปนี้</p>
+<ol>
+<li>รายการทรัพย์สิน/สินค้า: ........................................................</li>
+<li>ราคาซื้อขายรวมทั้งสิ้น: ........................................................ บาท</li>
+<li>เงื่อนไขการชำระเงิน: ........................................................</li>
+<li>วันส่งมอบ/สถานที่ส่งมอบ: ........................................................</li>
+<li>เงื่อนไขอื่น ๆ: ........................................................</li>
+</ol>
+<p>คู่สัญญาได้อ่านข้อความและเข้าใจโดยตลอดแล้ว จึงได้ลงลายมือชื่อไว้เป็นสำคัญ</p>
+<div data-signature-block="true" style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:42px;text-align:center">
+<div>ลงชื่อ ........................................ ผู้ขาย<br>(........................................)</div>
+<div>ลงชื่อ ........................................ ผู้ซื้อ<br>(........................................)</div>
+<div>ลงชื่อ ........................................ พยาน<br>(........................................)</div>
+<div>ลงชื่อ ........................................ พยาน<br>(........................................)</div>
+</div>`;
+}
+function openGenericDocForm(docId = '') {
+    editingGenericDocId = docId || '';
+    const d = latestData || blank;
+    fillGenericDocTemplateSelect(d);
+    const row = docId ? (d.genericDocuments || []).find(x => x.id === docId) : null;
+    $('genericDocFormCard')?.classList.remove('hidden');
+    if ($('genericDocTitle')) $('genericDocTitle').value = row?.title || '';
+    if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(row?.fontSize || 18);
+    if ($('genericDocEditor')) {
+        $('genericDocEditor').innerHTML = row?.html || genericDefaultHtml();
+        $('genericDocEditor').style.fontSize = `${Number(row?.fontSize || 18)}px`;
+    }
+    $('genericDocFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function fillGenericDocTemplateSelect(d = latestData || blank) {
+    const sel = $('genericDocTemplateSelect');
+    if (!sel) return;
+    const list = d.documentTemplates || [];
+    sel.innerHTML = `<option value="">เอกสารเปล่า / ค่าเริ่มต้น</option>` + list.map(x => `<option value="${x.id}">${escapeHtml(x.name || x.title || 'Template')}</option>`).join('');
+}
+function renderGenericDocuments(d = latestData || blank) {
+    fillGenericDocTemplateSelect(d);
+    if ($('genericDocList')) {
+        const docs = (d.genericDocuments || []).slice().sort((a,b)=>String(b.createdDate||'').localeCompare(String(a.createdDate||'')));
+        $('genericDocList').innerHTML = docs.length ? docs.map(x => {
+            const sigCount = ['party1Signature','party2Signature','witness1Signature','witness2Signature'].filter(k => x[k]).length;
+            return `<div class="item">
+                <div><div class="item-title">${escapeHtml(x.title || 'เอกสารทั่วไป')}</div>
+                <div class="item-sub">${escapeHtml(x.status || 'draft')} · ลายเซ็น ${sigCount}/4 · ${formatDate(x.createdDate || '')}</div>
+                ${x.signLink ? `<div class="generic-link-box">${escapeHtml(x.signLink)}</div>` : ''}</div>
+                <div class="item-actions">
+                    <button class="secondary" onclick="viewGenericDocument('${x.id}')"><i class="bi bi-eye"></i></button>
+                    <button class="secondary" onclick="openGenericDocForm('${x.id}')"><i class="bi bi-pencil"></i></button>
+                    <button class="secondary" onclick="createGenericDocSignLink('${x.id}')"><i class="bi bi-link-45deg"></i></button>
+                    <button class="secondary" onclick="importGenericDocSignatures('${x.id}')"><i class="bi bi-pen"></i></button>
+                    <button class="primary" onclick="exportGenericDocumentPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>
+                </div>
+            </div>`;
+        }).join('') : '<div class="empty">ยังไม่มีเอกสารทั่วไป</div>';
+    }
+    if ($('genericTemplateList')) {
+        const tpl = d.documentTemplates || [];
+        $('genericTemplateList').innerHTML = tpl.length ? tpl.map(x => `<div class="item"><div><div class="item-title">${escapeHtml(x.name || x.title || 'Template')}</div><div class="item-sub">คลิกเพื่อเริ่มเอกสารจาก Template นี้</div></div><div class="item-actions"><button class="secondary" onclick="useGenericTemplate('${x.id}')"><i class="bi bi-plus-circle"></i> ใช้</button></div></div>`).join('') : '<div class="empty">ยังไม่มี Template</div>';
+    }
+}
+window.openGenericDocForm = openGenericDocForm;
+window.useGenericTemplate = (id) => {
+    const row = (latestData?.documentTemplates || []).find(x => x.id === id);
+    if (!row) return toast('ไม่พบ Template');
+    openGenericDocForm('');
+    if ($('genericDocTitle')) $('genericDocTitle').value = row.name || row.title || '';
+    if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(row.fontSize || 18);
+    if ($('genericDocEditor')) {
+        $('genericDocEditor').innerHTML = row.html || genericDefaultHtml();
+        $('genericDocEditor').style.fontSize = `${Number(row.fontSize || 18)}px`;
+    }
+    if ($('genericDocTemplateSelect')) $('genericDocTemplateSelect').value = id;
+};
+function buildGenericSignHtml(doc) {
+    const signed = [
+        ['party1','คู่สัญญาฝ่ายที่ 1'], ['party2','คู่สัญญาฝ่ายที่ 2'], ['witness1','พยาน 1'], ['witness2','พยาน 2']
+    ].map(([k,label]) => {
+        const img = doc[k+'Signature'] ? `<img src="${doc[k+'Signature']}" alt="${label}">` : '';
+        const name = doc[k+'Name'] || '........................................';
+        return `<div class="generic-signed-box">${img}<div>ลงชื่อ ${img ? '' : '........................................'}</div><div>(${escapeHtml(name)})</div><strong>${label}</strong></div>`;
+    }).join('');
+    const fontSize = Number(doc.fontSize || 18) || 18;
+    return `<div class="generic-doc-content" style="font-size:${fontSize}px">${doc.html || ''}</div><div class="generic-signature-summary">${signed}</div>`;
+}
+window.viewGenericDocument = (id) => {
+    const doc = (latestData?.genericDocuments || []).find(x => x.id === id);
+    if (!doc) return toast('ไม่พบเอกสาร');
+    $('previewTitle').textContent = doc.title || 'เอกสารทั่วไป';
+    $('previewBody').innerHTML = `<div class="generic-doc-view-body"><div class="generic-doc-view-paper">${buildGenericSignHtml(doc)}</div></div>`;
+    $('previewDownloadBtn').removeAttribute('href');
+    $('previewDownloadBtn').onclick = (e) => { e.preventDefault(); exportGenericDocumentPdf(id); };
+    $('documentPreviewModal').classList.remove('hidden');
+    document.body.classList.add('modal-open');
+};
+async function saveGenericTemplate() {
+    const name = ($('genericDocTitle')?.value || '').trim() || 'Template เอกสารทั่วไป';
+    const html = $('genericDocEditor')?.innerHTML || '';
+    const fontSize = Number($('genericDocBaseFontSize')?.value || 18) || 18;
+    if (!html.trim()) return toast('กรุณากรอกเนื้อหา Template');
+    await add('documentTemplates', { name, html, fontSize, createdDate: today(), type: 'generic' });
+    toast('บันทึก Template แล้ว');
+    await render();
+}
+async function saveGenericDocument() {
+    const title = ($('genericDocTitle')?.value || '').trim();
+    const html = $('genericDocEditor')?.innerHTML || '';
+    const fontSize = Number($('genericDocBaseFontSize')?.value || 18) || 18;
+    if (!title) return toast('กรุณากรอกชื่อเอกสาร');
+    if (!html.trim()) return toast('กรุณากรอกเนื้อหาเอกสาร');
+    const row = { title, html, fontSize, status: 'draft', createdDate: today(), updatedDate: today() };
+    if (editingGenericDocId) await updateRow('genericDocuments', editingGenericDocId, row);
+    else editingGenericDocId = await add('genericDocuments', row);
+    toast('บันทึกเอกสารทั่วไปแล้ว');
+    $('genericDocFormCard')?.classList.add('hidden');
+    await render();
+}
+window.exportGenericDocumentPdf = async (id) => {
+    const doc = (latestData?.genericDocuments || []).find(x => x.id === id);
+    if (!doc) return toast('ไม่พบเอกสาร');
+    if (!window.html2canvas || !window.jspdf?.jsPDF) return toast('ยังโหลด PDF library ไม่ครบ');
+    const box = $('genericDocPdfSource');
+    box.innerHTML = `<div class="generic-a4-page">${buildGenericSignHtml(doc)}</div>`;
+    await new Promise(r => setTimeout(r, 60));
+    const page = box.querySelector('.generic-a4-page');
+    const canvas = await html2canvas(page, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+    const img = canvas.toDataURL('image/png', 1.0);
+    pdf.addImage(img, 'PNG', 0, 0, 210, 297);
+    pdf.save(`${safeFileName(doc.title || 'generic-document')}.pdf`);
+    box.innerHTML = '';
+};
+window.createGenericDocSignLink = async (id) => {
+    const docRow = (latestData?.genericDocuments || []).find(x => x.id === id);
+    if (!docRow) return toast('ไม่พบเอกสาร');
+    if (!currentUser || demoMode) return toast('ต้องใช้งานผ่าน Firebase Login เท่านั้น');
+    const token = uid() + uid();
+    const link = `${location.origin}${location.pathname}?docsign=${encodeURIComponent(token)}`;
+    const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+    await setDoc(doc(db, 'generic_document_sign_requests', token), {
+        ownerUid: currentUser.uid, documentId: id, title: docRow.title || '', html: docRow.html || '', status: 'open', createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    });
+    await updateRow('genericDocuments', id, { signToken: token, signLink: link, updatedDate: today() });
+    await render();
+    await shareOrCopySigningLink(
+        link,
+        'สร้างลิงก์เซ็นเอกสารทั่วไปแล้ว',
+        'กรุณาตรวจสอบและลงนามเอกสารทั่วไป'
+    );
+};
+window.importGenericDocSignatures = async (id) => {
+    const docRow = (latestData?.genericDocuments || []).find(x => x.id === id);
+    if (!docRow?.signToken) return toast('ยังไม่มีลิงก์เซ็น');
+    const { doc, getDoc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+    const ref = doc(db, 'generic_document_sign_requests', docRow.signToken);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return toast('ไม่พบข้อมูลลายเซ็น');
+    const req = snap.data();
+    if (req.status !== 'submitted') return toast('คู่สัญญายังไม่ได้บันทึกลายเซ็น');
+    await updateRow('genericDocuments', id, {
+        party1Name: req.party1Name || '', party2Name: req.party2Name || '', witness1Name: req.witness1Name || '', witness2Name: req.witness2Name || '',
+        party1Signature: req.party1Signature || '', party2Signature: req.party2Signature || '', witness1Signature: req.witness1Signature || '', witness2Signature: req.witness2Signature || '',
+        status: 'signed', updatedDate: today()
+    });
+    await updateDoc(ref, { status: 'imported', importedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    toast('นำเข้าลายเซ็นเข้าเอกสารแล้ว');
+    await render();
+};
+async function openGenericDocumentSignPage(token) {
+    document.body.innerHTML = `<div class="public-sign-page" style="min-height:100vh;background:#f8fafc;padding:14px;color:#0f172a;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"><div style="max-width:860px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:22px;box-shadow:0 12px 35px rgba(15,23,42,.08);overflow:hidden"><div style="padding:18px;border-bottom:1px solid #e2e8f0;background:#f0fdf4"><h2 style="margin:0">เซ็นเอกสารทั่วไป</h2><p id="gPubSub" style="margin:6px 0 0;color:#475569">กำลังโหลดข้อมูล...</p></div><div id="gPubBody" style="padding:16px"></div></div></div>`;
+    const body = document.getElementById('gPubBody');
+    try {
+        const { doc, getDoc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+        const ref = doc(db, 'generic_document_sign_requests', token);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('ไม่พบลิงก์เซ็นเอกสารนี้');
+        const req = snap.data();
+        if (req.status !== 'open' && req.status !== 'submitted') throw new Error('ลิงก์นี้ถูกปิดแล้ว');
+        document.getElementById('gPubSub').textContent = req.title || 'เอกสารทั่วไป';
+        body.innerHTML = `<div style="display:grid;gap:14px"><div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px;line-height:1.75;font-size:${Number(req.fontSize || 18) || 18}px;max-height:52vh;overflow:auto">${req.html || ''}</div>${['party1:คู่สัญญาฝ่ายที่ 1','party2:คู่สัญญาฝ่ายที่ 2','witness1:พยาน 1','witness2:พยาน 2'].map(item=>{const [k,label]=item.split(':');return `<div style="border:1px solid #e2e8f0;border-radius:16px;padding:10px;background:#fff"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>${label}</strong><button type="button" data-clear="${k}" style="border:1px solid #cbd5e1;border-radius:999px;background:#fff;padding:7px 10px">ล้าง</button></div><input id="gPub_${k}_name" placeholder="ชื่อ${label}" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #cbd5e1;border-radius:12px"><canvas id="gPubSig_${k}" style="width:100%;height:140px;border:1px dashed #94a3b8;border-radius:14px;background:#fff;touch-action:none"></canvas></div>`}).join('')}<button id="gPubSaveBtn" type="button" style="width:100%;border:0;border-radius:16px;background:#16a34a;color:#fff;padding:14px;font-weight:900;font-size:16px"><i class="bi bi-check-circle"></i> บันทึกลายเซ็น</button></div>`;
+        const pads = { party1: makeSignaturePad(document.getElementById('gPubSig_party1')), party2: makeSignaturePad(document.getElementById('gPubSig_party2')), witness1: makeSignaturePad(document.getElementById('gPubSig_witness1')), witness2: makeSignaturePad(document.getElementById('gPubSig_witness2')) };
+        body.querySelectorAll('[data-clear]').forEach(btn => btn.onclick = () => pads[btn.dataset.clear]?.clear());
+        document.getElementById('gPubSaveBtn').onclick = async () => {
+            const btn = document.getElementById('gPubSaveBtn'); btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังบันทึก...';
+            try {
+                await updateDoc(ref, { status:'submitted', party1Name:document.getElementById('gPub_party1_name')?.value||'', party2Name:document.getElementById('gPub_party2_name')?.value||'', witness1Name:document.getElementById('gPub_witness1_name')?.value||'', witness2Name:document.getElementById('gPub_witness2_name')?.value||'', party1Signature:pads.party1.data(), party2Signature:pads.party2.data(), witness1Signature:pads.witness1.data(), witness2Signature:pads.witness2.data(), submittedAt:serverTimestamp(), updatedAt:serverTimestamp() });
+                body.innerHTML = `<div style="text-align:center;padding:32px 12px"><i class="bi bi-check-circle" style="font-size:54px;color:#16a34a"></i><h2>บันทึกลายเซ็นเรียบร้อยแล้ว</h2><p style="color:#64748b">ผู้สร้างเอกสารจะเห็นลายเซ็นหลังนำเข้าในระบบ</p></div>`;
+            } catch(e) { console.error(e); alert(e?.message || 'บันทึกไม่สำเร็จ'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle"></i> บันทึกลายเซ็น'; }
+        };
+    } catch(e) { body.innerHTML = `<div style="text-align:center;padding:32px 12px;color:#dc2626"><i class="bi bi-x-circle" style="font-size:54px"></i><h2>เปิดลิงก์ไม่ได้</h2><p>${escapeHtml(e?.message || 'ลิงก์ไม่ถูกต้อง')}</p></div>`; }
+}
+
+function genericDocFocusEditor() {
+    const editor = $('genericDocEditor');
+    if (!editor) return null;
+    editor.focus();
+    return editor;
+}
+function genericDocApplyFontSize(size) {
+    const editor = genericDocFocusEditor();
+    if (!editor) return;
+    const safeSize = Math.max(10, Math.min(72, Number(size || 18) || 18));
+    if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(safeSize);
+    const sel = window.getSelection?.();
+    const hasSelection = sel && sel.rangeCount && !sel.getRangeAt(0).collapsed && editor.contains(sel.anchorNode) && editor.contains(sel.focusNode);
+    if (!hasSelection) {
+        editor.style.fontSize = `${safeSize}px`;
+        return;
+    }
+    document.execCommand('fontSize', false, '7');
+    editor.querySelectorAll('font[size="7"]').forEach(font => {
+        const span = document.createElement('span');
+        span.style.fontSize = `${safeSize}px`;
+        span.innerHTML = font.innerHTML;
+        font.replaceWith(span);
+    });
+}
+function genericDocChangeFont(delta) {
+    const input = $('genericDocBaseFontSize');
+    const current = Number(input?.value || 18) || 18;
+    genericDocApplyFontSize(current + delta);
+}
+function genericDocApplyFormat(tag) {
+    genericDocFocusEditor();
+    document.execCommand('formatBlock', false, tag || 'P');
+}
+function genericDocCreateLink() {
+    genericDocFocusEditor();
+    const url = prompt('กรอกลิงก์ URL');
+    if (!url) return;
+    document.execCommand('createLink', false, url);
+}
+
+function bindGenericDocumentUi() {
+    if ($('newGenericDocBtn')) $('newGenericDocBtn').onclick = () => openGenericDocForm('');
+    if ($('closeGenericDocFormBtn')) $('closeGenericDocFormBtn').onclick = () => $('genericDocFormCard')?.classList.add('hidden');
+    if ($('saveGenericTemplateBtn')) $('saveGenericTemplateBtn').onclick = saveGenericTemplate;
+    if ($('saveGenericDocBtn')) $('saveGenericDocBtn').onclick = saveGenericDocument;
+    if ($('genericDocTemplateSelect')) $('genericDocTemplateSelect').onchange = e => { const row = (latestData?.documentTemplates || []).find(x => x.id === e.target.value); if (row && $('genericDocEditor')) { $('genericDocEditor').innerHTML = row.html || ''; $('genericDocEditor').style.fontSize = `${Number(row.fontSize || 18)}px`; if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(row.fontSize || 18); if (!$('genericDocTitle').value) $('genericDocTitle').value = row.name || row.title || ''; } };
+    document.querySelectorAll('[data-gdoc-cmd]').forEach(btn => btn.onclick = () => { genericDocFocusEditor(); document.execCommand(btn.dataset.gdocCmd, false, null); });
+    if ($('genericDocFontMinusBtn')) $('genericDocFontMinusBtn').onclick = () => genericDocChangeFont(-1);
+    if ($('genericDocFontPlusBtn')) $('genericDocFontPlusBtn').onclick = () => genericDocChangeFont(1);
+    if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').onchange = e => genericDocApplyFontSize(e.target.value);
+    if ($('genericDocFormatSelect')) $('genericDocFormatSelect').onchange = e => genericDocApplyFormat(e.target.value);
+    if ($('genericDocLinkBtn')) $('genericDocLinkBtn').onclick = genericDocCreateLink;
+    if ($('genericDocInsertSignatureBlockBtn')) $('genericDocInsertSignatureBlockBtn').onclick = () => { genericDocFocusEditor(); document.execCommand('insertHTML', false, `<div data-signature-block="true" style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:42px;text-align:center"><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 1<br>(........................................)</div><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 2<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 1<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 2<br>(........................................)</div></div>`); };
+}
+
 async function initFirebase() {
-    if (!firebaseReady) return; const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'); const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'); const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const { getStorage } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); storage = getStorage(app); const signToken = new URLSearchParams(location.search).get('sign'); if (signToken) { await openPublicSignaturePage(signToken); return; } $('loginBtn').onclick = async () => { try { await signInWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('registerBtn').onclick = async () => { try { await createUserWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('logoutBtn').onclick = async () => { await signOut(auth); location.reload() }; onAuthStateChanged(auth, u => {
+    if (!firebaseReady) return; const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'); const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'); const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const { getStorage } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); storage = getStorage(app); const qs = new URLSearchParams(location.search); const genericSignToken = qs.get('docsign'); if (genericSignToken) { await openGenericDocumentSignPage(genericSignToken); return; } const signToken = qs.get('sign'); if (signToken) { await openPublicSignaturePage(signToken); return; } $('loginBtn').onclick = async () => { try { await signInWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('registerBtn').onclick = async () => { try { await createUserWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('logoutBtn').onclick = async () => { await signOut(auth); location.reload() }; onAuthStateChanged(auth, u => {
         if (demoMode) {
             currentUser = { uid: 'demo', email: 'demo@local' };
             $('authView').classList.remove('active');
@@ -3079,8 +3445,11 @@ async function createContractSignatureLink(contractId) {
         updatedAt: serverTimestamp()
     });
     const link = publicSignatureUrl(token);
-    try { await navigator.clipboard.writeText(link); } catch (e) { console.warn('clipboard warning', e); }
-    await alertAction({ icon: 'success', title: 'สร้างลิงก์เซ็นเอกสารแล้ว', text: 'คัดลอกลิงก์แล้ว สามารถส่งให้ลูกหนี้และพยานเซ็นได้' });
+    await shareOrCopySigningLink(
+        link,
+        'สร้างลิงก์เซ็นเอกสารแล้ว',
+        'กรุณาตรวจสอบและลงนามเอกสารสัญญา'
+    );
 }
 
 async function syncContractSignatureRequests(showDoneToast = true) {
@@ -3378,7 +3747,7 @@ function initSettingsAccordion() {
     });
 }
 
-window.addEventListener('DOMContentLoaded', () => { decorateButtons(); restoreUiChrome(); initSettingsAccordion(); bindNoZoomDesigner(); });
+window.addEventListener('DOMContentLoaded', () => { decorateButtons(); restoreUiChrome(); initSettingsAccordion(); bindNoZoomDesigner(); bindGenericDocumentUi(); });
 
 try {
     decorateButtons();

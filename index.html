@@ -455,6 +455,78 @@
                 <div id="contractPdfSource" class="contract-pdf-source"></div>
             </section>
 
+
+            <section id="tab-generic-docs" class="panel">
+                <div class="card generic-doc-hero">
+                    <div class="card-head-row">
+                        <h3><i class="bi bi-file-earmark-richtext"></i> เอกสารทั่วไป</h3>
+                        <button id="newGenericDocBtn" class="round-action" type="button"><i class="bi bi-plus-circle"></i> สร้างเอกสาร</button>
+                    </div>
+                    <p class="note">สร้างเอกสารแบบพิมพ์เองได้ทั้งหมด คล้าย Microsoft Word ใช้เป็นสัญญาซื้อขายทั่วไป หนังสือรับรอง หรือเอกสารอื่น ๆ พร้อมส่งลิงก์ให้คู่สัญญาเซ็น</p>
+                    <div class="generic-doc-toolbar generic-doc-toolbar-phase2" aria-label="เครื่องมือเอกสารทั่วไป">
+                        <button type="button" data-gdoc-cmd="bold" title="ตัวหนา"><i class="bi bi-type-bold"></i></button>
+                        <button type="button" data-gdoc-cmd="italic" title="ตัวเอียง"><i class="bi bi-type-italic"></i></button>
+                        <button type="button" data-gdoc-cmd="underline" title="ขีดเส้นใต้"><i class="bi bi-type-underline"></i></button>
+                        <button type="button" id="genericDocFontMinusBtn" title="ลดขนาดฟอนต์"><strong>A-</strong></button>
+                        <button type="button" id="genericDocFontPlusBtn" title="เพิ่มขนาดฟอนต์"><strong>A+</strong></button>
+                        <label class="generic-font-control" title="ขนาดฟอนต์เริ่มต้นของเอกสาร"><i class="bi bi-type"></i><input id="genericDocBaseFontSize" class="input" type="number" min="10" max="72" step="1" value="18"></label>
+                        <select id="genericDocFormatSelect" class="input generic-format-select" title="รูปแบบหัวข้อ">
+                            <option value="P">ย่อหน้า</option>
+                            <option value="H1">หัวข้อ 1</option>
+                            <option value="H2">หัวข้อ 2</option>
+                            <option value="H3">หัวข้อ 3</option>
+                        </select>
+                        <button type="button" data-gdoc-cmd="justifyLeft" title="ชิดซ้าย"><i class="bi bi-text-left"></i></button>
+                        <button type="button" data-gdoc-cmd="justifyCenter" title="กึ่งกลาง"><i class="bi bi-text-center"></i></button>
+                        <button type="button" data-gdoc-cmd="justifyRight" title="ชิดขวา"><i class="bi bi-text-right"></i></button>
+                        <button type="button" data-gdoc-cmd="insertUnorderedList" title="รายการจุด"><i class="bi bi-list-ul"></i></button>
+                        <button type="button" data-gdoc-cmd="insertOrderedList" title="รายการเลข"><i class="bi bi-list-ol"></i></button>
+                        <button type="button" id="genericDocLinkBtn" title="แทรกลิงก์"><i class="bi bi-link-45deg"></i></button>
+                        <button type="button" id="genericDocInsertSignatureBlockBtn" title="ช่องลายเซ็น"><i class="bi bi-pen"></i></button>
+                    </div>
+                </div>
+
+                <div id="genericDocFormCard" class="card hidden">
+                    <div class="card-head-row">
+                        <h3><i class="bi bi-pencil-square"></i> แบบฟอร์มเอกสารทั่วไป</h3>
+                        <button id="closeGenericDocFormBtn" class="mini mini-danger" type="button">ปิด</button>
+                    </div>
+                    <div class="generic-doc-grid">
+                        <div>
+                            <label>ชื่อเอกสาร</label>
+                            <input id="genericDocTitle" class="input" placeholder="เช่น สัญญาซื้อขายทั่วไป">
+                        </div>
+                        <div>
+                            <label>สร้างจาก Template</label>
+                            <select id="genericDocTemplateSelect" class="input"></select>
+                        </div>
+                    </div>
+                    <label>เนื้อหาเอกสาร</label>
+                    <div id="genericDocEditor" class="generic-doc-editor" contenteditable="true"></div>
+                    <div class="generic-doc-action-row">
+                        <button id="saveGenericTemplateBtn" class="secondary" type="button"><i class="bi bi-save"></i> บันทึกเป็น Template</button>
+                        <button id="saveGenericDocBtn" class="primary" type="button"><i class="bi bi-file-earmark-check"></i> บันทึกเอกสาร</button>
+                    </div>
+                    <p class="note">คำแนะนำ: ใช้ปุ่ม “ช่องลายเซ็น” เพื่อแทรกตำแหน่งผู้ลงนามท้ายเอกสาร ระบบจะเก็บลายเซ็นแยกไว้และนำมาแสดงในเอกสาร</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-head-row">
+                        <h3><i class="bi bi-folder2-open"></i> รายการเอกสารทั่วไป</h3>
+                    </div>
+                    <div id="genericDocList" class="list"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-head-row">
+                        <h3><i class="bi bi-bookmark-star"></i> Template ที่บันทึกไว้</h3>
+                    </div>
+                    <div id="genericTemplateList" class="list"></div>
+                </div>
+
+                <div id="genericDocPdfSource" class="generic-doc-pdf-source"></div>
+            </section>
+
             <section id="tab-settings" class="panel">
                 <div class="profile-card card">
                     <div class="profile-avatar"><i class="bi bi-person"></i></div>
@@ -733,6 +805,8 @@
                         class="bi bi-people"></i><span>ลูกหนี้ทั้งหมด</span></button>
                 <button class="bottom-tab" data-tab="contracts"><i
                         class="bi bi-file-earmark-text"></i><span>สัญญา</span></button>
+                <button class="bottom-tab" data-tab="generic-docs"><i
+                        class="bi bi-file-earmark-richtext"></i><span>เอกสารทั่วไป</span></button>
                 <button class="bottom-tab" data-tab="transactions"><i
                         class="bi bi-cash-coin"></i><span>ธุรกรรม</span><em id="bottomFollowupBadge"
                         class="nav-badge hidden">0</em></button>

@@ -24,5 +24,26 @@ service cloud.firestore {
             ]))
       );
     }
+
+    // Public generic document signing links. Token is random and unguessable.
+    match /generic_document_sign_requests/{token} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.documentId is string
+                    && request.resource.data.status == 'open';
+      allow update: if (
+        (request.auth != null && request.auth.uid == resource.data.ownerUid)
+        || (resource.data.status == 'open'
+            && request.resource.data.ownerUid == resource.data.ownerUid
+            && request.resource.data.documentId == resource.data.documentId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status','party1Name','party2Name','witness1Name','witness2Name',
+              'party1Signature','party2Signature','witness1Signature','witness2Signature',
+              'submittedAt','updatedAt'
+            ]))
+      );
+    }
+
   }
 }

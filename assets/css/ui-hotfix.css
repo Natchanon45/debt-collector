@@ -66,3 +66,126 @@
     color: #15803d !important;
     /* font-weight: 900 !important; */
 }
+/* ===== Bottom navigation clean icon+text only v9.6.7 ===== */
+.bottom-nav{
+    position:fixed!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    z-index:9999!important;
+    display:grid!important;
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+    gap:0!important;
+    padding:4px 0 calc(4px + env(safe-area-inset-bottom))!important;
+    margin:0!important;
+    border-radius:0!important;
+    box-shadow:0 -1px 0 rgba(15,23,42,.08)!important;
+    background:var(--card,#fff)!important;
+}
+.bottom-tab{
+    min-width:0!important;
+    height:48px!important;
+    padding:4px 1px!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    transform:none!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:2px!important;
+    color:var(--muted,#64748b)!important;
+}
+.bottom-tab:hover,
+.bottom-tab:focus,
+.bottom-tab:focus-visible,
+.bottom-tab:active{
+    background:transparent!important;
+    box-shadow:none!important;
+    outline:none!important;
+    transform:none!important;
+}
+.bottom-tab i{font-size:20px!important;line-height:1!important;margin:0!important;color:currentColor!important;}
+.bottom-tab span{font-size:9.8px!important;line-height:1.05!important;font-weight:800!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:100%!important;}
+.bottom-tab.active{color:var(--primary,#16a34a)!important;background:transparent!important;box-shadow:none!important;}
+.bottom-tab.active i{font-weight:900!important;}
+.bottom-tab .nav-badge{position:absolute!important;top:3px!important;right:10px!important;}
+
+/* ===== Generic Documents Phase 2 toolbar v9.6.7 ===== */
+.generic-doc-toolbar-phase2{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:6px!important;
+    align-items:center!important;
+}
+.generic-doc-toolbar-phase2 button,
+.generic-doc-toolbar-phase2 .generic-format-select,
+.generic-doc-toolbar-phase2 .generic-font-control{
+    height:36px!important;
+    min-height:36px!important;
+    border-radius:999px!important;
+}
+.generic-doc-toolbar-phase2 button{
+    min-width:36px!important;
+    padding:0 10px!important;
+    justify-content:center!important;
+    border:1px solid var(--border)!important;
+    background:var(--card2)!important;
+    color:var(--text)!important;
+    box-shadow:none!important;
+}
+.generic-doc-toolbar-phase2 button:hover,
+.generic-doc-toolbar-phase2 button:focus{
+    border-color:var(--border)!important;
+    background:var(--card2)!important;
+    color:var(--text)!important;
+    box-shadow:none!important;
+    transform:none!important;
+}
+#genericDocFontMinusBtn,
+#genericDocFontPlusBtn{
+    background:var(--primary,#16a34a)!important;
+    border-color:var(--primary,#16a34a)!important;
+    color:#fff!important;
+    width:36px!important;
+    padding:0!important;
+    font-size:12px!important;
+}
+.generic-font-control{
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:4px!important;
+    padding:0 8px!important;
+    border:1px solid var(--border)!important;
+    background:var(--card2)!important;
+}
+.generic-font-control .input,
+#genericDocBaseFontSize{
+    width:52px!important;
+    height:28px!important;
+    min-height:28px!important;
+    padding:0 4px!important;
+    border-radius:10px!important;
+    text-align:center!important;
+    font-weight:900!important;
+}
+.generic-format-select{
+    width:auto!important;
+    min-width:92px!important;
+    padding:0 10px!important;
+    font-weight:800!important;
+}
+.generic-doc-editor{font-size:18px;}
+.generic-doc-content{line-height:1.75;}
+@media(max-width:720px){
+    .generic-doc-toolbar-phase2{gap:5px!important;}
+    .generic-doc-toolbar-phase2 button{min-width:34px!important;height:34px!important;min-height:34px!important;padding:0 8px!important;}
+    #genericDocFontMinusBtn,#genericDocFontPlusBtn{width:34px!important;min-width:34px!important;padding:0!important;}
+    .generic-font-control{height:34px!important;min-height:34px!important;padding:0 6px!important;}
+    #genericDocBaseFontSize{width:46px!important;height:26px!important;min-height:26px!important;}
+    .generic-format-select{height:34px!important;min-height:34px!important;min-width:78px!important;font-size:12px!important;}
+    .bottom-tab span{font-size:9.2px!important;}
+}

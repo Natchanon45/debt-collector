@@ -5156,3 +5156,54 @@ body.signature-drawing{overflow:hidden!important;touch-action:none!important}
 @keyframes dcBlockingSpin {
     to { transform: rotate(360deg); }
 }
+
+
+/* ===== Generic Documents / CKEditor-like editor v9.6.5 ===== */
+.generic-doc-hero .note{margin-top:6px}.generic-doc-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.generic-doc-toolbar button{border:1px solid var(--border);background:var(--card2);color:var(--text);border-radius:999px;padding:8px 12px;font-weight:800;display:inline-flex;align-items:center;gap:6px}.generic-doc-toolbar button:hover{border-color:var(--primary);color:var(--primary)}.generic-doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.generic-doc-editor{min-height:420px;background:#fff;color:#111827;border:1px solid var(--border);border-radius:18px;padding:22px;line-height:1.75;font-size:18px;outline:none;overflow:auto;box-shadow:inset 0 1px 0 rgba(15,23,42,.04)}.generic-doc-editor:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(22,163,74,.12), inset 0 1px 0 rgba(15,23,42,.04)}.generic-doc-action-row{display:flex;gap:10px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}.generic-doc-pdf-source{position:fixed;left:-99999px;top:0;width:794px;background:#fff;color:#111827}.generic-a4-page{width:794px;min-height:1123px;background:#fff;color:#111827;padding:58px 64px;font-family:'TH Sarabun New','TH Sarabun',Tahoma,sans-serif;font-size:24px;line-height:1.65;box-sizing:border-box}.generic-a4-page h1,.generic-a4-page h2,.generic-a4-page h3{text-align:center;margin:0 0 14px}.generic-signature-summary{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:36px}.generic-signed-box{border-top:1px solid #111;padding-top:8px;text-align:center;min-height:110px}.generic-signed-box img{max-width:180px;max-height:72px;display:block;margin:0 auto 4px}.generic-doc-view-modal .modal-box{max-width:920px}.generic-doc-view-body{background:#f8fafc;border:1px solid var(--border);border-radius:18px;padding:12px;max-height:70vh;overflow:auto}.generic-doc-view-paper{background:#fff;color:#111827;max-width:794px;margin:auto;padding:42px;min-height:600px;line-height:1.75;font-size:18px;border-radius:12px}.generic-link-box{font-size:12px;background:var(--card2);border:1px dashed var(--border);border-radius:12px;padding:8px;word-break:break-all;margin-top:8px}
+@media(max-width:720px){.generic-doc-grid{grid-template-columns:1fr}.generic-doc-editor{min-height:360px;font-size:17px;padding:16px}.generic-doc-action-row{display:grid;grid-template-columns:1fr}.generic-doc-toolbar{gap:6px}.generic-doc-toolbar button{padding:8px 10px}.bottom-nav .bottom-tab span{font-size:10.5px}.generic-signature-summary{grid-template-columns:1fr}}
+
+
+/* ===== Signing link share/copy dialog v9.6.6 ===== */
+.sign-link-dialog{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    text-align:left;
+}
+.sign-link-help{
+    margin:0;
+    color:var(--muted,#64748b);
+    line-height:1.55;
+    font-weight:700;
+}
+.sign-link-input{
+    width:100%!important;
+    min-height:44px!important;
+    border-radius:14px!important;
+    font-size:13px!important;
+    font-weight:800!important;
+    color:var(--text,#0f172a)!important;
+    background:var(--card2,#f8fafc)!important;
+}
+.sign-link-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+.sign-link-actions button{
+    min-height:42px;
+    border-radius:14px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    font-weight:900;
+}
+.sign-link-note{
+    color:var(--muted,#64748b);
+    line-height:1.45;
+    text-align:center;
+}
+@media(max-width:420px){
+    .sign-link-actions{grid-template-columns:1fr;}
+}
