@@ -1,2 +1,28 @@
 rules_version = '2';
-service cloud.firestore { match /databases/{database}/documents { match /users/{userId}/{document=**} { allow read, write: if request.auth != null && request.auth.uid == userId; } } }
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Public signature request links. Token is random and unguessable.
+    match /signature_requests/{token} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.contractId is string
+                    && request.resource.data.status == 'open';
+      allow update: if (
+        (request.auth != null && request.auth.uid == resource.data.ownerUid)
+        || (resource.data.status == 'open'
+            && request.resource.data.ownerUid == resource.data.ownerUid
+            && request.resource.data.contractId == resource.data.contractId
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status','borrowerSignedName','witness1Name','witness2Name',
+              'borrowerSignature','witness1Signature','witness2Signature',
+              'submittedAt','updatedAt'
+            ]))
+      );
+    }
+  }
+}

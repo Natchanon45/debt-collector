@@ -144,8 +144,28 @@ function pdfTemplateLoadOverrides() {
     try { return JSON.parse(localStorage.getItem(PDF_TEMPLATE_OVERRIDE_LS) || '{}') || {}; }
     catch { return {}; }
 }
+function safeLocalStorageSet(key, value) {
+    try {
+        localStorage.setItem(key, value);
+        return true;
+    } catch (e) {
+        console.warn('localStorage quota warning:', e?.message || e);
+        try {
+            Object.keys(localStorage || {}).forEach(k => {
+                if (/^debt_collector_phase3_v/.test(k) && k !== key) localStorage.removeItem(k);
+            });
+            localStorage.setItem(key, value);
+            return true;
+        } catch (e2) {
+            console.warn('localStorage disabled for this payload:', e2?.message || e2);
+            window.__dcLocalFallback = window.__dcLocalFallback || {};
+            window.__dcLocalFallback[key] = value;
+            return false;
+        }
+    }
+}
 function pdfTemplateSaveOverrides(overrides) {
-    localStorage.setItem(PDF_TEMPLATE_OVERRIDE_LS, JSON.stringify(overrides || {}));
+    safeLocalStorageSet(PDF_TEMPLATE_OVERRIDE_LS, JSON.stringify(overrides || {}));
 }
 function clonePlain(obj) { return JSON.parse(JSON.stringify(obj || {})); }
 function deepApplyPdfOverrides(target, overrides) {
@@ -503,7 +523,34 @@ function setUserDisplay(text) {
     if ($('dropdownUserText')) $('dropdownUserText').textContent = name || '-';
     if ($('userMenuWrap')) $('userMenuWrap').classList.toggle('hidden', !currentUser && !demoMode);
 }
-function local() { return JSON.parse(localStorage.getItem(LS) || JSON.stringify(blank)) } function setLocal(d) { localStorage.setItem(LS, JSON.stringify({ ...blank, ...d })) }
+function stripHeavyLocalCacheValue(value) {
+    if (typeof value !== 'string') return value;
+    if (value.startsWith('data:image/') || value.startsWith('data:application/')) return '';
+    if (value.length > 30000 && /^https?:/.test(value) === false) return '';
+    return value;
+}
+function stripHeavyLocalCache(obj) {
+    if (Array.isArray(obj)) return obj.map(stripHeavyLocalCache);
+    if (!obj || typeof obj !== 'object') return stripHeavyLocalCacheValue(obj);
+    const out = {};
+    Object.entries(obj).forEach(([k, v]) => {
+        if (/signature|downloadURL|storagePath|ocr|image|photo|base64/i.test(k)) out[k] = stripHeavyLocalCacheValue(String(v || ''));
+        else out[k] = stripHeavyLocalCache(v);
+    });
+    return out;
+}
+function local() {
+    const raw = localStorage.getItem(LS) || window.__dcLocalFallback?.[LS] || JSON.stringify(blank);
+    try { return JSON.parse(raw) } catch (e) { return JSON.parse(JSON.stringify(blank)) }
+}
+function setLocal(d) {
+    const merged = { ...blank, ...d };
+    window.__dcLocalMemory = merged;
+    const payload = JSON.stringify(merged);
+    if (safeLocalStorageSet(LS, payload)) return;
+    safeLocalStorageSet(LS, JSON.stringify(stripHeavyLocalCache(merged)));
+}
+
 async function getData() { if (demoMode) return local(); const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const names = ['debtors', 'debts', 'payments', 'followups', 'documents', 'contracts', 'settings']; const result = {}; for (const n of names) { const snap = await getDocs(collection(db, `users/${currentUser.uid}/${n}`)); result[n] = snap.docs.map(d => ({ id: d.id, ...d.data() })) } result.settings = (result.settings || []).reduce((acc, x) => ({ ...acc, ...x, profile: { ...(acc.profile || {}), ...(x.profile || {}) } }), {}); return { ...blank, ...result } }
 async function add(type, row) { if (demoMode) { const d = local(); const id = uid(); d[type].push({ id, ...row }); setLocal(d); return id } const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const ref = await addDoc(collection(db, `users/${currentUser.uid}/${type}`), { ...row, createdAt: serverTimestamp() }); return ref.id }
 async function addMany(type, rows) {
@@ -1409,8 +1456,135 @@ document.addEventListener('click', e => {
     toast('Demo Mode');
     await render();
 };
+
+
+function makeSignaturePad(canvas) {
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let last = null;
+    function resize() {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = Math.max(window.devicePixelRatio || 1, 2);
+        const old = canvas.toDataURL('image/png');
+        canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+        canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#0f172a';
+        if (old && old.length > 100) {
+            const img = new Image();
+            img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height);
+            img.src = old;
+        }
+    }
+    function pos(e) {
+        const r = canvas.getBoundingClientRect();
+        const p = e.touches?.[0] || e;
+        return { x: p.clientX - r.left, y: p.clientY - r.top };
+    }
+    function down(e) { e.preventDefault(); drawing = true; last = pos(e); }
+    function move(e) {
+        if (!drawing) return;
+        e.preventDefault();
+        const p = pos(e);
+        ctx.beginPath();
+        ctx.moveTo(last.x, last.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        last = p;
+    }
+    function up(e) { if (drawing) e.preventDefault(); drawing = false; last = null; }
+    canvas.addEventListener('pointerdown', down, { passive: false });
+    canvas.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', up, { passive: false });
+    canvas.addEventListener('touchstart', down, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', up, { passive: false });
+    resize();
+    return {
+        clear() { ctx.clearRect(0, 0, canvas.width, canvas.height); },
+        data() { return canvas.toDataURL('image/png', 1.0); }
+    };
+}
+
+async function openPublicSignaturePage(token) {
+    document.body.innerHTML = `
+        <div class="public-sign-page" style="min-height:100vh;background:#f8fafc;padding:16px;color:#0f172a;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+            <div style="max-width:720px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:22px;box-shadow:0 12px 35px rgba(15,23,42,.08);overflow:hidden">
+                <div style="padding:18px 18px 12px;border-bottom:1px solid #e2e8f0;background:#f0fdf4">
+                    <h2 style="margin:0;font-size:22px">เซ็นเอกสารสัญญา</h2>
+                    <p id="pubSignSub" style="margin:6px 0 0;color:#475569">กำลังโหลดข้อมูล...</p>
+                </div>
+                <div id="pubSignBody" style="padding:16px"></div>
+            </div>
+        </div>`;
+    const body = document.getElementById('pubSignBody');
+    try {
+        const { doc, getDoc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+        const ref = doc(db, 'signature_requests', token);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('ไม่พบลิงก์เซ็นเอกสารนี้');
+        const req = snap.data();
+        if (req.status && !['open', 'submitted'].includes(req.status)) throw new Error('ลิงก์นี้ถูกนำเข้า/ปิดแล้ว');
+        document.getElementById('pubSignSub').textContent = `เลขที่สัญญา ${req.contractNo || '-'} · ผู้กู้ ${req.borrowerName || '-'}`;
+        body.innerHTML = `
+            <div style="display:grid;gap:12px">
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px;line-height:1.7">
+                    <strong>ข้อมูลเอกสาร</strong><br>
+                    ผู้ให้กู้: ${escapeHtml(req.lenderName || '-')}<br>
+                    ผู้กู้: ${escapeHtml(req.borrowerName || '-')}<br>
+                    จำนวนเงิน: ${money(req.amount || 0)} บาท<br>
+                    วันที่สัญญา: ${formatDate(req.contractDate || '')} · ครบกำหนด: ${formatDate(req.dueDate || '')}
+                    ${req.downloadURL ? `<div style="margin-top:10px"><a href="${escapeHtml(req.downloadURL)}" target="_blank" style="display:inline-flex;gap:6px;align-items:center;color:#16a34a;font-weight:800;text-decoration:none"><i class="bi bi-file-earmark-pdf"></i> เปิดดูฉบับร่าง PDF</a></div>` : ''}
+                </div>
+                <label style="font-weight:800">ชื่อผู้กู้/ผู้เซ็น <input id="pubBorrowerName" value="${escapeHtml(req.borrowerName || '')}" style="width:100%;margin-top:6px;padding:12px;border:1px solid #cbd5e1;border-radius:12px"></label>
+                ${['borrower:ลายเซ็นผู้กู้','witness1:ลายเซ็นพยาน 1','witness2:ลายเซ็นพยาน 2'].map(item => { const [key,label]=item.split(':'); return `
+                    <div style="border:1px solid #e2e8f0;border-radius:16px;padding:10px;background:#fff">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>${label}</strong><button type="button" data-clear="${key}" style="border:1px solid #cbd5e1;border-radius:999px;background:#fff;padding:7px 10px">ล้าง</button></div>
+                        ${key !== 'borrower' ? `<input id="pub${key}Name" placeholder="ชื่อ${label.replace('ลายเซ็น','')}" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #cbd5e1;border-radius:12px">` : ''}
+                        <canvas id="pubSig_${key}" style="width:100%;height:150px;border:1px dashed #94a3b8;border-radius:14px;background:#fff;touch-action:none"></canvas>
+                    </div>`; }).join('')}
+                <button id="pubSaveSignBtn" type="button" style="width:100%;border:0;border-radius:16px;background:#16a34a;color:#fff;padding:14px;font-weight:900;font-size:16px"><i class="bi bi-check-circle"></i> บันทึกลายเซ็น</button>
+            </div>`;
+        const pads = {
+            borrower: makeSignaturePad(document.getElementById('pubSig_borrower')),
+            witness1: makeSignaturePad(document.getElementById('pubSig_witness1')),
+            witness2: makeSignaturePad(document.getElementById('pubSig_witness2'))
+        };
+        body.querySelectorAll('[data-clear]').forEach(btn => btn.onclick = () => pads[btn.dataset.clear]?.clear());
+        document.getElementById('pubSaveSignBtn').onclick = async () => {
+            const btn = document.getElementById('pubSaveSignBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังบันทึก...';
+            try {
+                await updateDoc(ref, {
+                    status: 'submitted',
+                    borrowerSignedName: document.getElementById('pubBorrowerName')?.value || req.borrowerName || '',
+                    witness1Name: document.getElementById('pubwitness1Name')?.value || '',
+                    witness2Name: document.getElementById('pubwitness2Name')?.value || '',
+                    borrowerSignature: pads.borrower.data(),
+                    witness1Signature: pads.witness1.data(),
+                    witness2Signature: pads.witness2.data(),
+                    submittedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+                body.innerHTML = `<div style="text-align:center;padding:32px 12px"><i class="bi bi-check-circle" style="font-size:54px;color:#16a34a"></i><h2>บันทึกลายเซ็นเรียบร้อยแล้ว</h2><p style="color:#64748b">ผู้ให้กู้จะเห็นลายเซ็นนี้ในระบบหลังนำเข้าลายเซ็น</p></div>`;
+            } catch (e) {
+                console.error(e);
+                alert(e?.message || 'บันทึกไม่สำเร็จ');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle"></i> บันทึกลายเซ็น';
+            }
+        };
+    } catch (e) {
+        body.innerHTML = `<div style="text-align:center;padding:32px 12px;color:#dc2626"><i class="bi bi-x-circle" style="font-size:54px"></i><h2>เปิดลิงก์ไม่ได้</h2><p>${escapeHtml(e?.message || 'ลิงก์ไม่ถูกต้อง')}</p></div>`;
+    }
+}
+
 async function initFirebase() {
-    if (!firebaseReady) return; const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'); const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'); const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const { getStorage } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); storage = getStorage(app); $('loginBtn').onclick = async () => { try { await signInWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('registerBtn').onclick = async () => { try { await createUserWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('logoutBtn').onclick = async () => { await signOut(auth); location.reload() }; onAuthStateChanged(auth, u => {
+    if (!firebaseReady) return; const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js'); const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js'); const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js'); const { getStorage } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js'); const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); storage = getStorage(app); const signToken = new URLSearchParams(location.search).get('sign'); if (signToken) { await openPublicSignaturePage(signToken); return; } $('loginBtn').onclick = async () => { try { await signInWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('registerBtn').onclick = async () => { try { await createUserWithEmailAndPassword(auth, $('email').value, $('password').value) } catch (e) { toast(e.code || e.message) } }; $('logoutBtn').onclick = async () => { await signOut(auth); location.reload() }; onAuthStateChanged(auth, u => {
         if (demoMode) {
             currentUser = { uid: 'demo', email: 'demo@local' };
             $('authView').classList.remove('active');
@@ -1788,14 +1962,15 @@ function showContractForm(prefillDebtorId = '') {
 function renderContractList(d, c) {
     if (!$('contractList')) return;
     const list = (d.contracts || []).sort((a, b) => String(b.createdDate || '').localeCompare(String(a.createdDate || '')));
-    $('contractList').innerHTML = list.length ? list.map(x => {
+    const signatureSyncBar = list.length ? `<div class="item" style="gap:10px;align-items:center;justify-content:space-between;background:#f0fdf4;border-color:#bbf7d0"><div><div class="item-title"><i class="bi bi-vector-pen"></i> ลายเซ็นจากลิงก์</div><div class="item-sub">กดเพื่อนำเข้าลายเซ็นที่ลูกหนี้/พยานบันทึกจากลิงก์</div></div><button class="secondary" type="button" onclick="syncContractSignatureRequests(true)"><i class="bi bi-arrow-repeat"></i> ดึงลายเซ็น</button></div>` : '';
+    $('contractList').innerHTML = list.length ? signatureSyncBar + list.map(x => {
         const signed = contractSignedCount(x), required = contractRequiredSignatureCount(x), complete = isContractLocked(x), fullySigned = isContractFullySigned(x);
         const debtStatus = x.autoDebtCreated ? ' · สร้างก้อนหนี้แล้ว' : '';
         const status = complete ? `${signed}/${required} : ล็อกสัญญาแล้ว${debtStatus}` : (fullySigned ? `${signed}/${required} : ลงลายเซ็นครบแล้ว / รอล็อกเอกสาร` : `${signed}/${required} : ยังแก้ไขได้อยู่`);
         const canDelete = !complete;
         const canLock = fullySigned && !complete;
         const displayAmount = contractDisplayAmount(x, c);
-        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${escapeHtml(c.debtors[x.debtorId]?.name || x.borrowerName || '-')} · ${money(displayAmount)}</div><div class="item-sub">${status} · วันที่ ${formatDate(x.contractDate || x.createdDate)} · ครบกำหนด ${formatDate(x.dueDate)} · ${escapeHtml(x.fileName || '')}</div></div><div class="doc-actions icon-actions contract-vertical-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="openContractPdf('${x.id}')"><i class="bi bi-eye"></i></button>${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${canLock ? `<button class="icon-action icon-lock" type="button" title="ล็อกเอกสาร" aria-label="ล็อกเอกสาร" onclick="lockContractDocument('${x.id}')"><i class="bi bi-lock"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
+        return `<div class="item doc-card contract-row"><div class="doc-thumb"><i class="bi bi-file-earmark-text"></i></div><div><div class="item-title">${escapeHtml(c.debtors[x.debtorId]?.name || x.borrowerName || '-')} · ${money(displayAmount)}</div><div class="item-sub">${status} · วันที่ ${formatDate(x.contractDate || x.createdDate)} · ครบกำหนด ${formatDate(x.dueDate)} · ${escapeHtml(x.fileName || '')}</div></div><div class="doc-actions icon-actions contract-vertical-actions"><button class="icon-action icon-view" type="button" title="เปิดเอกสาร" aria-label="เปิดเอกสาร" onclick="openContractPdf('${x.id}')"><i class="bi bi-eye"></i></button>${!complete ? `<button class="icon-action icon-edit" type="button" title="แก้ไข" aria-label="แก้ไข" onclick="editContractDraft('${x.id}')"><i class="bi bi-pencil-square"></i></button>` : ''}${!complete ? `<button class="icon-action icon-view" type="button" title="สร้างลิงก์ให้ลูกหนี้เซ็น" aria-label="สร้างลิงก์ให้ลูกหนี้เซ็น" onclick="createContractSignatureLink('${x.id}')"><i class="bi bi-vector-pen"></i></button>` : ''}${canLock ? `<button class="icon-action icon-lock" type="button" title="ล็อกเอกสาร" aria-label="ล็อกเอกสาร" onclick="lockContractDocument('${x.id}')"><i class="bi bi-lock"></i></button>` : ''}${canDelete ? `<button class="icon-action icon-delete" type="button" title="ลบ" aria-label="ลบ" onclick="deleteContractDraft('${x.id}')"><i class="bi bi-trash"></i></button>` : ''}</div></div>`;
     }).join('') : '<div class="empty">ยังไม่มีสัญญากู้ยืม</div>';
 }
 function bahtTextFallback(n) {
@@ -1984,9 +2159,9 @@ function buildContractDebtInstallments(contract) {
 }
 
 async function ensureAutoDebtForLockedContract(contract) {
-    if (!contract || !contract.id || !isContractLocked(contract)) return false;
+    if (!contract || !contract.id || !isContractLocked(contract)) return { created: false, count: 0 };
     const existing = (latestData?.debts || []).some(d => d.source === 'contract_auto' && (d.contractId === contract.id || (contract.contractNo && d.contractNo === contract.contractNo)));
-    if (contract.autoDebtCreated || existing) return false;
+    if (contract.autoDebtCreated || existing) return { created: false, count: 0 };
     const installments = buildContractDebtInstallments(contract);
     await addMany('debts', installments);
     const totalDebtAmount = roundMoney(installments.reduce((s, x) => s + num(x.principal), 0));
@@ -2867,6 +3042,87 @@ setTimeout(updateAllSignatureTools, 300);
 window.addEventListener('resize', () => { if (!$('contractFormCard')?.classList.contains('hidden')) SIG_IDS.forEach(id => resizeSignatureCanvas($(id))); if ($('profileLenderSignature')) resizeSignatureCanvas($('profileLenderSignature')); pdfDesignerRenderOverlay(); });
 
 
+
+
+
+function publicSignatureUrl(token) {
+    const url = new URL(location.href);
+    url.search = '';
+    url.hash = '';
+    url.searchParams.set('sign', token);
+    return url.toString();
+}
+
+async function createContractSignatureLink(contractId) {
+    if (demoMode || !currentUser?.uid) return toast('ฟีเจอร์ส่งลิงก์เซ็นใช้ได้เมื่อเข้าสู่ระบบ Firebase เท่านั้น');
+    const row = (latestData?.contracts || []).find(x => x.id === contractId);
+    if (!row) return toast('ไม่พบสัญญา');
+    if (isContractLocked(row)) return toast('เอกสารถูกล็อกแล้ว ไม่สามารถส่งลิงก์เซ็นเพิ่มเติมได้');
+    const token = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+    const debtor = debtorForContract(row.debtorId || '') || {};
+    const docRow = (latestData?.documents || []).find(x => x.id === row.documentId) || {};
+    const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+    await setDoc(doc(db, 'signature_requests', token), {
+        token,
+        ownerUid: currentUser.uid,
+        contractId: row.id,
+        contractNo: row.contractNo || '',
+        fileName: row.fileName || docRow.fileName || '',
+        downloadURL: row.downloadURL || docRow.downloadURL || '',
+        borrowerName: row.borrowerName || debtor.name || '',
+        lenderName: row.lenderName || currentProfile().lenderName || '',
+        amount: row.amount || 0,
+        contractDate: row.contractDate || '',
+        dueDate: row.dueDate || '',
+        status: 'open',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+    });
+    const link = publicSignatureUrl(token);
+    try { await navigator.clipboard.writeText(link); } catch (e) { console.warn('clipboard warning', e); }
+    await alertAction({ icon: 'success', title: 'สร้างลิงก์เซ็นเอกสารแล้ว', text: 'คัดลอกลิงก์แล้ว สามารถส่งให้ลูกหนี้และพยานเซ็นได้' });
+}
+
+async function syncContractSignatureRequests(showDoneToast = true) {
+    if (demoMode || !currentUser?.uid) return;
+    const { collection, query, where, getDocs, doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
+    const q = query(collection(db, 'signature_requests'), where('ownerUid', '==', currentUser.uid), where('status', '==', 'submitted'));
+    const snap = await getDocs(q);
+    if (snap.empty) {
+        if (showDoneToast) toast('ยังไม่มีลายเซ็นใหม่จากลิงก์');
+        return;
+    }
+    let imported = 0;
+    for (const d of snap.docs) {
+        const req = { id: d.id, ...d.data() };
+        const contract = (latestData?.contracts || []).find(x => x.id === req.contractId);
+        if (!contract) continue;
+        const signatures = { ...(contract.signatures || {}) };
+        if (req.borrowerSignature) signatures.borrower = req.borrowerSignature;
+        if (req.witness1Signature) signatures.witness1 = req.witness1Signature;
+        if (req.witness2Signature) signatures.witness2 = req.witness2Signature;
+        const patch = {
+            signatures,
+            borrowerSignedAt: req.submittedAt || new Date().toISOString(),
+            updatedDate: today()
+        };
+        if (req.borrowerSignedName) patch.borrowerName = req.borrowerSignedName;
+        if (req.witness1Name) patch.witness1Name = req.witness1Name;
+        if (req.witness2Name) patch.witness2Name = req.witness2Name;
+        const signedCount = Object.values(signatures).filter(Boolean).length;
+        patch.signatureCount = signedCount;
+        patch.status = signedCount >= 5 ? 'ready_to_lock' : (signedCount ? 'partial' : (contract.status || 'draft'));
+        await updateRow('contracts', contract.id, patch);
+        await updateDoc(doc(db, 'signature_requests', req.id), { status: 'imported', importedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        imported++;
+    }
+    latestData = await getData();
+    render();
+    if (showDoneToast) toast(`นำเข้าลายเซ็นใหม่ ${imported} รายการแล้ว`);
+}
+
+window.createContractSignatureLink = createContractSignatureLink;
+window.syncContractSignatureRequests = syncContractSignatureRequests;
 
 window.lockContractDocument = async id => {
     const row = (latestData?.contracts || []).find(x => x.id === id);
