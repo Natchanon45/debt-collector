@@ -6664,3 +6664,173 @@ body .bottom-nav {
   .tox .tox-tbtn{width:30px!important;height:30px!important;}
   .tox .tox-tbtn--select{width:auto!important;max-width:128px!important;}
 }
+
+/* ===== v9.7.6 Generic Docs: fixed A4 paper + signature image-only placement designer ===== */
+.generic-a4-page,
+.generic-doc-view-paper{
+    width:210mm!important;
+    min-height:297mm!important;
+    box-sizing:border-box!important;
+    padding:18mm 16mm!important;
+    margin:0 auto!important;
+    background:#fff!important;
+    color:#111827!important;
+    position:relative!important;
+    overflow:hidden!important;
+    transform:none!important;
+    zoom:1!important;
+    box-shadow:0 18px 60px rgba(15,23,42,.14);
+}
+.generic-a4-content{
+    width:100%;
+    min-height:calc(297mm - 36mm);
+    position:relative;
+    transform:none!important;
+    zoom:1!important;
+}
+.generic-a4-html{
+    position:relative;
+    z-index:1;
+    transform:none!important;
+    zoom:1!important;
+}
+.generic-a4-html table{border-collapse:collapse;width:100%;}
+.generic-a4-html td,.generic-a4-html th{border:1px solid #cbd5e1;padding:8px;}
+.generic-signature-layer{
+    position:absolute;
+    inset:0;
+    z-index:5;
+    pointer-events:none;
+}
+.generic-signature-slot{
+    position:absolute;
+    text-align:center;
+    font-size:13px;
+    line-height:1.25;
+    color:#111827;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-end;
+    overflow:hidden;
+}
+.generic-signature-slot img{
+    max-width:100%;
+    max-height:62%;
+    object-fit:contain;
+    display:block;
+    margin:0 auto 2px;
+}
+.generic-signature-line{font-size:14px;white-space:nowrap;}
+.generic-signature-caption{font-weight:800;font-size:12px;}
+.generic-signature-name{font-size:12px;white-space:nowrap;}
+.generic-sign-designer-wrap{
+    max-height:72vh;
+    overflow:auto;
+    background:#e5e7eb;
+    border:1px solid #cbd5e1;
+    border-radius:18px;
+    padding:14px;
+}
+.generic-sign-designer-paper{
+    width:210mm;
+    min-height:297mm;
+    box-sizing:border-box;
+    padding:18mm 16mm;
+    margin:0 auto;
+    background:#fff;
+    color:#111827;
+    position:relative;
+    box-shadow:0 18px 60px rgba(15,23,42,.16);
+    overflow:hidden;
+    transform:none!important;
+    zoom:1!important;
+}
+.generic-sign-designer-content{
+    position:relative;
+    z-index:1;
+}
+.generic-sign-designer-layer{
+    position:absolute;
+    inset:18mm 16mm;
+    z-index:8;
+}
+.generic-sign-designer-box{
+    position:absolute;
+    border:2px dashed #16a34a;
+    background:rgba(240,253,244,.86);
+    color:#166534;
+    border-radius:12px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    cursor:grab;
+    touch-action:none;
+    user-select:none;
+    box-shadow:0 8px 22px rgba(22,101,52,.14);
+}
+.generic-sign-designer-box:active{cursor:grabbing;}
+.generic-sign-designer-box strong{font-size:13px;line-height:1.2;}
+.generic-sign-designer-box small{font-size:10px;color:#15803d;}
+.tox .tox-edit-area__iframe{background:#e5e7eb!important;}
+#genericDocFormCard .tox-tinymce{
+    background:#e5e7eb!important;
+}
+@media(max-width:860px){
+    .generic-doc-view-body{overflow:auto!important;}
+    .generic-a4-page,
+    .generic-doc-view-paper,
+    .generic-sign-designer-paper{
+        width:210mm!important;
+        min-width:210mm!important;
+        max-width:none!important;
+    }
+    .generic-sign-designer-wrap{
+        padding:10px;
+        -webkit-overflow-scrolling:touch;
+    }
+}
+
+
+/* ===== v9.7.6 Generic Docs Signature: show image only on final document ===== */
+.generic-signature-slot.signature-image-only{
+    justify-content:center!important;
+    overflow:visible!important;
+    background:transparent!important;
+    border:0!important;
+}
+.generic-signature-slot.signature-image-only img{
+    width:100%!important;
+    height:100%!important;
+    max-width:100%!important;
+    max-height:100%!important;
+    object-fit:contain!important;
+    margin:0!important;
+    display:block!important;
+}
+.generic-signature-slot.signature-image-only .generic-signature-line,
+.generic-signature-slot.signature-image-only .generic-signature-caption,
+.generic-signature-slot.signature-image-only .generic-signature-name{
+    display:none!important;
+}
+.generic-sign-designer-box.signature-image-only-designer{
+    gap:4px!important;
+    padding:4px!important;
+}
+.generic-sign-designer-icon{
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:#16a34a;
+    color:#fff;
+    font-size:13px;
+    line-height:1;
+}
+.generic-sign-designer-box.signature-image-only-designer strong{
+    font-size:11px!important;
+    line-height:1.15!important;
+}

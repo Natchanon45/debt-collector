@@ -1693,7 +1693,7 @@ async function openPublicSignaturePage(token) {
 
 
 
-/* ===== Generic Documents / Template + Public Draw Signature v9.7.4 TinyMCE Rebuild ===== */
+/* ===== Generic Documents / Template + Public Draw Signature v9.7.6 A4 + Signature Image Only Designer ===== */
 let editingGenericDocId = '';
 let editingGenericTemplateId = '';
 let genericDocTinyMce = null;
@@ -1714,20 +1714,74 @@ function genericDefaultHtml() {
 <li>วันส่งมอบ/สถานที่ส่งมอบ: ........................................................</li>
 <li>เงื่อนไขอื่น ๆ: ........................................................</li>
 </ol>
-<p>คู่สัญญาได้อ่านข้อความและเข้าใจโดยตลอดแล้ว จึงได้ลงลายมือชื่อไว้เป็นสำคัญ</p>
-<div data-signature-block="true" style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:42px;text-align:center">
-<div>ลงชื่อ ........................................ ผู้ขาย<br>(........................................)</div>
-<div>ลงชื่อ ........................................ ผู้ซื้อ<br>(........................................)</div>
-<div>ลงชื่อ ........................................ พยาน<br>(........................................)</div>
-<div>ลงชื่อ ........................................ พยาน<br>(........................................)</div>
-</div>`;
+<p>คู่สัญญาได้อ่านข้อความและเข้าใจโดยตลอดแล้ว จึงได้ลงลายมือชื่อไว้เป็นสำคัญ</p>`;
+}
+
+
+function genericDocSignerLabels() {
+    return {
+        party1: 'คู่สัญญาฝ่ายที่ 1',
+        party2: 'คู่สัญญาฝ่ายที่ 2',
+        witness1: 'พยาน 1',
+        witness2: 'พยาน 2'
+    };
+}
+
+function defaultGenericSignaturePlacements() {
+    return [
+        { key: 'party1', label: 'คู่สัญญาฝ่ายที่ 1', page: 1, x: 10, y: 80, width: 34, height: 11 },
+        { key: 'party2', label: 'คู่สัญญาฝ่ายที่ 2', page: 1, x: 56, y: 80, width: 34, height: 11 },
+        { key: 'witness1', label: 'พยาน 1', page: 1, x: 10, y: 91, width: 34, height: 8 },
+        { key: 'witness2', label: 'พยาน 2', page: 1, x: 56, y: 91, width: 34, height: 8 }
+    ];
+}
+
+function normalizeGenericSignaturePlacements(list) {
+    const labels = genericDocSignerLabels();
+    const source = Array.isArray(list) && list.length ? list : defaultGenericSignaturePlacements();
+    return source.map((x, idx) => {
+        const key = x.key || ['party1','party2','witness1','witness2'][idx] || 'party1';
+        return {
+            key,
+            label: x.label || labels[key] || key,
+            page: Math.max(1, Number(x.page || 1) || 1),
+            x: Math.max(0, Math.min(95, Number(x.x ?? 10) || 10)),
+            y: Math.max(0, Math.min(96, Number(x.y ?? 80) || 80)),
+            width: Math.max(12, Math.min(60, Number(x.width ?? 34) || 34)),
+            height: Math.max(5, Math.min(22, Number(x.height ?? 10) || 10))
+        };
+    });
+}
+
+function stripGenericLegacySignatureBlock(html = '') {
+    return String(html || '')
+        .replace(/<div[^>]+data-signature-block=["']true["'][\s\S]*?<\/div>\s*<\/div>/gi, '')
+        .replace(/<div[^>]+data-signature-block=["']true["'][\s\S]*?<\/div>/gi, '')
+        .trim();
+}
+
+function genericSignatureImage(doc, key) {
+    return doc?.[`${key}Signature`] || '';
+}
+
+function buildGenericSignatureLayer(doc = {}) {
+    const placements = normalizeGenericSignaturePlacements(doc.signaturePlacements);
+    return `<div class="generic-signature-layer">${placements.map(p => {
+        const sig = genericSignatureImage(doc, p.key);
+        // v9.7.6: เอกสารจริงแสดงเฉพาะรูปลายเซ็นเท่านั้น
+        // ไม่ใส่ข้อความ คู่สัญญา/พยาน/เส้นประ/ชื่อ เพราะผู้ใช้จัดข้อความเองใน TinyMCE ได้
+        if (!sig) return '';
+        return `<div class="generic-signature-slot signature-image-only" data-signer="${escapeHtml(p.key)}" style="left:${p.x}%;top:${p.y}%;width:${p.width}%;height:${p.height}%">
+            <img src="${sig}" alt="signature">
+        </div>`;
+    }).join('')}</div>`;
 }
 
 function getGenericDocHtml() {
-    if (genericDocTinyMce?.getContent) return genericDocTinyMce.getContent() || '';
+    if (genericDocTinyMce?.getContent) return stripGenericLegacySignatureBlock(genericDocTinyMce.getContent() || '');
     const el = $('genericDocEditor');
     if (!el) return '';
-    return ('value' in el) ? (el.value || '') : (el.innerHTML || '');
+    return stripGenericLegacySignatureBlock(('value' in el) ? (el.value || '') : (el.innerHTML || ''));
 }
 
 function setGenericDocHtml(html = '', fontSize = 18) {
@@ -1781,11 +1835,13 @@ function getGenericDocTinyMceConfig() {
         font_family_formats: 'Sarabun=Sarabun,Noto Sans Thai,sans-serif;TH Sarabun=TH Sarabun New,TH Sarabun,serif;Arial=arial,helvetica,sans-serif;Tahoma=tahoma,geneva,sans-serif;Times New Roman=times new roman,times,serif;Courier New=courier new,courier,monospace',
         font_size_formats: '8px 9px 10px 11px 12px 14px 16px 18px 20px 22px 24px 26px 28px 30px 32px 36px 40px 44px 48px 56px 64px 72px',
         content_style: `
-            body{font-family:'Sarabun','Noto Sans Thai',sans-serif;font-size:${Math.max(10, Math.min(72, Number(pendingGenericDocFontSize || 18) || 18))}px;line-height:1.65;color:#111827;padding:18px;}
+            html{background:#e5e7eb;}
+            body{font-family:'Sarabun','Noto Sans Thai',sans-serif;font-size:${Math.max(10, Math.min(72, Number(pendingGenericDocFontSize || 18) || 18))}px;line-height:1.65;color:#111827;background:#fff;width:210mm;min-height:297mm;box-sizing:border-box;margin:0 auto!important;padding:18mm 16mm!important;box-shadow:0 12px 40px rgba(15,23,42,.16);overflow-wrap:break-word;}
             table{border-collapse:collapse;width:100%;}
             table td, table th{border:1px solid #cbd5e1;padding:8px;}
             img{max-width:100%;height:auto;}
             hr{border:0;border-top:1px solid #cbd5e1;margin:18px 0;}
+            @media(max-width:760px){body{width:100%;min-height:297mm;margin:0!important;padding:14mm 10mm!important;box-shadow:none;}}
         `,
         setup(editor) {
             editor.on('init', () => {
@@ -1840,6 +1896,7 @@ function openGenericDocForm(docId = '') {
     $('genericDocFormCard')?.classList.remove('hidden');
     setGenericDocMetaCollapsed(true);
     if ($('genericDocTitle')) $('genericDocTitle').value = row?.title || '';
+    window.__pendingGenericTemplatePlacements = row?.signaturePlacements ? normalizeGenericSignaturePlacements(row.signaturePlacements) : null;
     setGenericDocHtml(row?.html || genericDefaultHtml(), row?.fontSize || 18);
     initGenericDocTinyMce();
     $('genericDocFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1886,6 +1943,7 @@ function renderGenericDocuments(d = latestData || blank) {
                     <button class="secondary" onclick="openGenericDocForm('${x.id}')" title="แก้ไข"><i class="bi bi-pencil"></i></button>
                     <button class="secondary" onclick="createGenericDocSignLink('${x.id}')" title="สร้าง/แชร์ลิงก์เซ็น"><i class="bi bi-link-45deg"></i></button>
                     <button class="secondary" onclick="importGenericDocSignatures('${x.id}')" title="นำเข้าลายเซ็น"><i class="bi bi-pen"></i></button>
+                    <button class="secondary" onclick="openGenericSignatureDesigner('${x.id}')" title="จัดตำแหน่งลายเซ็น"><i class="bi bi-bounding-box"></i></button>
                     <button class="primary" onclick="exportGenericDocumentPdf('${x.id}')" title="ส่งออก PDF"><i class="bi bi-file-earmark-pdf"></i></button>
                     <button class="secondary danger-soft" onclick="deleteOrArchiveGenericDocument('${x.id}')" title="${deleteTitle}"><i class="bi ${deleteIcon}"></i></button>
                 </div>
@@ -1899,6 +1957,7 @@ function renderGenericDocuments(d = latestData || blank) {
 }
 
 window.openGenericDocForm = openGenericDocForm;
+window.openGenericSignatureDesigner = window.openGenericSignatureDesigner;
 window.useGenericTemplate = (id) => {
     const row = (latestData?.documentTemplates || []).find(x => x.id === id);
     if (!row) return toast('ไม่พบ Template');
@@ -1906,6 +1965,7 @@ window.useGenericTemplate = (id) => {
     if ($('genericDocTitle')) $('genericDocTitle').value = row.name || row.title || '';
     if ($('genericDocTemplateSelect')) $('genericDocTemplateSelect').value = id;
     setGenericDocHtml(row.html || genericDefaultHtml(), row.fontSize || 18);
+    window.__pendingGenericTemplatePlacements = normalizeGenericSignaturePlacements(row.signaturePlacements);
     initGenericDocTinyMce();
 };
 
@@ -1959,14 +2019,90 @@ window.deleteOrArchiveGenericDocument = async (id) => {
 };
 
 function buildGenericSignHtml(doc) {
-    const signed = [
-        ['party1','คู่สัญญาฝ่ายที่ 1'], ['party2','คู่สัญญาฝ่ายที่ 2'], ['witness1','พยาน 1'], ['witness2','พยาน 2']
-    ].map(([k,label]) => {
-        const sig = doc[`${k}Signature`]; const name = doc[`${k}Name`] || '';
-        return `<div style="text-align:center;margin-top:24px">${sig ? `<img src="${sig}" style="max-width:210px;max-height:82px;object-fit:contain;display:block;margin:0 auto 4px">` : 'ลงชื่อ ........................................'}<br>${escapeHtml(label)}<br>(${escapeHtml(name || '........................................')})</div>`;
-    }).join('');
-    return `<div style="font-size:${Number(doc.fontSize || 18) || 18}px;line-height:1.7">${doc.html || ''}<div style="margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:28px">${signed}</div></div>`;
+    const html = stripGenericLegacySignatureBlock(doc.html || '');
+    const fontSize = Number(doc.fontSize || 18) || 18;
+    return `<div class="generic-a4-content" style="font-size:${fontSize}px;line-height:1.65">
+        <div class="generic-a4-html">${html}</div>
+        ${buildGenericSignatureLayer(doc)}
+    </div>`;
 }
+
+window.openGenericSignatureDesigner = async (id) => {
+    const docRow = (latestData?.genericDocuments || []).find(x => x.id === id);
+    if (!docRow) return toast('ไม่พบเอกสาร');
+    const placements = normalizeGenericSignaturePlacements(docRow.signaturePlacements);
+    const labels = genericDocSignerLabels();
+    const paperHtml = `<div id="genericSignatureDesignerPaper" class="generic-sign-designer-paper">
+        <div class="generic-sign-designer-content" style="font-size:${Number(docRow.fontSize || 18) || 18}px;line-height:1.65">${stripGenericLegacySignatureBlock(docRow.html || '')}</div>
+        <div class="generic-sign-designer-layer">${placements.map(p => `<div class="generic-sign-designer-box signature-image-only-designer" data-key="${escapeHtml(p.key)}" style="left:${p.x}%;top:${p.y}%;width:${p.width}%;height:${p.height}%">
+            <span class="generic-sign-designer-icon"><i class="bi bi-pen"></i></span>
+            <strong>${escapeHtml(labels[p.key] || p.label || p.key)}</strong>
+        </div>`).join('')}</div>
+    </div>`;
+    const result = await Swal.fire({
+        title: 'จัดตำแหน่งลายเซ็น',
+        html: `<div class="generic-sign-designer-wrap">${paperHtml}</div><p class="note" style="margin-top:10px">ลากกล่องตำแหน่งลายเซ็นไปวางบนกระดาษ A4 แล้วกดบันทึก — ตอนแสดงเอกสารจริงจะแสดงเฉพาะรูปลายเซ็น ไม่มีข้อความหรือเส้นประ</p>`,
+        width: 'min(96vw, 980px)',
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-check-circle"></i> บันทึกตำแหน่ง',
+        cancelButtonText: '<i class="bi bi-x-circle"></i> ยกเลิก',
+        didOpen: () => initGenericSignatureDesignerDrag(),
+        preConfirm: () => collectGenericSignaturePlacements()
+    });
+    if (!result.isConfirmed) return;
+    await updateRow('genericDocuments', id, { signaturePlacements: normalizeGenericSignaturePlacements(result.value), updatedDate: today() });
+    toast('บันทึกตำแหน่งลายเซ็นแล้ว');
+    await render();
+};
+
+function initGenericSignatureDesignerDrag() {
+    const paper = document.getElementById('genericSignatureDesignerPaper');
+    if (!paper) return;
+    paper.querySelectorAll('.generic-sign-designer-box').forEach(box => {
+        box.onpointerdown = ev => {
+            ev.preventDefault();
+            box.setPointerCapture?.(ev.pointerId);
+            const rect = paper.getBoundingClientRect();
+            const startX = ev.clientX;
+            const startY = ev.clientY;
+            const startLeft = parseFloat(box.style.left || '0');
+            const startTop = parseFloat(box.style.top || '0');
+            const onMove = e => {
+                const dx = ((e.clientX - startX) / rect.width) * 100;
+                const dy = ((e.clientY - startY) / rect.height) * 100;
+                const w = parseFloat(box.style.width || '30');
+                const h = parseFloat(box.style.height || '10');
+                box.style.left = `${Math.max(0, Math.min(100 - w, startLeft + dx))}%`;
+                box.style.top = `${Math.max(0, Math.min(100 - h, startTop + dy))}%`;
+            };
+            const onUp = () => {
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+            };
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp, { once: true });
+        };
+    });
+}
+
+function collectGenericSignaturePlacements() {
+    const paper = document.getElementById('genericSignatureDesignerPaper');
+    if (!paper) return defaultGenericSignaturePlacements();
+    const labels = genericDocSignerLabels();
+    return Array.from(paper.querySelectorAll('.generic-sign-designer-box')).map(box => {
+        const key = box.dataset.key || 'party1';
+        return {
+            key,
+            label: labels[key] || key,
+            page: 1,
+            x: parseFloat(box.style.left || '0') || 0,
+            y: parseFloat(box.style.top || '0') || 0,
+            width: parseFloat(box.style.width || '34') || 34,
+            height: parseFloat(box.style.height || '10') || 10
+        };
+    });
+}
+
 
 window.viewGenericDocument = (id) => {
     const doc = (latestData?.genericDocuments || []).find(x => x.id === id);
@@ -1984,7 +2120,7 @@ async function saveGenericTemplate() {
     const html = getGenericDocHtml();
     const fontSize = Number($('genericDocBaseFontSize')?.value || pendingGenericDocFontSize || 18) || 18;
     if (!html.trim()) return toast('กรุณากรอกเนื้อหา Template');
-    await add('documentTemplates', { name, html, fontSize, createdDate: today(), type: 'generic' });
+    await add('documentTemplates', { name, html, fontSize, signaturePlacements: defaultGenericSignaturePlacements(), createdDate: today(), type: 'generic' });
     toast('บันทึก Template แล้ว');
     await render();
 }
@@ -1995,9 +2131,10 @@ async function saveGenericDocument() {
     const fontSize = Number($('genericDocBaseFontSize')?.value || pendingGenericDocFontSize || 18) || 18;
     if (!title) return toast('กรุณากรอกชื่อเอกสาร');
     if (!html.trim()) return toast('กรุณากรอกเนื้อหาเอกสาร');
-    const row = { title, html, fontSize, status: 'draft', createdDate: today(), updatedDate: today() };
+    const existing = editingGenericDocId ? ((latestData?.genericDocuments || []).find(x => x.id === editingGenericDocId) || {}) : {};
+    const row = { title, html, fontSize, signaturePlacements: normalizeGenericSignaturePlacements(existing.signaturePlacements || window.__pendingGenericTemplatePlacements), status: existing.status || 'draft', createdDate: today(), updatedDate: today() };
     if (editingGenericDocId) {
-        const old = (latestData?.genericDocuments || []).find(x => x.id === editingGenericDocId) || {};
+        const old = existing;
         await updateRow('genericDocuments', editingGenericDocId, { ...old, ...row, createdDate: old.createdDate || row.createdDate });
     } else {
         editingGenericDocId = await add('genericDocuments', row);
@@ -2034,8 +2171,9 @@ window.createGenericDocSignLink = async (id) => {
         ownerUid: currentUser.uid,
         documentId: id,
         title: docRow.title || '',
-        html: docRow.html || '',
+        html: stripGenericLegacySignatureBlock(docRow.html || ''),
         fontSize: docRow.fontSize || 18,
+        signaturePlacements: normalizeGenericSignaturePlacements(docRow.signaturePlacements),
         status: 'open',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -2075,7 +2213,7 @@ async function openGenericDocumentSignPage(token) {
         const req = snap.data();
         if (req.status !== 'open' && req.status !== 'submitted') throw new Error('ลิงก์นี้ถูกปิดแล้ว');
         document.getElementById('gPubSub').textContent = req.title || 'เอกสารทั่วไป';
-        body.innerHTML = `<div style="display:grid;gap:14px"><div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px;line-height:1.75;font-size:${Number(req.fontSize || 18) || 18}px;max-height:52vh;overflow:auto">${req.html || ''}</div>${['party1:คู่สัญญาฝ่ายที่ 1','party2:คู่สัญญาฝ่ายที่ 2','witness1:พยาน 1','witness2:พยาน 2'].map(item=>{const [k,label]=item.split(':');return `<div style="border:1px solid #e2e8f0;border-radius:16px;padding:10px;background:#fff"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>${label}</strong><button type="button" data-clear="${k}" style="border:1px solid #cbd5e1;border-radius:999px;background:#fff;padding:7px 10px">ล้าง</button></div><input id="gPub_${k}_name" placeholder="ชื่อ${label}" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #cbd5e1;border-radius:12px"><canvas id="gPubSig_${k}" style="width:100%;height:140px;border:1px dashed #94a3b8;border-radius:14px;background:#fff;touch-action:none"></canvas></div>`}).join('')}<button id="gPubSaveBtn" type="button" style="width:100%;border:0;border-radius:16px;background:#16a34a;color:#fff;padding:14px;font-weight:900;font-size:16px"><i class="bi bi-check-circle"></i> บันทึกลายเซ็น</button></div>`;
+        body.innerHTML = `<div style="display:grid;gap:14px"><div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:14px;max-height:52vh;overflow:auto"><div style="width:210mm;max-width:100%;min-height:260px;margin:auto;box-sizing:border-box;padding:16mm 12mm;line-height:1.75;font-size:${Number(req.fontSize || 18) || 18}px;background:#fff;color:#111827">${stripGenericLegacySignatureBlock(req.html || '')}</div></div>${['party1:คู่สัญญาฝ่ายที่ 1','party2:คู่สัญญาฝ่ายที่ 2','witness1:พยาน 1','witness2:พยาน 2'].map(item=>{const [k,label]=item.split(':');return `<div style="border:1px solid #e2e8f0;border-radius:16px;padding:10px;background:#fff"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>${label}</strong><button type="button" data-clear="${k}" style="border:1px solid #cbd5e1;border-radius:999px;background:#fff;padding:7px 10px">ล้าง</button></div><input id="gPub_${k}_name" placeholder="ชื่อ${label}" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #cbd5e1;border-radius:12px"><canvas id="gPubSig_${k}" style="width:100%;height:140px;border:1px dashed #94a3b8;border-radius:14px;background:#fff;touch-action:none"></canvas></div>`}).join('')}<button id="gPubSaveBtn" type="button" style="width:100%;border:0;border-radius:16px;background:#16a34a;color:#fff;padding:14px;font-weight:900;font-size:16px"><i class="bi bi-check-circle"></i> บันทึกลายเซ็น</button></div>`;
         const pads = { party1: makeSignaturePad(document.getElementById('gPubSig_party1')), party2: makeSignaturePad(document.getElementById('gPubSig_party2')), witness1: makeSignaturePad(document.getElementById('gPubSig_witness1')), witness2: makeSignaturePad(document.getElementById('gPubSig_witness2')) };
         body.querySelectorAll('[data-clear]').forEach(btn => btn.onclick = () => pads[btn.dataset.clear]?.clear());
         document.getElementById('gPubSaveBtn').onclick = async () => {
@@ -2192,6 +2330,7 @@ function bindGenericDocumentUi() {
         const row = (latestData?.documentTemplates || []).find(x => x.id === e.target.value);
         if (!row) return;
         setGenericDocHtml(row.html || genericDefaultHtml(), row.fontSize || 18);
+        window.__pendingGenericTemplatePlacements = normalizeGenericSignaturePlacements(row.signaturePlacements);
         initGenericDocTinyMce();
         if ($('genericDocTitle') && !$('genericDocTitle').value) $('genericDocTitle').value = row.name || row.title || '';
     };
@@ -2215,7 +2354,7 @@ function bindGenericDocumentUi() {
     if ($('genericDocLinkBtn')) $('genericDocLinkBtn').onclick = genericDocCreateLink;
     if ($('genericDocHrBtn')) $('genericDocHrBtn').onclick = () => { if (genericDocEditorExec('horizontalLine')) return; genericDocInsertHtml('<hr style="border:0;border-top:1px solid #cbd5e1;margin:18px 0">'); };
     if ($('genericDocTableBtn')) $('genericDocTableBtn').onclick = () => { if (genericDocEditorExec('insertTable', { rows: 2, columns: 2 })) return; genericDocInsertHtml('<table style="width:100%;border-collapse:collapse;margin:14px 0"><tbody><tr><td style="border:1px solid #cbd5e1;padding:8px">หัวข้อ</td><td style="border:1px solid #cbd5e1;padding:8px">รายละเอียด</td></tr><tr><td style="border:1px solid #cbd5e1;padding:8px">&nbsp;</td><td style="border:1px solid #cbd5e1;padding:8px">&nbsp;</td></tr></tbody></table>'); };
-    if ($('genericDocInsertSignatureBlockBtn')) $('genericDocInsertSignatureBlockBtn').onclick = () => genericDocInsertHtml(`<div data-signature-block="true" style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:42px;text-align:center"><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 1<br>(........................................)</div><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 2<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 1<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 2<br>(........................................)</div></div>`);
+    if ($('genericDocInsertSignatureBlockBtn')) $('genericDocInsertSignatureBlockBtn').onclick = () => toast('ลายเซ็นใช้ระบบจัดตำแหน่งหลังบันทึกเอกสาร ไม่ต้องแทรกในเนื้อหา');
 }
 
 async function initFirebase() {
