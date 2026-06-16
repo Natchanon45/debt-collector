@@ -1619,7 +1619,7 @@ function makeSignaturePad(canvas) {
 
 async function openPublicSignaturePage(token) {
     document.body.innerHTML = `
-        <div class="public-sign-page" style="min-height:100vh;background:#f8fafc;padding:16px;color:#0f172a;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+        <div class="public-sign-page" style="min-height:100vh;background:#f8fafc;padding:16px;color:#0f172a;">
             <div style="max-width:720px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:22px;box-shadow:0 12px 35px rgba(15,23,42,.08);overflow:hidden">
                 <div style="padding:18px 18px 12px;border-bottom:1px solid #e2e8f0;background:#f0fdf4">
                     <h2 style="margin:0;font-size:22px">เซ็นเอกสารสัญญา</h2>
@@ -1650,7 +1650,7 @@ async function openPublicSignaturePage(token) {
                 <label style="font-weight:800">ชื่อผู้กู้/ผู้เซ็น <input id="pubBorrowerName" value="${escapeHtml(req.borrowerName || '')}" style="width:100%;margin-top:6px;padding:12px;border:1px solid #cbd5e1;border-radius:12px"></label>
                 ${['borrower:ลายเซ็นผู้กู้','witness1:ลายเซ็นพยาน 1','witness2:ลายเซ็นพยาน 2'].map(item => { const [key,label]=item.split(':'); return `
                     <div style="border:1px solid #e2e8f0;border-radius:16px;padding:10px;background:#fff">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>${label}</strong><button type="button" data-clear="${key}" style="border:1px solid #cbd5e1;border-radius:999px;background:#fff;padding:7px 10px">ล้าง</button></div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>${label}</strong><button type="button" data-clear="${key}" style="border:1px solid #cbd5e1;border-radius:999px;background:#fff;padding:7px 10px"><i class="bi bi-eraser"></i></button></div>
                         ${key !== 'borrower' ? `<input id="pub${key}Name" placeholder="ชื่อ${label.replace('ลายเซ็น','')}" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #cbd5e1;border-radius:12px">` : ''}
                         <canvas id="pubSig_${key}" style="width:100%;height:150px;border:1px dashed #94a3b8;border-radius:14px;background:#fff;touch-action:none"></canvas>
                     </div>`; }).join('')}
@@ -1740,26 +1740,33 @@ function fillGenericDocTemplateSelect(d = latestData || blank) {
 function renderGenericDocuments(d = latestData || blank) {
     fillGenericDocTemplateSelect(d);
     if ($('genericDocList')) {
-        const docs = (d.genericDocuments || []).slice().sort((a,b)=>String(b.createdDate||'').localeCompare(String(a.createdDate||'')));
+        const docs = (d.genericDocuments || [])
+            .filter(x => !x.deleted && x.status !== 'archived')
+            .slice()
+            .sort((a,b)=>String(b.createdDate||'').localeCompare(String(a.createdDate||'')));
         $('genericDocList').innerHTML = docs.length ? docs.map(x => {
             const sigCount = ['party1Signature','party2Signature','witness1Signature','witness2Signature'].filter(k => x[k]).length;
+            const canDelete = String(x.status || 'draft') === 'draft' && sigCount === 0;
+            const deleteTitle = canDelete ? 'ลบร่างเอกสาร' : 'เก็บเอกสารเข้าคลัง';
+            const deleteIcon = canDelete ? 'bi-trash' : 'bi-archive';
             return `<div class="item">
                 <div><div class="item-title">${escapeHtml(x.title || 'เอกสารทั่วไป')}</div>
                 <div class="item-sub">${escapeHtml(x.status || 'draft')} · ลายเซ็น ${sigCount}/4 · ${formatDate(x.createdDate || '')}</div>
                 ${x.signLink ? `<div class="generic-link-box">${escapeHtml(x.signLink)}</div>` : ''}</div>
                 <div class="item-actions">
-                    <button class="secondary" onclick="viewGenericDocument('${x.id}')"><i class="bi bi-eye"></i></button>
-                    <button class="secondary" onclick="openGenericDocForm('${x.id}')"><i class="bi bi-pencil"></i></button>
-                    <button class="secondary" onclick="createGenericDocSignLink('${x.id}')"><i class="bi bi-link-45deg"></i></button>
-                    <button class="secondary" onclick="importGenericDocSignatures('${x.id}')"><i class="bi bi-pen"></i></button>
-                    <button class="primary" onclick="exportGenericDocumentPdf('${x.id}')"><i class="bi bi-file-earmark-pdf"></i></button>
+                    <button class="secondary" onclick="viewGenericDocument('${x.id}')" title="ดูเอกสาร"><i class="bi bi-eye"></i></button>
+                    <button class="secondary" onclick="openGenericDocForm('${x.id}')" title="แก้ไข"><i class="bi bi-pencil"></i></button>
+                    <button class="secondary" onclick="createGenericDocSignLink('${x.id}')" title="สร้าง/แชร์ลิงก์เซ็น"><i class="bi bi-link-45deg"></i></button>
+                    <button class="secondary" onclick="importGenericDocSignatures('${x.id}')" title="นำเข้าลายเซ็น"><i class="bi bi-pen"></i></button>
+                    <button class="primary" onclick="exportGenericDocumentPdf('${x.id}')" title="ส่งออก PDF"><i class="bi bi-file-earmark-pdf"></i></button>
+                    <button class="secondary danger-soft" onclick="deleteOrArchiveGenericDocument('${x.id}')" title="${deleteTitle}"><i class="bi ${deleteIcon}"></i></button>
                 </div>
             </div>`;
         }).join('') : '<div class="empty">ยังไม่มีเอกสารทั่วไป</div>';
     }
     if ($('genericTemplateList')) {
-        const tpl = d.documentTemplates || [];
-        $('genericTemplateList').innerHTML = tpl.length ? tpl.map(x => `<div class="item"><div><div class="item-title">${escapeHtml(x.name || x.title || 'Template')}</div><div class="item-sub">คลิกเพื่อเริ่มเอกสารจาก Template นี้</div></div><div class="item-actions"><button class="secondary" onclick="useGenericTemplate('${x.id}')"><i class="bi bi-plus-circle"></i> ใช้</button></div></div>`).join('') : '<div class="empty">ยังไม่มี Template</div>';
+        const tpl = (d.documentTemplates || []).filter(x => !x.deleted);
+        $('genericTemplateList').innerHTML = tpl.length ? tpl.map(x => `<div class="item"><div><div class="item-title">${escapeHtml(x.name || x.title || 'Template')}</div><div class="item-sub">คลิกเพื่อเริ่มเอกสารจาก Template นี้</div></div><div class="item-actions"><button class="secondary" onclick="useGenericTemplate('${x.id}')"><i class="bi bi-plus-circle"></i> ใช้</button><button class="secondary danger-soft" onclick="deleteGenericTemplate('${x.id}')" title="ลบ Template"><i class="bi bi-trash"></i></button></div></div>`).join('') : '<div class="empty">ยังไม่มี Template</div>';
     }
 }
 window.openGenericDocForm = openGenericDocForm;
@@ -1774,6 +1781,56 @@ window.useGenericTemplate = (id) => {
         $('genericDocEditor').style.fontSize = `${Number(row.fontSize || 18)}px`;
     }
     if ($('genericDocTemplateSelect')) $('genericDocTemplateSelect').value = id;
+};
+
+window.deleteGenericTemplate = async (id) => {
+    const row = (latestData?.documentTemplates || []).find(x => x.id === id);
+    if (!row) return toast('ไม่พบ Template');
+    const ok = await confirmAction({
+        title: 'ยืนยันการลบ Template',
+        html: `<div style="line-height:1.7;text-align:center">Template <strong>${escapeHtml(row.name || row.title || '')}</strong><br>จะถูกลบออกจากรายการใช้งาน</div>`,
+        confirmButtonText: 'ลบ Template',
+        confirmButtonColor: '#dc2626',
+        cancelButtonText: 'ยกเลิก'
+    });
+    if (!ok) return;
+    // ใช้ soft delete เพื่อป้องกันลบผิด และไม่กระทบเอกสารที่เคยสร้างจาก Template นี้
+    await updateRow('documentTemplates', id, { deleted: true, deletedDate: today(), updatedDate: today() });
+    toast('ลบ Template แล้ว');
+    await render();
+};
+
+window.deleteOrArchiveGenericDocument = async (id) => {
+    const row = (latestData?.genericDocuments || []).find(x => x.id === id);
+    if (!row) return toast('ไม่พบเอกสาร');
+    const sigCount = ['party1Signature','party2Signature','witness1Signature','witness2Signature'].filter(k => row[k]).length;
+    const isDraft = String(row.status || 'draft') === 'draft' && sigCount === 0;
+    if (isDraft) {
+        const ok = await confirmAction({
+            title: 'ยืนยันการลบร่างเอกสาร',
+            html: `<div style="line-height:1.7;text-align:center">ลบร่างเอกสาร <strong>${escapeHtml(row.title || '')}</strong><br>เอกสารนี้ยังไม่มีลายเซ็น จึงสามารถลบออกจากระบบได้</div>`,
+            confirmButtonText: 'ลบร่าง',
+            confirmButtonColor: '#dc2626',
+            cancelButtonText: 'ยกเลิก'
+        });
+        if (!ok) return;
+        await deleteRow('genericDocuments', id);
+        toast('ลบร่างเอกสารแล้ว');
+        await render();
+        return;
+    }
+    const ok = await confirmAction({
+        title: 'เก็บเอกสารเข้าคลัง',
+        html: `<div style="line-height:1.7;text-align:center">เอกสาร <strong>${escapeHtml(row.title || '')}</strong><br>มีการลงนามหรือมีสถานะสำคัญแล้ว จึงจะไม่ลบถาวร แต่จะซ่อนจากรายการหลักแทน</div>`,
+        confirmButtonText: 'เก็บเข้าคลัง',
+        confirmIcon: 'bi-archive',
+        confirmButtonColor: '#64748b',
+        cancelButtonText: 'ยกเลิก'
+    });
+    if (!ok) return;
+    await updateRow('genericDocuments', id, { status: 'archived', archived: true, archivedDate: today(), updatedDate: today() });
+    toast('เก็บเอกสารเข้าคลังแล้ว');
+    await render();
 };
 function buildGenericSignHtml(doc) {
     const signed = [

@@ -1143,6 +1143,7 @@ input.input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         font-size: 22px
     }
 }
+
 /* 
 [data-theme=dark] .bottom-tab {
     background: rgba(24, 33, 27, .86) !important
@@ -1240,6 +1241,7 @@ input.input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 body {
     padding-bottom: calc(74px + env(safe-area-inset-bottom)) !important
 }
+
 .contract-pdf-source {
     font-family: 'TH Sarabun New', 'Sarabun', 'Noto Sans Thai', sans-serif !important
 }
@@ -2370,9 +2372,9 @@ label:not(.dropzone):not(.file) {
     max-width: 100% !important;
     margin: 14px 0 7px !important;
     padding: 4px 9px !important;
-    border-radius: 999px !important;
+    border-radius: 20px !important;
     background: var(--field-label-bg) !important;
-    font-size: 12px !important;
+    font-size: 14px !important;
     line-height: 1.25 !important;
     font-weight: 500 !important;
     letter-spacing: .01em !important
@@ -6088,38 +6090,39 @@ body.signature-drawing {
 
 
 /* ===== v9.6.8 Bottom Nav FINAL: icon + text only, 6 columns, no button look ===== */
-.bottom-nav{
-    display:flex;
-    gap:0;
+.bottom-nav {
+    display: flex;
+    gap: 0;
 }
 
-.bottom-nav .nav-item{
-    flex:1;
-    border:none;
-    background:transparent;
-    border-radius:0;
-    padding:6px 2px;
+.bottom-nav .nav-item {
+    flex: 1;
+    border: none;
+    background: transparent;
+    border-radius: 0;
+    padding: 6px 2px;
 }
 
 .bottom-nav .nav-item:hover,
-.bottom-nav .nav-item:focus{
-    background:transparent;
-    box-shadow:none;
-    transform:none;
+.bottom-nav .nav-item:focus {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
 }
 
-.bottom-nav .nav-item.active{
-    color:var(--primary);
+.bottom-nav .nav-item.active {
+    color: var(--primary);
 }
 
-.bottom-nav .nav-item i{
-    font-size:20px;
+.bottom-nav .nav-item i {
+    font-size: 20px;
 }
 
-.bottom-nav .nav-item span{
-    font-size:11px;
-    margin-top:2px;
+.bottom-nav .nav-item span {
+    font-size: 11px;
+    margin-top: 2px;
 }
+
 [data-theme=dark] .bottom-nav {
     background: rgba(12, 18, 14, .94) !important;
     border-top-color: rgba(34, 197, 94, .22) !important;
@@ -6406,6 +6409,22 @@ body.signature-drawing {
 }
 
 body .bottom-nav {
-    border-radius: 20px 20px 0 0 !important; 
+    border-radius: 20px 20px 0 0 !important;
     gap: 10px !important;
+}
+
+/* v9.6.9 Generic Documents: delete/archive action */
+.item-actions .danger-soft {
+    color: #dc2626 !important;
+    border-color: rgba(220, 38, 38, .28) !important;
+    background: rgba(254, 242, 242, .88) !important;
+}
+
+.item-actions .danger-soft:hover,
+.item-actions .danger-soft:focus {
+    color: #dc2626 !important;
+    border-color: rgba(220, 38, 38, .36) !important;
+    background: rgba(254, 226, 226, .92) !important;
+    box-shadow: none !important;
+    transform: none !important;
 }
