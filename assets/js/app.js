@@ -1723,6 +1723,7 @@ function openGenericDocForm(docId = '') {
     fillGenericDocTemplateSelect(d);
     const row = docId ? (d.genericDocuments || []).find(x => x.id === docId) : null;
     $('genericDocFormCard')?.classList.remove('hidden');
+    setGenericDocMetaCollapsed(true);
     if ($('genericDocTitle')) $('genericDocTitle').value = row?.title || '';
     if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(row?.fontSize || 18);
     if ($('genericDocEditor')) {
@@ -1736,6 +1737,18 @@ function fillGenericDocTemplateSelect(d = latestData || blank) {
     if (!sel) return;
     const list = d.documentTemplates || [];
     sel.innerHTML = `<option value="">เอกสารเปล่า / ค่าเริ่มต้น</option>` + list.map(x => `<option value="${x.id}">${escapeHtml(x.name || x.title || 'Template')}</option>`).join('');
+}
+function setGenericDocMetaCollapsed(collapsed = true) {
+    const panel = $('genericDocMetaPanel');
+    const btn = $('toggleGenericDocMetaBtn');
+    if (!panel || !btn) return;
+    panel.classList.toggle('is-collapsed', !!collapsed);
+    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+}
+function toggleGenericDocMetaPanel() {
+    const panel = $('genericDocMetaPanel');
+    if (!panel) return;
+    setGenericDocMetaCollapsed(!panel.classList.contains('is-collapsed'));
 }
 function renderGenericDocuments(d = latestData || blank) {
     fillGenericDocTemplateSelect(d);
@@ -2015,6 +2028,7 @@ function genericDocCreateLink() {
 function bindGenericDocumentUi() {
     if ($('newGenericDocBtn')) $('newGenericDocBtn').onclick = () => openGenericDocForm('');
     if ($('closeGenericDocFormBtn')) $('closeGenericDocFormBtn').onclick = () => $('genericDocFormCard')?.classList.add('hidden');
+    if ($('toggleGenericDocMetaBtn')) $('toggleGenericDocMetaBtn').onclick = () => toggleGenericDocMetaPanel();
     if ($('saveGenericTemplateBtn')) $('saveGenericTemplateBtn').onclick = saveGenericTemplate;
     if ($('saveGenericDocBtn')) $('saveGenericDocBtn').onclick = saveGenericDocument;
     if ($('genericDocTemplateSelect')) $('genericDocTemplateSelect').onchange = e => { const row = (latestData?.documentTemplates || []).find(x => x.id === e.target.value); if (row && $('genericDocEditor')) { $('genericDocEditor').innerHTML = row.html || ''; $('genericDocEditor').style.fontSize = `${Number(row.fontSize || 18)}px`; if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(row.fontSize || 18); if (!$('genericDocTitle').value) $('genericDocTitle').value = row.name || row.title || ''; } };

@@ -6428,3 +6428,76 @@ body .bottom-nav {
     box-shadow: none !important;
     transform: none !important;
 }
+
+/* ===== Generic Docs: collapsible meta panel ===== */
+.generic-doc-meta-head {
+    margin: 8px 0 10px;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.generic-doc-meta-toggle {
+    border: 1px solid var(--border);
+    background: var(--card2);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 7px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-weight: 900;
+    min-width: 170px;
+    cursor: pointer;
+}
+
+.generic-doc-meta-toggle span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.generic-doc-meta-toggle i:first-child {
+    color: var(--primary);
+}
+
+.generic-doc-meta-caret {
+    transition: transform .18s ease;
+}
+
+.generic-doc-meta-toggle[aria-expanded="true"] .generic-doc-meta-caret {
+    transform: rotate(180deg);
+}
+
+.generic-doc-meta-panel {
+    overflow: hidden;
+    transition: max-height .18s ease, opacity .18s ease, margin .18s ease;
+    max-height: 220px;
+    opacity: 1;
+    margin-bottom: 10px;
+}
+
+.generic-doc-meta-panel.is-collapsed {
+    max-height: 0 !important;
+    opacity: 0;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    pointer-events: none;
+}
+
+@media(max-width:720px) {
+    .generic-doc-meta-head {
+        margin: 6px 0 8px;
+    }
+
+    .generic-doc-meta-toggle {
+        width: auto;
+        min-width: 0;
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .generic-doc-meta-panel:not(.is-collapsed) {
+        margin-bottom: 8px;
+    }
+}

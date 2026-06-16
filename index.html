@@ -522,7 +522,13 @@
                         <h3><i class="bi bi-pencil-square"></i> แบบฟอร์มเอกสารทั่วไป</h3>
                         <button id="closeGenericDocFormBtn" class="mini mini-danger" type="button">ปิด</button>
                     </div>
-                    <div class="generic-doc-grid">
+                    <div class="generic-doc-meta-head">
+                        <button id="toggleGenericDocMetaBtn" class="generic-doc-meta-toggle" type="button" aria-expanded="false" aria-controls="genericDocMetaPanel">
+                            <span><i class="bi bi-file-earmark-text"></i> ข้อมูลเอกสาร</span>
+                            <i class="bi bi-chevron-down generic-doc-meta-caret"></i>
+                        </button>
+                    </div>
+                    <div id="genericDocMetaPanel" class="generic-doc-grid generic-doc-meta-panel is-collapsed">
                         <div>
                             <label>ชื่อเอกสาร</label>
                             <input id="genericDocTitle" class="input" placeholder="เช่น สัญญาซื้อขายทั่วไป">
