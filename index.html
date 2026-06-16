@@ -539,7 +539,7 @@
                         </div>
                     </div>
                     <label>เนื้อหาเอกสาร</label>
-                    <div id="genericDocEditor" class="generic-doc-editor" contenteditable="true"></div>
+                    <textarea id="genericDocEditor" class="generic-doc-editor"></textarea>
                     <div class="generic-doc-action-row">
                         <button id="saveGenericTemplateBtn" class="secondary" type="button"><i class="bi bi-save"></i> บันทึกเป็น Template</button>
                         <button id="saveGenericDocBtn" class="primary" type="button"><i class="bi bi-file-earmark-check"></i> บันทึกเอกสาร</button>
@@ -868,6 +868,7 @@
         </div>
     </div>
     <div id="toast" class="toast"></div>
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js" referrerpolicy="origin"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script type="module" src="assets/js/firebase-config.js"></script>

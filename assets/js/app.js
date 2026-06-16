@@ -1693,9 +1693,14 @@ async function openPublicSignaturePage(token) {
 
 
 
-/* ===== Generic Documents / Template + Public Draw Signature v9.6.5 ===== */
+/* ===== Generic Documents / Template + Public Draw Signature v9.7.4 TinyMCE Rebuild ===== */
 let editingGenericDocId = '';
 let editingGenericTemplateId = '';
+let genericDocTinyMce = null;
+let genericDocTinyMcePromise = null;
+let pendingGenericDocHtml = '';
+let pendingGenericDocFontSize = 18;
+
 function genericDefaultHtml() {
     const dateText = formatDate(today());
     return `<h2 style="text-align:center">สัญญาซื้อขายทั่วไป</h2>
@@ -1717,6 +1722,116 @@ function genericDefaultHtml() {
 <div>ลงชื่อ ........................................ พยาน<br>(........................................)</div>
 </div>`;
 }
+
+function getGenericDocHtml() {
+    if (genericDocTinyMce?.getContent) return genericDocTinyMce.getContent() || '';
+    const el = $('genericDocEditor');
+    if (!el) return '';
+    return ('value' in el) ? (el.value || '') : (el.innerHTML || '');
+}
+
+function setGenericDocHtml(html = '', fontSize = 18) {
+    pendingGenericDocHtml = html || genericDefaultHtml();
+    pendingGenericDocFontSize = Number(fontSize || 18) || 18;
+    if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(pendingGenericDocFontSize);
+    if (genericDocTinyMce?.setContent) {
+        genericDocTinyMce.setContent(pendingGenericDocHtml);
+        setGenericDocEditorBaseFontSize(pendingGenericDocFontSize);
+        return;
+    }
+    const el = $('genericDocEditor');
+    if (el) {
+        if ('value' in el) el.value = pendingGenericDocHtml;
+        else el.innerHTML = pendingGenericDocHtml;
+        el.style.fontSize = `${pendingGenericDocFontSize}px`;
+        el.style.fontFamily = `'Sarabun','Noto Sans Thai',sans-serif`;
+    }
+}
+
+function setGenericDocEditorBaseFontSize(size = 18) {
+    const safeSize = Math.max(10, Math.min(72, Number(size || 18) || 18));
+    pendingGenericDocFontSize = safeSize;
+    if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(safeSize);
+    const body = genericDocTinyMce?.getBody?.();
+    if (body) {
+        body.style.fontSize = `${safeSize}px`;
+        body.style.fontFamily = `'Sarabun','Noto Sans Thai',sans-serif`;
+        body.style.lineHeight = '1.65';
+    }
+    const el = $('genericDocEditor');
+    if (el) el.style.fontSize = `${safeSize}px`;
+}
+
+function getGenericDocTinyMceConfig() {
+    return {
+        selector: '#genericDocEditor',
+        height: 560,
+        min_height: 420,
+        menubar: false,
+        branding: false,
+        promotion: false,
+        convert_urls: false,
+        statusbar: true,
+        plugins: 'advlist autolink lists link charmap preview anchor searchreplace visualblocks code fullscreen insertdatetime table help wordcount autoresize',
+        toolbar: [
+            'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | forecolor backcolor removeformat',
+            'alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link hr charmap | code fullscreen preview help'
+        ].join(' | '),
+        toolbar_mode: 'sliding',
+        font_family_formats: 'Sarabun=Sarabun,Noto Sans Thai,sans-serif;TH Sarabun=TH Sarabun New,TH Sarabun,serif;Arial=arial,helvetica,sans-serif;Tahoma=tahoma,geneva,sans-serif;Times New Roman=times new roman,times,serif;Courier New=courier new,courier,monospace',
+        font_size_formats: '8px 9px 10px 11px 12px 14px 16px 18px 20px 22px 24px 26px 28px 30px 32px 36px 40px 44px 48px 56px 64px 72px',
+        content_style: `
+            body{font-family:'Sarabun','Noto Sans Thai',sans-serif;font-size:${Math.max(10, Math.min(72, Number(pendingGenericDocFontSize || 18) || 18))}px;line-height:1.65;color:#111827;padding:18px;}
+            table{border-collapse:collapse;width:100%;}
+            table td, table th{border:1px solid #cbd5e1;padding:8px;}
+            img{max-width:100%;height:auto;}
+            hr{border:0;border-top:1px solid #cbd5e1;margin:18px 0;}
+        `,
+        setup(editor) {
+            editor.on('init', () => {
+                genericDocTinyMce = editor;
+                editor.setContent(pendingGenericDocHtml || genericDefaultHtml());
+                setGenericDocEditorBaseFontSize(pendingGenericDocFontSize);
+            });
+            editor.on('focus', () => document.body.classList.add('generic-doc-editing'));
+            editor.on('blur', () => document.body.classList.remove('generic-doc-editing'));
+            editor.on('change keyup undo redo setcontent', () => {
+                pendingGenericDocHtml = editor.getContent() || '';
+            });
+        }
+    };
+}
+
+async function initGenericDocTinyMce() {
+    const editorEl = $('genericDocEditor');
+    if (!editorEl) return null;
+    if (genericDocTinyMce?.getContent) {
+        setGenericDocEditorBaseFontSize(pendingGenericDocFontSize);
+        return genericDocTinyMce;
+    }
+    if (genericDocTinyMcePromise) return genericDocTinyMcePromise;
+    if (!window.tinymce?.init) {
+        console.warn('TinyMCE not loaded, fallback to plain editor');
+        editorEl.classList.add('generic-doc-editor-fallback');
+        setGenericDocEditorBaseFontSize(pendingGenericDocFontSize);
+        return null;
+    }
+    genericDocTinyMcePromise = window.tinymce.init(getGenericDocTinyMceConfig())
+        .then(editors => {
+            genericDocTinyMce = editors?.[0] || window.tinymce.get('genericDocEditor') || null;
+            setGenericDocEditorBaseFontSize(pendingGenericDocFontSize);
+            return genericDocTinyMce;
+        })
+        .catch(err => {
+            console.warn('TinyMCE failed, fallback to plain editor', err);
+            genericDocTinyMcePromise = null;
+            editorEl.classList.add('generic-doc-editor-fallback');
+            setGenericDocEditorBaseFontSize(pendingGenericDocFontSize);
+            return null;
+        });
+    return genericDocTinyMcePromise;
+}
+
 function openGenericDocForm(docId = '') {
     editingGenericDocId = docId || '';
     const d = latestData || blank;
@@ -1725,19 +1840,18 @@ function openGenericDocForm(docId = '') {
     $('genericDocFormCard')?.classList.remove('hidden');
     setGenericDocMetaCollapsed(true);
     if ($('genericDocTitle')) $('genericDocTitle').value = row?.title || '';
-    if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(row?.fontSize || 18);
-    if ($('genericDocEditor')) {
-        $('genericDocEditor').innerHTML = row?.html || genericDefaultHtml();
-        $('genericDocEditor').style.fontSize = `${Number(row?.fontSize || 18)}px`;
-    }
+    setGenericDocHtml(row?.html || genericDefaultHtml(), row?.fontSize || 18);
+    initGenericDocTinyMce();
     $('genericDocFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
 function fillGenericDocTemplateSelect(d = latestData || blank) {
     const sel = $('genericDocTemplateSelect');
     if (!sel) return;
-    const list = d.documentTemplates || [];
+    const list = (d.documentTemplates || []).filter(x => !x.deleted);
     sel.innerHTML = `<option value="">เอกสารเปล่า / ค่าเริ่มต้น</option>` + list.map(x => `<option value="${x.id}">${escapeHtml(x.name || x.title || 'Template')}</option>`).join('');
 }
+
 function setGenericDocMetaCollapsed(collapsed = true) {
     const panel = $('genericDocMetaPanel');
     const btn = $('toggleGenericDocMetaBtn');
@@ -1750,6 +1864,7 @@ function toggleGenericDocMetaPanel() {
     if (!panel) return;
     setGenericDocMetaCollapsed(!panel.classList.contains('is-collapsed'));
 }
+
 function renderGenericDocuments(d = latestData || blank) {
     fillGenericDocTemplateSelect(d);
     if ($('genericDocList')) {
@@ -1782,18 +1897,16 @@ function renderGenericDocuments(d = latestData || blank) {
         $('genericTemplateList').innerHTML = tpl.length ? tpl.map(x => `<div class="item"><div><div class="item-title">${escapeHtml(x.name || x.title || 'Template')}</div><div class="item-sub">คลิกเพื่อเริ่มเอกสารจาก Template นี้</div></div><div class="item-actions"><button class="secondary" onclick="useGenericTemplate('${x.id}')"><i class="bi bi-plus-circle"></i> ใช้</button><button class="secondary danger-soft" onclick="deleteGenericTemplate('${x.id}')" title="ลบ Template"><i class="bi bi-trash"></i></button></div></div>`).join('') : '<div class="empty">ยังไม่มี Template</div>';
     }
 }
+
 window.openGenericDocForm = openGenericDocForm;
 window.useGenericTemplate = (id) => {
     const row = (latestData?.documentTemplates || []).find(x => x.id === id);
     if (!row) return toast('ไม่พบ Template');
     openGenericDocForm('');
     if ($('genericDocTitle')) $('genericDocTitle').value = row.name || row.title || '';
-    if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(row.fontSize || 18);
-    if ($('genericDocEditor')) {
-        $('genericDocEditor').innerHTML = row.html || genericDefaultHtml();
-        $('genericDocEditor').style.fontSize = `${Number(row.fontSize || 18)}px`;
-    }
     if ($('genericDocTemplateSelect')) $('genericDocTemplateSelect').value = id;
+    setGenericDocHtml(row.html || genericDefaultHtml(), row.fontSize || 18);
+    initGenericDocTinyMce();
 };
 
 window.deleteGenericTemplate = async (id) => {
@@ -1807,7 +1920,6 @@ window.deleteGenericTemplate = async (id) => {
         cancelButtonText: 'ยกเลิก'
     });
     if (!ok) return;
-    // ใช้ soft delete เพื่อป้องกันลบผิด และไม่กระทบเอกสารที่เคยสร้างจาก Template นี้
     await updateRow('documentTemplates', id, { deleted: true, deletedDate: today(), updatedDate: today() });
     toast('ลบ Template แล้ว');
     await render();
@@ -1845,17 +1957,17 @@ window.deleteOrArchiveGenericDocument = async (id) => {
     toast('เก็บเอกสารเข้าคลังแล้ว');
     await render();
 };
+
 function buildGenericSignHtml(doc) {
     const signed = [
         ['party1','คู่สัญญาฝ่ายที่ 1'], ['party2','คู่สัญญาฝ่ายที่ 2'], ['witness1','พยาน 1'], ['witness2','พยาน 2']
     ].map(([k,label]) => {
-        const img = doc[k+'Signature'] ? `<img src="${doc[k+'Signature']}" alt="${label}">` : '';
-        const name = doc[k+'Name'] || '........................................';
-        return `<div class="generic-signed-box">${img}<div>ลงชื่อ ${img ? '' : '........................................'}</div><div>(${escapeHtml(name)})</div><strong>${label}</strong></div>`;
+        const sig = doc[`${k}Signature`]; const name = doc[`${k}Name`] || '';
+        return `<div style="text-align:center;margin-top:24px">${sig ? `<img src="${sig}" style="max-width:210px;max-height:82px;object-fit:contain;display:block;margin:0 auto 4px">` : 'ลงชื่อ ........................................'}<br>${escapeHtml(label)}<br>(${escapeHtml(name || '........................................')})</div>`;
     }).join('');
-    const fontSize = Number(doc.fontSize || 18) || 18;
-    return `<div class="generic-doc-content" style="font-size:${fontSize}px">${doc.html || ''}</div><div class="generic-signature-summary">${signed}</div>`;
+    return `<div style="font-size:${Number(doc.fontSize || 18) || 18}px;line-height:1.7">${doc.html || ''}<div style="margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:28px">${signed}</div></div>`;
 }
+
 window.viewGenericDocument = (id) => {
     const doc = (latestData?.genericDocuments || []).find(x => x.id === id);
     if (!doc) return toast('ไม่พบเอกสาร');
@@ -1866,35 +1978,42 @@ window.viewGenericDocument = (id) => {
     $('documentPreviewModal').classList.remove('hidden');
     document.body.classList.add('modal-open');
 };
+
 async function saveGenericTemplate() {
     const name = ($('genericDocTitle')?.value || '').trim() || 'Template เอกสารทั่วไป';
-    const html = $('genericDocEditor')?.innerHTML || '';
-    const fontSize = Number($('genericDocBaseFontSize')?.value || 18) || 18;
+    const html = getGenericDocHtml();
+    const fontSize = Number($('genericDocBaseFontSize')?.value || pendingGenericDocFontSize || 18) || 18;
     if (!html.trim()) return toast('กรุณากรอกเนื้อหา Template');
     await add('documentTemplates', { name, html, fontSize, createdDate: today(), type: 'generic' });
     toast('บันทึก Template แล้ว');
     await render();
 }
+
 async function saveGenericDocument() {
     const title = ($('genericDocTitle')?.value || '').trim();
-    const html = $('genericDocEditor')?.innerHTML || '';
-    const fontSize = Number($('genericDocBaseFontSize')?.value || 18) || 18;
+    const html = getGenericDocHtml();
+    const fontSize = Number($('genericDocBaseFontSize')?.value || pendingGenericDocFontSize || 18) || 18;
     if (!title) return toast('กรุณากรอกชื่อเอกสาร');
     if (!html.trim()) return toast('กรุณากรอกเนื้อหาเอกสาร');
     const row = { title, html, fontSize, status: 'draft', createdDate: today(), updatedDate: today() };
-    if (editingGenericDocId) await updateRow('genericDocuments', editingGenericDocId, row);
-    else editingGenericDocId = await add('genericDocuments', row);
+    if (editingGenericDocId) {
+        const old = (latestData?.genericDocuments || []).find(x => x.id === editingGenericDocId) || {};
+        await updateRow('genericDocuments', editingGenericDocId, { ...old, ...row, createdDate: old.createdDate || row.createdDate });
+    } else {
+        editingGenericDocId = await add('genericDocuments', row);
+    }
     toast('บันทึกเอกสารทั่วไปแล้ว');
     $('genericDocFormCard')?.classList.add('hidden');
     await render();
 }
+
 window.exportGenericDocumentPdf = async (id) => {
     const doc = (latestData?.genericDocuments || []).find(x => x.id === id);
     if (!doc) return toast('ไม่พบเอกสาร');
     if (!window.html2canvas || !window.jspdf?.jsPDF) return toast('ยังโหลด PDF library ไม่ครบ');
     const box = $('genericDocPdfSource');
     box.innerHTML = `<div class="generic-a4-page">${buildGenericSignHtml(doc)}</div>`;
-    await new Promise(r => setTimeout(r, 60));
+    await new Promise(r => setTimeout(r, 80));
     const page = box.querySelector('.generic-a4-page');
     const canvas = await html2canvas(page, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
     const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
@@ -1903,6 +2022,7 @@ window.exportGenericDocumentPdf = async (id) => {
     pdf.save(`${safeFileName(doc.title || 'generic-document')}.pdf`);
     box.innerHTML = '';
 };
+
 window.createGenericDocSignLink = async (id) => {
     const docRow = (latestData?.genericDocuments || []).find(x => x.id === id);
     if (!docRow) return toast('ไม่พบเอกสาร');
@@ -1911,16 +2031,20 @@ window.createGenericDocSignLink = async (id) => {
     const link = `${location.origin}${location.pathname}?docsign=${encodeURIComponent(token)}`;
     const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js');
     await setDoc(doc(db, 'generic_document_sign_requests', token), {
-        ownerUid: currentUser.uid, documentId: id, title: docRow.title || '', html: docRow.html || '', status: 'open', createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+        ownerUid: currentUser.uid,
+        documentId: id,
+        title: docRow.title || '',
+        html: docRow.html || '',
+        fontSize: docRow.fontSize || 18,
+        status: 'open',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
     });
     await updateRow('genericDocuments', id, { signToken: token, signLink: link, updatedDate: today() });
     await render();
-    await shareOrCopySigningLink(
-        link,
-        'สร้างลิงก์เซ็นเอกสารทั่วไปแล้ว',
-        'กรุณาตรวจสอบและลงนามเอกสารทั่วไป'
-    );
+    await shareOrCopySigningLink(link, 'สร้างลิงก์เซ็นเอกสารทั่วไปแล้ว', 'กรุณาตรวจสอบและลงนามเอกสารทั่วไป');
 };
+
 window.importGenericDocSignatures = async (id) => {
     const docRow = (latestData?.genericDocuments || []).find(x => x.id === id);
     if (!docRow?.signToken) return toast('ยังไม่มีลิงก์เซ็น');
@@ -1939,6 +2063,7 @@ window.importGenericDocSignatures = async (id) => {
     toast('นำเข้าลายเซ็นเข้าเอกสารแล้ว');
     await render();
 };
+
 async function openGenericDocumentSignPage(token) {
     document.body.innerHTML = `<div class="public-sign-page" style="min-height:100vh;background:#f8fafc;padding:14px;color:#0f172a;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"><div style="max-width:860px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:22px;box-shadow:0 12px 35px rgba(15,23,42,.08);overflow:hidden"><div style="padding:18px;border-bottom:1px solid #e2e8f0;background:#f0fdf4"><h2 style="margin:0">เซ็นเอกสารทั่วไป</h2><p id="gPubSub" style="margin:6px 0 0;color:#475569">กำลังโหลดข้อมูล...</p></div><div id="gPubBody" style="padding:16px"></div></div></div>`;
     const body = document.getElementById('gPubBody');
@@ -1964,65 +2089,97 @@ async function openGenericDocumentSignPage(token) {
 }
 
 function genericDocFocusEditor() {
+    if (genericDocTinyMce?.focus) {
+        genericDocTinyMce.focus();
+        return genericDocTinyMce.getBody?.() || null;
+    }
     const editor = $('genericDocEditor');
     if (!editor) return null;
     editor.focus();
     return editor;
 }
+
+function genericDocEditorExec(command, value = null) {
+    if (genericDocTinyMce?.execCommand) {
+        const map = {
+            bold: 'Bold', italic: 'Italic', underline: 'Underline', strikethrough: 'Strikethrough', strikeThrough: 'Strikethrough',
+            bulletedList: 'InsertUnorderedList', numberedList: 'InsertOrderedList', insertUnorderedList: 'InsertUnorderedList', insertOrderedList: 'InsertOrderedList',
+            outdent: 'Outdent', indent: 'Indent', removeFormat: 'RemoveFormat', undo: 'Undo', redo: 'Redo',
+            horizontalLine: 'InsertHorizontalRule', justifyLeft: 'JustifyLeft', justifyCenter: 'JustifyCenter', justifyRight: 'JustifyRight', justifyFull: 'JustifyFull'
+        };
+        try {
+            if (command === 'alignment') {
+                const align = typeof value === 'object' ? value.value : value;
+                const alignMap = { left: 'JustifyLeft', center: 'JustifyCenter', right: 'JustifyRight', justify: 'JustifyFull' };
+                genericDocTinyMce.execCommand(alignMap[align] || 'JustifyLeft');
+            } else if (command === 'fontSize') {
+                const size = typeof value === 'object' ? value.value : value;
+                genericDocTinyMce.execCommand('FontSize', false, size);
+            } else if (command === 'fontColor') {
+                const color = typeof value === 'object' ? value.value : value;
+                genericDocTinyMce.execCommand('ForeColor', false, color);
+            } else if (command === 'link') {
+                genericDocTinyMce.execCommand('mceInsertLink', false, { href: value, target: '_blank', rel: 'noopener' });
+            } else if (command === 'insertTable') {
+                genericDocInsertHtml('<table style="width:100%;border-collapse:collapse;margin:14px 0"><tbody><tr><td style="border:1px solid #cbd5e1;padding:8px">หัวข้อ</td><td style="border:1px solid #cbd5e1;padding:8px">รายละเอียด</td></tr><tr><td style="border:1px solid #cbd5e1;padding:8px">&nbsp;</td><td style="border:1px solid #cbd5e1;padding:8px">&nbsp;</td></tr></tbody></table>');
+            } else {
+                genericDocTinyMce.execCommand(map[command] || command, false, value || undefined);
+            }
+            genericDocTinyMce.focus();
+            return true;
+        } catch (e) {
+            console.warn('TinyMCE command failed', command, e);
+        }
+    }
+    genericDocFocusEditor();
+    try { document.execCommand(command, false, value); return true; } catch(e) { return false; }
+}
+
 function genericDocApplyFontSize(size) {
+    const safeSize = Math.max(10, Math.min(72, Number(size || 18) || 18));
+    setGenericDocEditorBaseFontSize(safeSize);
+    if (genericDocTinyMce) { genericDocEditorExec('fontSize', { value: `${safeSize}px` }); return; }
     const editor = genericDocFocusEditor();
     if (!editor) return;
-    const safeSize = Math.max(10, Math.min(72, Number(size || 18) || 18));
-    if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(safeSize);
     const sel = window.getSelection?.();
     const hasSelection = sel && sel.rangeCount && !sel.getRangeAt(0).collapsed && editor.contains(sel.anchorNode) && editor.contains(sel.focusNode);
-    if (!hasSelection) {
-        editor.style.fontSize = `${safeSize}px`;
-        return;
-    }
+    if (!hasSelection) { editor.style.fontSize = `${safeSize}px`; return; }
     document.execCommand('fontSize', false, '7');
     editor.querySelectorAll('font[size="7"]').forEach(font => {
-        const span = document.createElement('span');
-        span.style.fontSize = `${safeSize}px`;
-        span.innerHTML = font.innerHTML;
-        font.replaceWith(span);
+        const span = document.createElement('span'); span.style.fontSize = `${safeSize}px`; span.innerHTML = font.innerHTML; font.replaceWith(span);
     });
 }
 function genericDocChangeFont(delta) {
     const input = $('genericDocBaseFontSize');
-    const current = Number(input?.value || 18) || 18;
+    const current = Number(input?.value || pendingGenericDocFontSize || 18) || 18;
     genericDocApplyFontSize(current + delta);
 }
 function genericDocApplyFormat(tag) {
-    genericDocFocusEditor();
-    document.execCommand('formatBlock', false, tag || 'P');
+    if (genericDocTinyMce) { genericDocTinyMce.execCommand('FormatBlock', false, tag || 'p'); genericDocTinyMce.focus(); return; }
+    genericDocFocusEditor(); document.execCommand('formatBlock', false, tag || 'P');
 }
 function genericDocApplyFontFamily(family) {
-    const editor = genericDocFocusEditor();
-    if (!editor) return;
     const safeFamily = String(family || 'Sarabun').replace(/[\"']/g, '').trim() || 'Sarabun';
+    if (genericDocTinyMce) { genericDocTinyMce.execCommand('FontName', false, safeFamily); genericDocTinyMce.focus(); return; }
+    const editor = genericDocFocusEditor(); if (!editor) return;
     const sel = window.getSelection?.();
     const hasSelection = sel && sel.rangeCount && !sel.getRangeAt(0).collapsed && editor.contains(sel.anchorNode) && editor.contains(sel.focusNode);
-    if (!hasSelection) {
-        editor.style.fontFamily = `'${safeFamily}', 'Noto Sans Thai', sans-serif`;
-        return;
-    }
+    if (!hasSelection) { editor.style.fontFamily = `'${safeFamily}', 'Noto Sans Thai', sans-serif`; return; }
     document.execCommand('fontName', false, safeFamily);
 }
 function genericDocApplyTextColor(color) {
-    genericDocFocusEditor();
     const safeColor = /^#[0-9a-fA-F]{6}$/.test(String(color || '')) ? color : '#111827';
-    document.execCommand('foreColor', false, safeColor);
+    if (genericDocTinyMce) { genericDocEditorExec('fontColor', { value: safeColor }); return; }
+    genericDocFocusEditor(); document.execCommand('foreColor', false, safeColor);
 }
 function genericDocInsertHtml(html) {
-    genericDocFocusEditor();
-    document.execCommand('insertHTML', false, html);
+    if (genericDocTinyMce?.insertContent) { genericDocTinyMce.insertContent(html); genericDocTinyMce.focus(); return; }
+    genericDocFocusEditor(); document.execCommand('insertHTML', false, html);
 }
 function genericDocCreateLink() {
-    genericDocFocusEditor();
-    const url = prompt('กรอกลิงก์ URL');
-    if (!url) return;
-    document.execCommand('createLink', false, url);
+    const url = prompt('กรอกลิงก์ URL'); if (!url) return;
+    if (genericDocTinyMce) return genericDocEditorExec('link', url);
+    genericDocFocusEditor(); document.execCommand('createLink', false, url);
 }
 
 function bindGenericDocumentUi() {
@@ -2031,8 +2188,20 @@ function bindGenericDocumentUi() {
     if ($('toggleGenericDocMetaBtn')) $('toggleGenericDocMetaBtn').onclick = () => toggleGenericDocMetaPanel();
     if ($('saveGenericTemplateBtn')) $('saveGenericTemplateBtn').onclick = saveGenericTemplate;
     if ($('saveGenericDocBtn')) $('saveGenericDocBtn').onclick = saveGenericDocument;
-    if ($('genericDocTemplateSelect')) $('genericDocTemplateSelect').onchange = e => { const row = (latestData?.documentTemplates || []).find(x => x.id === e.target.value); if (row && $('genericDocEditor')) { $('genericDocEditor').innerHTML = row.html || ''; $('genericDocEditor').style.fontSize = `${Number(row.fontSize || 18)}px`; if ($('genericDocBaseFontSize')) $('genericDocBaseFontSize').value = String(row.fontSize || 18); if (!$('genericDocTitle').value) $('genericDocTitle').value = row.name || row.title || ''; } };
-    document.querySelectorAll('[data-gdoc-cmd]').forEach(btn => btn.onclick = () => { genericDocFocusEditor(); document.execCommand(btn.dataset.gdocCmd, false, null); });
+    if ($('genericDocTemplateSelect')) $('genericDocTemplateSelect').onchange = e => {
+        const row = (latestData?.documentTemplates || []).find(x => x.id === e.target.value);
+        if (!row) return;
+        setGenericDocHtml(row.html || genericDefaultHtml(), row.fontSize || 18);
+        initGenericDocTinyMce();
+        if ($('genericDocTitle') && !$('genericDocTitle').value) $('genericDocTitle').value = row.name || row.title || '';
+    };
+    document.querySelectorAll('[data-gdoc-cmd]').forEach(btn => btn.onclick = () => {
+        const cmdMap = { bold:'bold', italic:'italic', underline:'underline', strikeThrough:'strikethrough', insertUnorderedList:'bulletedList', insertOrderedList:'numberedList', outdent:'outdent', indent:'indent', removeFormat:'removeFormat' };
+        const alignMap = { justifyLeft:'left', justifyCenter:'center', justifyRight:'right', justifyFull:'justify' };
+        const raw = btn.dataset.gdocCmd;
+        if (alignMap[raw]) return genericDocEditorExec('alignment', { value: alignMap[raw] });
+        genericDocEditorExec(cmdMap[raw] || raw);
+    });
     if ($('genericDocFontMinusBtn')) $('genericDocFontMinusBtn').onclick = () => genericDocChangeFont(-1);
     if ($('genericDocFontPlusBtn')) $('genericDocFontPlusBtn').onclick = () => genericDocChangeFont(1);
     if ($('genericDocBaseFontSize')) {
@@ -2044,9 +2213,9 @@ function bindGenericDocumentUi() {
     if ($('genericDocTextColor')) $('genericDocTextColor').onchange = e => genericDocApplyTextColor(e.target.value);
     if ($('genericDocTextColorBtn')) $('genericDocTextColorBtn').onclick = () => $('genericDocTextColor')?.click();
     if ($('genericDocLinkBtn')) $('genericDocLinkBtn').onclick = genericDocCreateLink;
-    if ($('genericDocHrBtn')) $('genericDocHrBtn').onclick = () => genericDocInsertHtml('<hr style="border:0;border-top:1px solid #cbd5e1;margin:18px 0">');
-    if ($('genericDocTableBtn')) $('genericDocTableBtn').onclick = () => genericDocInsertHtml('<table style="width:100%;border-collapse:collapse;margin:14px 0"><tbody><tr><td style="border:1px solid #cbd5e1;padding:8px">หัวข้อ</td><td style="border:1px solid #cbd5e1;padding:8px">รายละเอียด</td></tr><tr><td style="border:1px solid #cbd5e1;padding:8px">&nbsp;</td><td style="border:1px solid #cbd5e1;padding:8px">&nbsp;</td></tr></tbody></table>');
-    if ($('genericDocInsertSignatureBlockBtn')) $('genericDocInsertSignatureBlockBtn').onclick = () => { genericDocInsertHtml(`<div data-signature-block="true" style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:42px;text-align:center"><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 1<br>(........................................)</div><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 2<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 1<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 2<br>(........................................)</div></div>`); };
+    if ($('genericDocHrBtn')) $('genericDocHrBtn').onclick = () => { if (genericDocEditorExec('horizontalLine')) return; genericDocInsertHtml('<hr style="border:0;border-top:1px solid #cbd5e1;margin:18px 0">'); };
+    if ($('genericDocTableBtn')) $('genericDocTableBtn').onclick = () => { if (genericDocEditorExec('insertTable', { rows: 2, columns: 2 })) return; genericDocInsertHtml('<table style="width:100%;border-collapse:collapse;margin:14px 0"><tbody><tr><td style="border:1px solid #cbd5e1;padding:8px">หัวข้อ</td><td style="border:1px solid #cbd5e1;padding:8px">รายละเอียด</td></tr><tr><td style="border:1px solid #cbd5e1;padding:8px">&nbsp;</td><td style="border:1px solid #cbd5e1;padding:8px">&nbsp;</td></tr></tbody></table>'); };
+    if ($('genericDocInsertSignatureBlockBtn')) $('genericDocInsertSignatureBlockBtn').onclick = () => genericDocInsertHtml(`<div data-signature-block="true" style="margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:42px;text-align:center"><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 1<br>(........................................)</div><div>ลงชื่อ ........................................ คู่สัญญาฝ่ายที่ 2<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 1<br>(........................................)</div><div>ลงชื่อ ........................................ พยาน 2<br>(........................................)</div></div>`);
 }
 
 async function initFirebase() {
