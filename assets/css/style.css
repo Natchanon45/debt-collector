@@ -6976,3 +6976,51 @@ body .bottom-nav {
     .ocr-confirm-actions{grid-template-columns:1fr;}
     .ocr-card-frame{min-height:190px;padding:10px;}
 }
+
+/* ===== v9.8.1 OCR live camera banking flow ===== */
+.ocr-camera-panel{
+    display:grid;
+    gap:10px;
+    margin:10px 0 12px;
+}
+.ocr-camera-panel.hidden{display:none!important;}
+.ocr-camera-frame{
+    position:relative;
+    border-radius:22px;
+    background:#020617;
+    overflow:hidden;
+    min-height:260px;
+    display:grid;
+    place-items:center;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.ocr-camera-frame video{
+    width:100%;
+    height:min(62vh,460px);
+    min-height:260px;
+    object-fit:cover;
+    background:#020617;
+}
+.ocr-card-guide.live{
+    width:min(88%,520px);
+    border-color:#22c55e;
+    box-shadow:0 0 0 999px rgba(0,0,0,.34), inset 0 0 0 1px rgba(255,255,255,.35);
+}
+.ocr-camera-actions{
+    display:grid;
+    grid-template-columns:1.1fr .8fr 1fr;
+    gap:8px;
+}
+.ocr-camera-actions button{
+    min-height:44px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+}
+#ocrFile{display:none!important;}
+@media(max-width:640px){
+    .ocr-camera-actions{grid-template-columns:1fr;}
+    .ocr-camera-frame{min-height:230px;}
+    .ocr-camera-frame video{height:min(54vh,380px);min-height:230px;}
+}

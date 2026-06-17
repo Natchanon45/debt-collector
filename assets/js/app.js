@@ -1436,31 +1436,129 @@ async function getAuthToken() { return currentUser?.getIdToken ? await currentUs
 function fillOcrFields(o) { $('ocrPrefix').value = o.prefix || ''; $('ocrFirstName').value = o.firstName || ''; $('ocrLastName').value = o.lastName || ''; $('ocrIdCard').value = o.idCard || ''; if ($('ocrBirthDate')) $('ocrBirthDate').value = o.birthDate || ''; $('ocrAddress').value = o.address || ''; if ($('ocrSubDistrict')) $('ocrSubDistrict').value = o.subDistrict || ''; $('ocrDistrict').value = o.district || ''; $('ocrProvince').value = o.province || ''; $('ocrIdMasked').textContent = o.idCard ? `แสดงแบบซ่อน: ${maskId(o.idCard)}` : '' }
 
 let pendingOcrFile = null;
+let ocrCameraStream = null;
+
 function getOcrSelectedFile() {
     return pendingOcrFile || $('ocrFileCamera')?.files?.[0] || $('ocrFileGallery')?.files?.[0] || $('ocrFile')?.files?.[0] || null;
 }
-function renderOcrPreviewFromFile(file) {
+
+function ocrSetPreviewFile(file) {
     if (!file) return;
     pendingOcrFile = file;
     if ($('ocrFileName')) $('ocrFileName').textContent = file.name || 'เลือกรูปแล้ว';
     const img = $('ocrPreview');
     if (img) {
-        img.src = URL.createObjectURL(file);
+        const oldUrl = img.dataset.objectUrl;
+        if (oldUrl) URL.revokeObjectURL(oldUrl);
+        const url = URL.createObjectURL(file);
+        img.dataset.objectUrl = url;
+        img.src = url;
         img.classList.remove('hidden');
     }
     $('ocrPreviewActions')?.classList.remove('hidden');
+    $('ocrCameraPanel')?.classList.add('hidden');
 }
+
+function renderOcrPreviewFromFile(file) {
+    ocrSetPreviewFile(file);
+}
+
+async function ocrStartLiveCamera() {
+    const panel = $('ocrCameraPanel');
+    const video = $('ocrCameraVideo');
+    if (!panel || !video) return $('ocrFileCamera')?.click();
+
+    $('ocrPreviewActions')?.classList.add('hidden');
+    panel.classList.remove('hidden');
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+        toast('เบราว์เซอร์นี้ไม่รองรับกล้องโดยตรง กรุณาเลือกรูปจากเครื่อง');
+        $('ocrFileCamera')?.click();
+        return;
+    }
+
+    try {
+        ocrStopLiveCamera(false);
+        ocrCameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            },
+            audio: false
+        });
+        video.srcObject = ocrCameraStream;
+        await video.play();
+    } catch (err) {
+        console.warn('OCR camera error', err);
+        toast('เปิดกล้องไม่ได้ กรุณาอนุญาตกล้องหรือเลือกรูปจากเครื่อง');
+        $('ocrFileCamera')?.click();
+    }
+}
+
+function ocrStopLiveCamera(hidePanel = true) {
+    if (ocrCameraStream) {
+        ocrCameraStream.getTracks().forEach(track => track.stop());
+        ocrCameraStream = null;
+    }
+    const video = $('ocrCameraVideo');
+    if (video) video.srcObject = null;
+    if (hidePanel) $('ocrCameraPanel')?.classList.add('hidden');
+}
+
+async function ocrCaptureFromLiveCamera() {
+    const video = $('ocrCameraVideo');
+    if (!video || !video.videoWidth || !video.videoHeight) {
+        toast('ยังไม่พบภาพจากกล้อง');
+        return;
+    }
+
+    const cardRatio = 85.6 / 54; // อัตราส่วนบัตรประชาชนโดยประมาณ
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    let sx = 0, sy = 0, sw = vw, sh = vh;
+
+    if (vw / vh > cardRatio) {
+        sw = Math.round(vh * cardRatio);
+        sx = Math.round((vw - sw) / 2);
+    } else {
+        sh = Math.round(vw / cardRatio);
+        sy = Math.round((vh - sh) / 2);
+    }
+
+    const maxW = 1600;
+    const outW = Math.min(maxW, sw);
+    const outH = Math.round(outW / cardRatio);
+    const canvas = document.createElement('canvas');
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, outW, outH);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    if (!blob) return toast('ถ่ายภาพไม่สำเร็จ');
+    const file = new File([blob], `id-card-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    ocrSetPreviewFile(file);
+    ocrStopLiveCamera(true);
+}
+
 function bindOcrSourceButtons() {
-    $('ocrTakePhotoBtn')?.addEventListener('click', () => $('ocrFileCamera')?.click());
+    $('ocrTakePhotoBtn')?.addEventListener('click', ocrStartLiveCamera);
     $('ocrChoosePhotoBtn')?.addEventListener('click', () => $('ocrFileGallery')?.click());
-    $('ocrRetakeBtn')?.addEventListener('click', () => $('ocrFileCamera')?.click());
+    $('ocrCaptureBtn')?.addEventListener('click', ocrCaptureFromLiveCamera);
+    $('ocrCloseCameraBtn')?.addEventListener('click', () => ocrStopLiveCamera(true));
+    $('ocrCameraFallbackBtn')?.addEventListener('click', () => $('ocrFileGallery')?.click());
+    $('ocrRetakeBtn')?.addEventListener('click', ocrStartLiveCamera);
     $('ocrSelectAgainBtn')?.addEventListener('click', () => $('ocrFileGallery')?.click());
     $('ocrUsePhotoBtn')?.addEventListener('click', () => $('runOcrBtn')?.click());
     ['ocrFileCamera','ocrFileGallery','ocrFile'].forEach(id => {
         const input = $(id);
         if (!input || input.dataset.ocrBound === '1') return;
         input.dataset.ocrBound = '1';
-        input.addEventListener('change', () => renderOcrPreviewFromFile(input.files?.[0]));
+        input.addEventListener('change', () => {
+            ocrStopLiveCamera(true);
+            renderOcrPreviewFromFile(input.files?.[0]);
+        });
     });
 }
 

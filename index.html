@@ -130,21 +130,32 @@
                         <div class="card">
                             <h3><i class="bi bi-camera"></i> สแกนบัตรประชาชน</h3>
                             <p class="note">ถ่ายรูปบัตรให้ชัด เต็มบัตร แสงเพียงพอ แล้วตรวจสอบผลก่อนบันทึก</p>
-                            <label>ถ่ายรูป / เลือกรูปบัตรประชาชน</label>
+                            <label>สแกนบัตรประชาชน</label>
                             <div class="ocr-bank-actions">
-                                <button id="ocrTakePhotoBtn" class="primary" type="button"><i class="bi bi-camera"></i> ถ่ายรูปทันที</button>
+                                <button id="ocrTakePhotoBtn" class="primary" type="button"><i class="bi bi-camera-video"></i> เปิดกล้องสแกนบัตร</button>
                                 <button id="ocrChoosePhotoBtn" class="secondary" type="button"><i class="bi bi-images"></i> เลือกจากเครื่อง</button>
                             </div>
                             <input id="ocrFileCamera" class="hidden" type="file" accept="image/*" capture="environment">
                             <input id="ocrFileGallery" class="hidden" type="file" accept="image/*">
-                            <label id="ocrDropzone" class="dropzone ocr-card-dropzone"><i
-                                    class="bi bi-credit-card-2-front"></i><strong>วางบัตรให้อยู่ในกรอบ</strong><span
-                                    id="ocrFileName">รองรับถ่ายรูปหรือเลือกจากคลังภาพ</span><input id="ocrFile" type="file"
-                                    accept="image/*"></label>
+                            <input id="ocrFile" class="hidden" type="file" accept="image/*">
+
+                            <div id="ocrCameraPanel" class="ocr-camera-panel hidden" aria-label="กล้องสแกนบัตรประชาชน">
+                                <div class="ocr-camera-frame">
+                                    <video id="ocrCameraVideo" autoplay playsinline muted></video>
+                                    <div class="ocr-card-guide live"><span>วางบัตรให้ตรงกรอบ แล้วกดถ่ายภาพ</span></div>
+                                </div>
+                                <div class="ocr-camera-actions">
+                                    <button id="ocrCaptureBtn" class="primary" type="button"><i class="bi bi-camera"></i> ถ่ายภาพ</button>
+                                    <button id="ocrCloseCameraBtn" class="secondary" type="button"><i class="bi bi-x-circle"></i> ปิดกล้อง</button>
+                                    <button id="ocrCameraFallbackBtn" class="secondary" type="button"><i class="bi bi-folder2-open"></i> เลือกจากเครื่อง</button>
+                                </div>
+                                <small class="note">แนะนำให้ถือบัตรแนวนอนและให้ขอบบัตรอยู่ในกรอบสีเขียว</small>
+                            </div>
+
                             <div class="ocr-card-preview hidden" id="ocrPreviewActions">
                                 <div class="ocr-card-frame">
                                     <img id="ocrPreview" class="preview hidden">
-                                    <div class="ocr-card-guide"><span>วางบัตรประชาชนในกรอบ</span></div>
+                                    <div class="ocr-card-guide"><span>ตรวจสอบรูปบัตรก่อน OCR</span></div>
                                 </div>
                                 <div class="ocr-confirm-actions">
                                     <button id="ocrUsePhotoBtn" class="primary" type="button"><i class="bi bi-check-circle"></i> ใช้รูปนี้</button>
