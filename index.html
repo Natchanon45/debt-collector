@@ -132,10 +132,18 @@
                             <p class="note">ถ่ายรูปบัตรให้ชัด เต็มบัตร แสงเพียงพอ แล้วตรวจสอบผลก่อนบันทึก</p>
                             <label>ถ่ายรูป / เลือกรูปบัตรประชาชน</label>
                             <label id="ocrDropzone" class="dropzone"><i
-                                    class="bi bi-camera"></i><strong>แตะเพื่อเปิดกล้องหรือเลือกรูป</strong><span
+                                    class="bi bi-camera"></i><strong>แตะเพื่อเปิดกล้อง</strong><span
                                     id="ocrFileName">รองรับรูปภาพจากกล้องมือถือ</span><input id="ocrFile" type="file"
                                     accept="image/*" capture="environment"></label>
-                            <img id="ocrPreview" class="preview hidden">
+                            <input id="ocrUploadFile" type="file" accept="image/*" class="hidden">
+                            <div class="ocr-bank-card-frame">
+                                <img id="ocrPreview" class="preview hidden">
+                            </div>
+                            <div id="ocrCaptureActions" class="ocr-capture-actions hidden">
+                                <button id="ocrUsePhotoBtn" class="primary" type="button"><i class="bi bi-check-circle"></i> ใช้รูปนี้</button>
+                                <button id="ocrRetakePhotoBtn" class="secondary" type="button"><i class="bi bi-arrow-clockwise"></i> ถ่ายใหม่</button>
+                                <button id="ocrUploadPhotoBtn" class="secondary" type="button"><i class="bi bi-folder2-open"></i> เลือกจากเครื่อง</button>
+                            </div>
                             <button id="runOcrBtn" class="primary">อ่านข้อมูลจากบัตรประชาชน</button>
                         </div>
                         <div class="card">
