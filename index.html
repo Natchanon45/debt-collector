@@ -131,20 +131,28 @@
                             <h3><i class="bi bi-camera"></i> สแกนบัตรประชาชน</h3>
                             <p class="note">ถ่ายรูปบัตรให้ชัด เต็มบัตร แสงเพียงพอ แล้วตรวจสอบผลก่อนบันทึก</p>
                             <label>ถ่ายรูป / เลือกรูปบัตรประชาชน</label>
-                            <label id="ocrDropzone" class="dropzone"><i
-                                    class="bi bi-camera"></i><strong>แตะเพื่อเปิดกล้อง</strong><span
-                                    id="ocrFileName">รองรับรูปภาพจากกล้องมือถือ</span><input id="ocrFile" type="file"
-                                    accept="image/*" capture="environment"></label>
-                            <input id="ocrUploadFile" type="file" accept="image/*" class="hidden">
-                            <div class="ocr-bank-card-frame">
-                                <img id="ocrPreview" class="preview hidden">
+                            <div class="ocr-bank-actions">
+                                <button id="ocrTakePhotoBtn" class="primary" type="button"><i class="bi bi-camera"></i> ถ่ายรูปทันที</button>
+                                <button id="ocrChoosePhotoBtn" class="secondary" type="button"><i class="bi bi-images"></i> เลือกจากเครื่อง</button>
                             </div>
-                            <div id="ocrCaptureActions" class="ocr-capture-actions hidden">
-                                <button id="ocrUsePhotoBtn" class="primary" type="button"><i class="bi bi-check-circle"></i> ใช้รูปนี้</button>
-                                <button id="ocrRetakePhotoBtn" class="secondary" type="button"><i class="bi bi-arrow-clockwise"></i> ถ่ายใหม่</button>
-                                <button id="ocrUploadPhotoBtn" class="secondary" type="button"><i class="bi bi-folder2-open"></i> เลือกจากเครื่อง</button>
+                            <input id="ocrFileCamera" class="hidden" type="file" accept="image/*" capture="environment">
+                            <input id="ocrFileGallery" class="hidden" type="file" accept="image/*">
+                            <label id="ocrDropzone" class="dropzone ocr-card-dropzone"><i
+                                    class="bi bi-credit-card-2-front"></i><strong>วางบัตรให้อยู่ในกรอบ</strong><span
+                                    id="ocrFileName">รองรับถ่ายรูปหรือเลือกจากคลังภาพ</span><input id="ocrFile" type="file"
+                                    accept="image/*"></label>
+                            <div class="ocr-card-preview hidden" id="ocrPreviewActions">
+                                <div class="ocr-card-frame">
+                                    <img id="ocrPreview" class="preview hidden">
+                                    <div class="ocr-card-guide"><span>วางบัตรประชาชนในกรอบ</span></div>
+                                </div>
+                                <div class="ocr-confirm-actions">
+                                    <button id="ocrUsePhotoBtn" class="primary" type="button"><i class="bi bi-check-circle"></i> ใช้รูปนี้</button>
+                                    <button id="ocrRetakeBtn" class="secondary" type="button"><i class="bi bi-arrow-clockwise"></i> ถ่ายใหม่</button>
+                                    <button id="ocrSelectAgainBtn" class="secondary" type="button"><i class="bi bi-folder2-open"></i> เลือกรูปใหม่</button>
+                                </div>
                             </div>
-                            <button id="runOcrBtn" class="primary">อ่านข้อมูลจากบัตรประชาชน</button>
+                            <button id="runOcrBtn" class="primary hidden" type="button">อ่านข้อมูลจากบัตรประชาชน</button>
                         </div>
                         <div class="card">
                             <h3><i class="bi bi-card-text"></i> ผลลัพธ์</h3>

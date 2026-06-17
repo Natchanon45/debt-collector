@@ -6835,16 +6835,16 @@ body .bottom-nav {
     line-height:1.15!important;
 }
 
-/* ===== v9.7.8 TH Sarabun + Generic signature guide + OCR banking UI ===== */
+/* ===== v9.8.0 TH Sarabun + OCR banking flow + signature meta ===== */
 @font-face{
-    font-family:'THSarabunApp';
+    font-family:'TH Sarabun New';
     src:url('../fonts/THSarabun.ttf') format('truetype');
     font-weight:400;
     font-style:normal;
     font-display:swap;
 }
 @font-face{
-    font-family:'THSarabunApp';
+    font-family:'TH Sarabun New';
     src:url('../fonts/THSarabun-Bold.ttf') format('truetype');
     font-weight:700;
     font-style:normal;
@@ -6853,165 +6853,126 @@ body .bottom-nav {
 .generic-a4-page,
 .generic-doc-view-paper,
 .generic-sign-designer-paper,
-.generic-a4-content,
-.generic-a4-html,
 .generic-sign-designer-content,
-.generic-doc-editor{
-    font-family:'THSarabunApp','TH Sarabun New','Sarabun',Tahoma,sans-serif!important;
+.generic-signature-meta{
+    font-family:'TH Sarabun New','TH Sarabun',Tahoma,sans-serif!important;
 }
-.generic-sign-designer-wrap{
-    position:relative;
+.ocr-bank-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin:8px 0 12px;
 }
-.generic-sign-designer-paper{
-    background-color:#fff!important;
-    background-image:
-      linear-gradient(rgba(22,163,74,.08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(22,163,74,.08) 1px, transparent 1px),
-      linear-gradient(rgba(22,163,74,.16) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(22,163,74,.16) 1px, transparent 1px)!important;
-    background-size:10mm 10mm,10mm 10mm,50mm 50mm,50mm 50mm!important;
-}
-.generic-sign-designer-toolbar{
-    position:sticky;
-    top:0;
-    z-index:30;
-    display:flex;
-    gap:8px;
-    align-items:center;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    padding:8px 10px;
-    margin-bottom:10px;
-    border:1px solid #cbd5e1;
-    border-radius:14px;
-    background:rgba(255,255,255,.95);
-    backdrop-filter:blur(8px);
-}
-.generic-sign-coord-panel{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    flex-wrap:wrap;
-    font-weight:900;
-    color:#0f172a;
-    font-size:12px;
-}
-.generic-sign-coord-panel span{
+.ocr-bank-actions button,
+.ocr-confirm-actions button{
+    min-height:44px;
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    min-width:54px;
-    padding:5px 7px;
-    border-radius:999px;
-    background:#f1f5f9;
-    border:1px solid #e2e8f0;
+    gap:7px;
 }
-.generic-sign-nudge-tools{
-    display:flex;
-    align-items:center;
-    gap:5px;
-}
-.generic-sign-nudge-tools button{
-    width:32px!important;
-    min-width:32px!important;
-    height:32px!important;
-    min-height:32px!important;
-    border-radius:50%!important;
-    padding:0!important;
-    display:grid!important;
-    place-items:center!important;
-}
-.generic-sign-meta-toggle{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    font-size:12px;
-    font-weight:900;
-    color:#334155;
-    user-select:none;
-}
-.generic-sign-designer-box.is-selected{
-    border-style:solid!important;
-    border-color:#0f172a!important;
-    background:rgba(220,252,231,.96)!important;
-    box-shadow:0 0 0 4px rgba(22,163,74,.18),0 10px 26px rgba(15,23,42,.18)!important;
-}
-.generic-signature-meta{
-    display:block;
-    font-family:'THSarabunApp','TH Sarabun New','Sarabun',Tahoma,sans-serif;
-    font-size:13px;
-    line-height:1.1;
-    color:#111827;
-    text-align:center;
-    margin-top:1px;
-    white-space:nowrap;
-}
-.generic-signature-slot.signature-image-only.show-meta{
-    justify-content:flex-end!important;
-}
-.generic-signature-slot.signature-image-only.show-meta img{
-    height:68%!important;
-}
-.ocr-bank-card-frame{
+.ocr-card-dropzone{
     position:relative;
-    width:100%;
-    max-width:420px;
-    aspect-ratio:1.586/1;
-    margin:10px auto 12px;
-    border-radius:22px;
-    background:linear-gradient(135deg,rgba(22,163,74,.12),rgba(15,23,42,.04));
-    border:2px dashed rgba(22,163,74,.55);
-    display:grid;
-    place-items:center;
+    min-height:134px;
+    border-style:dashed!important;
     overflow:hidden;
 }
-.ocr-bank-card-frame::before{
+.ocr-card-dropzone:before{
     content:'';
-    position:absolute;
-    inset:14px;
-    border:2px solid rgba(255,255,255,.9);
+    display:block;
+    width:min(86%,360px);
+    aspect-ratio:1.586;
+    border:2px solid rgba(22,163,74,.65);
     border-radius:18px;
-    box-shadow:0 0 0 999px rgba(15,23,42,.04);
-    pointer-events:none;
-}
-.ocr-bank-card-frame::after{
-    content:'วางบัตรประชาชนให้อยู่ในกรอบ';
     position:absolute;
-    bottom:12px;
-    left:50%;
-    transform:translateX(-50%);
-    padding:5px 10px;
-    border-radius:999px;
-    background:rgba(15,23,42,.72);
+    inset:auto 0 12px;
+    margin:auto;
+    pointer-events:none;
+    box-shadow:0 0 0 999px rgba(15,23,42,.035);
+}
+.ocr-card-preview{
+    display:grid;
+    gap:10px;
+    margin-top:10px;
+}
+.ocr-card-preview.hidden{display:none!important;}
+.ocr-card-frame{
+    position:relative;
+    border-radius:22px;
+    background:#0f172a;
+    padding:14px;
+    overflow:hidden;
+    min-height:210px;
+    display:grid;
+    place-items:center;
+}
+.ocr-card-frame .preview{
+    width:100%;
+    max-height:320px;
+    object-fit:contain;
+    border-radius:16px;
+    background:#111827;
+}
+.ocr-card-guide{
+    position:absolute;
+    width:min(88%,420px);
+    aspect-ratio:1.586;
+    border:2px solid #22c55e;
+    border-radius:20px;
+    display:grid;
+    place-items:end center;
+    pointer-events:none;
+    box-shadow:0 0 0 999px rgba(0,0,0,.24), inset 0 0 0 1px rgba(255,255,255,.28);
+}
+.ocr-card-guide span{
+    transform:translateY(calc(100% + 8px));
     color:#fff;
+    background:rgba(15,23,42,.78);
+    border-radius:999px;
+    padding:6px 10px;
     font-size:12px;
     font-weight:900;
-    white-space:nowrap;
 }
-.ocr-bank-card-frame .preview{
-    width:100%!important;
-    height:100%!important;
-    object-fit:contain!important;
-    border-radius:18px!important;
-    margin:0!important;
-    background:#fff!important;
-    z-index:2;
-}
-.ocr-capture-actions{
-    display:flex;
+.ocr-confirm-actions{
+    display:grid;
+    grid-template-columns:1.1fr .9fr 1fr;
     gap:8px;
-    justify-content:center;
-    flex-wrap:wrap;
-    margin:8px 0 10px;
 }
-.ocr-capture-actions.hidden{display:none!important;}
-.ocr-capture-actions button{
-    min-height:36px;
-    border-radius:999px;
-    font-weight:900;
+.generic-signature-slot.signature-image-with-meta{
+    justify-content:center!important;
+    overflow:visible!important;
+    background:transparent!important;
+    border:0!important;
+    gap:2px;
 }
-@media(max-width:720px){
-    .generic-sign-designer-toolbar{gap:6px;padding:7px;}
-    .generic-sign-coord-panel span{min-width:48px;font-size:11px;padding:4px 5px;}
-    .generic-sign-nudge-tools button{width:30px!important;min-width:30px!important;height:30px!important;min-height:30px!important;}
+.generic-signature-slot.signature-image-with-meta img{
+    width:100%!important;
+    max-width:100%!important;
+    height:auto!important;
+    max-height:68%!important;
+    object-fit:contain!important;
+    margin:0 auto!important;
+    display:block!important;
+    flex:1 1 auto;
+}
+.generic-signature-meta{
+    width:100%;
+    flex:0 0 auto;
+    font-size:var(--signature-meta-size,18px)!important;
+    line-height:1.05!important;
+    text-align:center;
+    color:#111827;
+    white-space:nowrap;
+    overflow:visible;
+}
+.generic-signature-meta div{margin:0;padding:0;}
+.public-sign-card input[type="checkbox"]{
+    width:18px;
+    height:18px;
+    accent-color:#16a34a;
+}
+@media(max-width:520px){
+    .ocr-bank-actions,
+    .ocr-confirm-actions{grid-template-columns:1fr;}
+    .ocr-card-frame{min-height:190px;padding:10px;}
 }

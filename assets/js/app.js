@@ -1433,40 +1433,42 @@ function parseOcrResult(data) {
 }
 async function compressImageToBase64(file, maxWidth = 1600, quality = .86) { const img = await new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.onerror = reject; im.src = URL.createObjectURL(file) }); const scale = Math.min(1, maxWidth / img.width), canvas = document.createElement('canvas'); canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height); return canvas.toDataURL('image/jpeg', quality).split(',')[1] }
 async function getAuthToken() { return currentUser?.getIdToken ? await currentUser.getIdToken() : '' }
-let ocrImageAccepted = false;
-function setOcrFileForPreview(file) {
-    if (!file) return;
-    ocrImageAccepted = false;
-    const preview = $('ocrPreview');
-    if (preview) { preview.src = URL.createObjectURL(file); preview.classList.remove('hidden'); }
-    $('ocrCaptureActions')?.classList.remove('hidden');
-    if ($('ocrFileName')) $('ocrFileName').textContent = file.name || 'เลือกรูปแล้ว กรุณายืนยันรูป';
-}
-function acceptOcrPhoto() {
-    const file = $('ocrFile')?.files?.[0];
-    if (!file) return toast('กรุณาถ่ายรูปหรือเลือกรูปก่อน');
-    ocrImageAccepted = true;
-    toast('ใช้รูปนี้สำหรับ OCR แล้ว');
-}
 function fillOcrFields(o) { $('ocrPrefix').value = o.prefix || ''; $('ocrFirstName').value = o.firstName || ''; $('ocrLastName').value = o.lastName || ''; $('ocrIdCard').value = o.idCard || ''; if ($('ocrBirthDate')) $('ocrBirthDate').value = o.birthDate || ''; $('ocrAddress').value = o.address || ''; if ($('ocrSubDistrict')) $('ocrSubDistrict').value = o.subDistrict || ''; $('ocrDistrict').value = o.district || ''; $('ocrProvince').value = o.province || ''; $('ocrIdMasked').textContent = o.idCard ? `แสดงแบบซ่อน: ${maskId(o.idCard)}` : '' }
+
+let pendingOcrFile = null;
+function getOcrSelectedFile() {
+    return pendingOcrFile || $('ocrFileCamera')?.files?.[0] || $('ocrFileGallery')?.files?.[0] || $('ocrFile')?.files?.[0] || null;
+}
+function renderOcrPreviewFromFile(file) {
+    if (!file) return;
+    pendingOcrFile = file;
+    if ($('ocrFileName')) $('ocrFileName').textContent = file.name || 'เลือกรูปแล้ว';
+    const img = $('ocrPreview');
+    if (img) {
+        img.src = URL.createObjectURL(file);
+        img.classList.remove('hidden');
+    }
+    $('ocrPreviewActions')?.classList.remove('hidden');
+}
+function bindOcrSourceButtons() {
+    $('ocrTakePhotoBtn')?.addEventListener('click', () => $('ocrFileCamera')?.click());
+    $('ocrChoosePhotoBtn')?.addEventListener('click', () => $('ocrFileGallery')?.click());
+    $('ocrRetakeBtn')?.addEventListener('click', () => $('ocrFileCamera')?.click());
+    $('ocrSelectAgainBtn')?.addEventListener('click', () => $('ocrFileGallery')?.click());
+    $('ocrUsePhotoBtn')?.addEventListener('click', () => $('runOcrBtn')?.click());
+    ['ocrFileCamera','ocrFileGallery','ocrFile'].forEach(id => {
+        const input = $(id);
+        if (!input || input.dataset.ocrBound === '1') return;
+        input.dataset.ocrBound = '1';
+        input.addEventListener('change', () => renderOcrPreviewFromFile(input.files?.[0]));
+    });
+}
+
 function ocrDebtorObject() { const addr = $('ocrAddress').value; const parts = parseThaiAddressParts(addr); return { name: fullNameOf({ prefix: $('ocrPrefix').value, firstName: $('ocrFirstName').value, lastName: $('ocrLastName').value }), phone: '', lineId: '', idCard: $('ocrIdCard').value, address: parts.shortAddress || cleanOcrAddressOnly(addr), houseNo: parts.houseNo || '', district: cleanThaiLocationField($('ocrDistrict').value || parts.district || ''), province: cleanThaiLocationField($('ocrProvince').value || parts.province || ''), subDistrict: cleanThaiLocationField($('ocrSubDistrict')?.value || parts.subDistrict || ''), birthDate: $('ocrBirthDate')?.value || '', source: 'ocr' } }
-$('runOcrBtn').onclick = async () => { const file = $('ocrFile').files[0]; if (!file) return toast('กรุณาถ่ายรูปหรือเลือกรูปบัตรก่อน'); if (!ocrImageAccepted) return toast('กรุณากด ใช้รูปนี้ ก่อนอ่าน OCR'); if (!OCR_FUNCTION_URL) return toast('ยังไม่ได้ตั้งค่า OCR URL'); try { toast('กำลังอ่าน OCR...'); const imageBase64 = await compressImageToBase64(file), token = await getAuthToken(); const res = await fetch(OCR_FUNCTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ imageBase64 }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'OCR failed'); const parsed = parseOcrResult(data); fillOcrFields(parsed); pendingOcrDebtor = ocrDebtorObject(); $('confirmText').textContent = `ชื่อ: ${pendingOcrDebtor.name}\nเลขบัตร: ${maskId(pendingOcrDebtor.idCard)}\nตำบล/แขวง: ${pendingOcrDebtor.subDistrict || '-'}\nเขต/อำเภอ: ${pendingOcrDebtor.district || '-'}\nจังหวัด: ${pendingOcrDebtor.province || '-'}`; $('confirmModal').classList.remove('hidden'); toast('อ่าน OCR สำเร็จ') } catch (e) { console.error(e); toast('OCR ไม่สำเร็จ: ' + e.message) } };
+$('runOcrBtn').onclick = async () => { const file = getOcrSelectedFile(); if (!file) return toast('กรุณาถ่ายรูปหรือเลือกรูปบัตรก่อน'); if (!OCR_FUNCTION_URL) return toast('ยังไม่ได้ตั้งค่า OCR URL'); try { toast('กำลังอ่าน OCR...'); const imageBase64 = await compressImageToBase64(file), token = await getAuthToken(); const res = await fetch(OCR_FUNCTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ imageBase64 }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'OCR failed'); const parsed = parseOcrResult(data); fillOcrFields(parsed); pendingOcrDebtor = ocrDebtorObject(); $('confirmText').textContent = `ชื่อ: ${pendingOcrDebtor.name}\nเลขบัตร: ${maskId(pendingOcrDebtor.idCard)}\nตำบล/แขวง: ${pendingOcrDebtor.subDistrict || '-'}\nเขต/อำเภอ: ${pendingOcrDebtor.district || '-'}\nจังหวัด: ${pendingOcrDebtor.province || '-'}`; $('confirmModal').classList.remove('hidden'); toast('อ่าน OCR สำเร็จ') } catch (e) { console.error(e); toast('OCR ไม่สำเร็จ: ' + e.message) } };
 $('confirmCreateDebtorBtn').onclick = async () => { if (!pendingOcrDebtor) pendingOcrDebtor = ocrDebtorObject(); if (!pendingOcrDebtor.name) return toast('ไม่มีชื่อลูกหนี้'); if (isDuplicateIdCard(pendingOcrDebtor.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', pendingOcrDebtor); $('confirmModal').classList.add('hidden'); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() };
 $('cancelCreateDebtorBtn').onclick = () => $('confirmModal').classList.add('hidden'); $('autoCreateDebtorBtn').onclick = async () => { const row = ocrDebtorObject(); if (!row.name) return toast('ไม่มีข้อมูล OCR'); if (isDuplicateIdCard(row.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', row); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() }; $('useOcrToDebtorBtn').onclick = () => { const row = ocrDebtorObject(); $('debtorName').value = row.name; $('debtorIdCard').value = row.idCard; if ($('debtorBirthDate')) $('debtorBirthDate').value = row.birthDate || ''; $('debtorAddress').value = row.address; if ($('debtorSubDistrict')) $('debtorSubDistrict').value = row.subDistrict || ''; $('debtorDistrict').value = row.district; $('debtorProvince').value = row.province; showCustomerForm('manual'); switchTab('customers'); toast('นำข้อมูล OCR ไปกรอกฟอร์มแล้ว') };
-
-if ($('ocrUsePhotoBtn')) $('ocrUsePhotoBtn').onclick = acceptOcrPhoto;
-if ($('ocrRetakePhotoBtn')) $('ocrRetakePhotoBtn').onclick = () => $('ocrFile')?.click();
-if ($('ocrUploadPhotoBtn')) $('ocrUploadPhotoBtn').onclick = () => $('ocrUploadFile')?.click();
-if ($('ocrUploadFile')) $('ocrUploadFile').onchange = e => {
-    const file = e.target.files?.[0];
-    if (!file || !$('ocrFile')) return;
-    const dt = new DataTransfer();
-    dt.items.add(file);
-    $('ocrFile').files = dt.files;
-    setOcrFileForPreview(file);
-};
-
-function bindDropzones() { [['dropzone', 'documentFile', 'dropzoneText'], ['ocrDropzone', 'ocrFile', 'ocrFileName']].forEach(([dzId, fileId, textId]) => { const dz = $(dzId), file = $(fileId), text = $(textId); if (!dz || !file) return; const show = () => { if (file.files[0]) { if (text) text.textContent = fileId === 'documentFile' ? `เลือกแล้ว ${file.files.length} ไฟล์` : file.files[0].name; if (fileId === 'ocrFile') setOcrFileForPreview(file.files[0]) } }; file.addEventListener('change', show);['dragenter', 'dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('dragover') }));['dragleave', 'drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('dragover') })); dz.addEventListener('drop', e => { if (e.dataTransfer.files.length) { file.files = e.dataTransfer.files; show() } }) }) }
+function bindDropzones() { [['dropzone', 'documentFile', 'dropzoneText'], ['ocrDropzone', 'ocrFile', 'ocrFileName']].forEach(([dzId, fileId, textId]) => { const dz = $(dzId), file = $(fileId), text = $(textId); if (!dz || !file) return; const show = () => { if (file.files[0]) { if (text) text.textContent = fileId === 'documentFile' ? `เลือกแล้ว ${file.files.length} ไฟล์` : file.files[0].name; if (fileId === 'ocrFile') renderOcrPreviewFromFile(file.files[0]) } }; file.addEventListener('change', show);['dragenter', 'dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('dragover') }));['dragleave', 'drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('dragover') })); dz.addEventListener('drop', e => { if (e.dataTransfer.files.length) { file.files = e.dataTransfer.files; show() } }) }) }
 function sanitizeDecimalInput(value) {
     let v = String(value || '').replace(/,/g, '').replace(/[^\d.]/g, '');
     const firstDot = v.indexOf('.');
@@ -1499,7 +1501,7 @@ function bindMoneyInputs() {
         });
     });
 }
-bindDropzones(); bindMoneyInputs();
+bindDropzones(); bindOcrSourceButtons(); bindMoneyInputs();
 
 function bindNumericInputs() {
     const specs = [
@@ -1792,22 +1794,34 @@ function genericSignatureImage(doc, key) {
     return doc?.[`${key}Signature`] || '';
 }
 
+function genericSignatureMeta(doc = {}, key = '') {
+    const labels = genericDocSignerLabels();
+    const roleDefault = labels[key] || key;
+    const rawDate = doc?.[`${key}Date`] || doc?.[`${key}SignedDate`] || doc?.signedDate || '';
+    return {
+        fontSize: Math.max(10, Math.min(72, Number(doc?.[`${key}FontSize`] || doc?.signatureMetaFontSize || 18) || 18)),
+        showName: doc?.[`${key}ShowName`] === true || doc?.[`${key}ShowName`] === 'true',
+        showRole: doc?.[`${key}ShowRole`] === true || doc?.[`${key}ShowRole`] === 'true',
+        showDate: doc?.[`${key}ShowDate`] === true || doc?.[`${key}ShowDate`] === 'true',
+        name: doc?.[`${key}Name`] || '',
+        role: doc?.[`${key}Role`] || roleDefault,
+        date: rawDate ? String(rawDate) : ''
+    };
+}
+
 function buildGenericSignatureLayer(doc = {}) {
     const placements = normalizeGenericSignaturePlacements(doc.signaturePlacements);
-    const showMeta = !!doc.showSignatureMeta;
-    const metaRows = {
-        party1: { name: doc.party1Name || '', role: doc.party1Role || 'คู่สัญญาฝ่ายที่ 1' },
-        party2: { name: doc.party2Name || '', role: doc.party2Role || 'คู่สัญญาฝ่ายที่ 2' },
-        witness1: { name: doc.witness1Name || '', role: doc.witness1Role || 'พยาน 1' },
-        witness2: { name: doc.witness2Name || '', role: doc.witness2Role || 'พยาน 2' }
-    };
-    const signedDate = doc.signedDate || doc.updatedDate || '';
     return `<div class="generic-signature-layer">${placements.map(p => {
         const sig = genericSignatureImage(doc, p.key);
-        const meta = metaRows[p.key] || { name:'', role:p.label || '' };
-        return `<div class="generic-signature-slot signature-image-only ${showMeta ? 'show-meta' : ''}" data-key="${escapeHtml(p.key)}" style="left:${p.x}%;top:${p.y}%;width:${p.width}%;height:${p.height}%">
-            ${sig ? `<img src="${sig}" alt="signature">` : ''}
-            ${showMeta ? `<span class="generic-signature-meta">${escapeHtml(meta.name || '')}${meta.role ? `<br>${escapeHtml(meta.role)}` : ''}${signedDate ? `<br>${escapeHtml(formatDate(signedDate))}` : ''}</span>` : ''}
+        if (!sig) return '';
+        const meta = genericSignatureMeta(doc, p.key);
+        const lines = [];
+        if (meta.showName && meta.name) lines.push(meta.name);
+        if (meta.showRole && meta.role) lines.push(meta.role);
+        if (meta.showDate && meta.date) lines.push(meta.date);
+        return `<div class="generic-signature-slot signature-image-with-meta" data-signer="${escapeHtml(p.key)}" style="left:${p.x}%;top:${p.y}%;width:${p.width}%;height:${p.height}%;--signature-meta-size:${meta.fontSize}px">
+            <img src="${sig}" alt="signature">
+            ${lines.length ? `<div class="generic-signature-meta">${lines.map(v => `<div>${escapeHtml(v)}</div>`).join('')}</div>` : ''}
         </div>`;
     }).join('')}</div>`;
 }
@@ -1867,13 +1881,11 @@ function getGenericDocTinyMceConfig() {
             'alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table link hr charmap | code fullscreen preview help'
         ].join(' | '),
         toolbar_mode: 'sliding',
-        font_family_formats: 'TH Sarabun=THSarabunApp,TH Sarabun New,Sarabun,Tahoma,sans-serif;Sarabun=Sarabun,Noto Sans Thai,sans-serif;Arial=arial,helvetica,sans-serif;Tahoma=tahoma,geneva,sans-serif;Times New Roman=times new roman,times,serif;Courier New=courier new,courier,monospace',
+        font_family_formats: 'Sarabun=Sarabun,Noto Sans Thai,sans-serif;TH Sarabun=TH Sarabun New,TH Sarabun,serif;Arial=arial,helvetica,sans-serif;Tahoma=tahoma,geneva,sans-serif;Times New Roman=times new roman,times,serif;Courier New=courier new,courier,monospace',
         font_size_formats: '8px 9px 10px 11px 12px 14px 16px 18px 20px 22px 24px 26px 28px 30px 32px 36px 40px 44px 48px 56px 64px 72px',
         content_style: `
-            @font-face{font-family:'THSarabunApp';src:url('./assets/fonts/THSarabun.ttf') format('truetype');font-weight:400;font-style:normal;}
-            @font-face{font-family:'THSarabunApp';src:url('./assets/fonts/THSarabun-Bold.ttf') format('truetype');font-weight:700;font-style:normal;}
             html{background:#e5e7eb;}
-            body{font-family:'THSarabunApp','TH Sarabun New','Sarabun','Noto Sans Thai',sans-serif;font-size:${Math.max(10, Math.min(72, Number(pendingGenericDocFontSize || 18) || 18))}px;line-height:1.65;color:#111827;background:#fff;width:210mm;min-height:297mm;box-sizing:border-box;margin:0 auto!important;padding:18mm 16mm!important;box-shadow:0 12px 40px rgba(15,23,42,.16);overflow-wrap:break-word;}
+            body{font-family:'Sarabun','Noto Sans Thai',sans-serif;font-size:${Math.max(10, Math.min(72, Number(pendingGenericDocFontSize || 18) || 18))}px;line-height:1.65;color:#111827;background:#fff;width:210mm;min-height:297mm;box-sizing:border-box;margin:0 auto!important;padding:18mm 16mm!important;box-shadow:0 12px 40px rgba(15,23,42,.16);overflow-wrap:break-word;}
             table{border-collapse:collapse;width:100%;}
             table td, table th{border:1px solid #cbd5e1;padding:8px;}
             img{max-width:100%;height:auto;}
@@ -2074,77 +2086,30 @@ window.openGenericSignatureDesigner = async (id) => {
         <div class="generic-sign-designer-layer">${placements.map(p => `<div class="generic-sign-designer-box signature-image-only-designer" data-key="${escapeHtml(p.key)}" style="left:${p.x}%;top:${p.y}%;width:${p.width}%;height:${p.height}%">
             <span class="generic-sign-designer-icon"><i class="bi bi-pen"></i></span>
             <strong>${escapeHtml(labels[p.key] || p.label || p.key)}</strong>
-            <small class="generic-sign-box-coord">X:${Number(p.x).toFixed(1)} Y:${Number(p.y).toFixed(1)}</small>
         </div>`).join('')}</div>
     </div>`;
     const result = await Swal.fire({
         title: 'จัดตำแหน่งลายเซ็น',
-        html: `<div class="generic-sign-designer-toolbar">
-            <div class="generic-sign-coord-panel" id="genericSignCoordPanel"><span>เลือกกล่อง</span></div>
-            <div class="generic-sign-nudge-tools" aria-label="ปรับตำแหน่งลายเซ็น">
-                <button type="button" class="secondary" data-gsign-nudge="left" title="ซ้าย"><i class="bi bi-arrow-left"></i></button>
-                <button type="button" class="secondary" data-gsign-nudge="up" title="ขึ้น"><i class="bi bi-arrow-up"></i></button>
-                <button type="button" class="secondary" data-gsign-nudge="down" title="ลง"><i class="bi bi-arrow-down"></i></button>
-                <button type="button" class="secondary" data-gsign-nudge="right" title="ขวา"><i class="bi bi-arrow-right"></i></button>
-            </div>
-            <label class="generic-sign-meta-toggle"><input type="checkbox" id="genericSignShowMeta" ${docRow.showSignatureMeta ? 'checked' : ''}> แสดงชื่อ/บทบาท/วันที่</label>
-        </div><div class="generic-sign-designer-wrap">${paperHtml}</div><p class="note" style="margin-top:10px">ลากกล่องลายเซ็น หรือเลือกกล่องแล้วใช้ปุ่มลูกศรจูนทีละ 1% มี Grid และพิกัด X/Y/W/H ช่วยอ้างอิง — ค่าเริ่มต้นเอกสารจริงจะแสดงเฉพาะรูปลายเซ็น</p>`,
-        width: 'min(96vw, 1020px)',
+        html: `<div class="generic-sign-designer-wrap">${paperHtml}</div><p class="note" style="margin-top:10px">ลากกล่องตำแหน่งลายเซ็นไปวางบนกระดาษ A4 แล้วกดบันทึก — ตอนแสดงเอกสารจริงจะแสดงเฉพาะรูปลายเซ็น ไม่มีข้อความหรือเส้นประ</p>`,
+        width: 'min(96vw, 980px)',
         showCancelButton: true,
         confirmButtonText: '<i class="bi bi-check-circle"></i> บันทึกตำแหน่ง',
         cancelButtonText: '<i class="bi bi-x-circle"></i> ยกเลิก',
         didOpen: () => initGenericSignatureDesignerDrag(),
-        preConfirm: () => ({ placements: collectGenericSignaturePlacements(), showSignatureMeta: !!document.getElementById('genericSignShowMeta')?.checked })
+        preConfirm: () => collectGenericSignaturePlacements()
     });
     if (!result.isConfirmed) return;
-    await updateRow('genericDocuments', id, { signaturePlacements: normalizeGenericSignaturePlacements(result.value?.placements), showSignatureMeta: !!result.value?.showSignatureMeta, updatedDate: today() });
+    await updateRow('genericDocuments', id, { signaturePlacements: normalizeGenericSignaturePlacements(result.value), updatedDate: today() });
     toast('บันทึกตำแหน่งลายเซ็นแล้ว');
     await render();
 };
 
-function updateGenericSignatureCoordPanel(box) {
-    const panel = document.getElementById('genericSignCoordPanel');
-    if (!panel) return;
-    if (!box) { panel.innerHTML = '<span>เลือกกล่อง</span>'; return; }
-    const key = box.dataset.key || '';
-    const x = parseFloat(box.style.left || '0') || 0;
-    const y = parseFloat(box.style.top || '0') || 0;
-    const w = parseFloat(box.style.width || '0') || 0;
-    const h = parseFloat(box.style.height || '0') || 0;
-    panel.innerHTML = `<span>${escapeHtml(key)}</span><span>X:${x.toFixed(1)}</span><span>Y:${y.toFixed(1)}</span><span>W:${w.toFixed(1)}</span><span>H:${h.toFixed(1)}</span>`;
-    const small = box.querySelector('.generic-sign-box-coord');
-    if (small) small.textContent = `X:${x.toFixed(1)} Y:${y.toFixed(1)}`;
-}
-function selectGenericSignatureBox(box) {
-    document.querySelectorAll('.generic-sign-designer-box.is-selected').forEach(el => el.classList.remove('is-selected'));
-    if (box) box.classList.add('is-selected');
-    updateGenericSignatureCoordPanel(box || null);
-}
-function nudgeGenericSignatureBox(dir) {
-    const box = document.querySelector('.generic-sign-designer-box.is-selected');
-    if (!box) return;
-    const step = 1;
-    const w = parseFloat(box.style.width || '30') || 30;
-    const h = parseFloat(box.style.height || '10') || 10;
-    let x = parseFloat(box.style.left || '0') || 0;
-    let y = parseFloat(box.style.top || '0') || 0;
-    if (dir === 'left') x -= step;
-    if (dir === 'right') x += step;
-    if (dir === 'up') y -= step;
-    if (dir === 'down') y += step;
-    box.style.left = `${Math.max(0, Math.min(100 - w, x))}%`;
-    box.style.top = `${Math.max(0, Math.min(100 - h, y))}%`;
-    updateGenericSignatureCoordPanel(box);
-}
 function initGenericSignatureDesignerDrag() {
     const paper = document.getElementById('genericSignatureDesignerPaper');
     if (!paper) return;
-    paper.querySelectorAll('.generic-sign-designer-box').forEach((box, idx) => {
-        box.onclick = ev => { ev.stopPropagation(); selectGenericSignatureBox(box); };
-        if (idx === 0) selectGenericSignatureBox(box);
+    paper.querySelectorAll('.generic-sign-designer-box').forEach(box => {
         box.onpointerdown = ev => {
             ev.preventDefault();
-            selectGenericSignatureBox(box);
             box.setPointerCapture?.(ev.pointerId);
             const rect = paper.getBoundingClientRect();
             const startX = ev.clientX;
@@ -2158,7 +2123,6 @@ function initGenericSignatureDesignerDrag() {
                 const h = parseFloat(box.style.height || '10');
                 box.style.left = `${Math.max(0, Math.min(100 - w, startLeft + dx))}%`;
                 box.style.top = `${Math.max(0, Math.min(100 - h, startTop + dy))}%`;
-                updateGenericSignatureCoordPanel(box);
             };
             const onUp = () => {
                 window.removeEventListener('pointermove', onMove);
@@ -2168,7 +2132,6 @@ function initGenericSignatureDesignerDrag() {
             window.addEventListener('pointerup', onUp, { once: true });
         };
     });
-    document.querySelectorAll('[data-gsign-nudge]').forEach(btn => btn.onclick = () => nudgeGenericSignatureBox(btn.dataset.gsignNudge));
 }
 
 function collectGenericSignaturePlacements() {
@@ -2206,7 +2169,7 @@ async function saveGenericTemplate() {
     const html = getGenericDocHtml();
     const fontSize = Number($('genericDocBaseFontSize')?.value || pendingGenericDocFontSize || 18) || 18;
     if (!html.trim()) return toast('กรุณากรอกเนื้อหา Template');
-    await add('documentTemplates', { name, html, fontSize, signaturePlacements: defaultGenericSignaturePlacements(), showSignatureMeta: false, createdDate: today(), type: 'generic' });
+    await add('documentTemplates', { name, html, fontSize, signaturePlacements: defaultGenericSignaturePlacements(), createdDate: today(), type: 'generic' });
     toast('บันทึก Template แล้ว');
     await render();
 }
@@ -2218,7 +2181,7 @@ async function saveGenericDocument() {
     if (!title) return toast('กรุณากรอกชื่อเอกสาร');
     if (!html.trim()) return toast('กรุณากรอกเนื้อหาเอกสาร');
     const existing = editingGenericDocId ? ((latestData?.genericDocuments || []).find(x => x.id === editingGenericDocId) || {}) : {};
-    const row = { title, html, fontSize, signaturePlacements: normalizeGenericSignaturePlacements(existing.signaturePlacements || window.__pendingGenericTemplatePlacements), showSignatureMeta: !!existing.showSignatureMeta, status: existing.status || 'draft', createdDate: today(), updatedDate: today() };
+    const row = { title, html, fontSize, signaturePlacements: normalizeGenericSignaturePlacements(existing.signaturePlacements || window.__pendingGenericTemplatePlacements), status: existing.status || 'draft', createdDate: today(), updatedDate: today() };
     if (editingGenericDocId) {
         const old = existing;
         await updateRow('genericDocuments', editingGenericDocId, { ...old, ...row, createdDate: old.createdDate || row.createdDate });
@@ -2260,8 +2223,13 @@ window.createGenericDocSignLink = async (id) => {
         html: stripGenericLegacySignatureBlock(docRow.html || ''),
         fontSize: docRow.fontSize || 18,
         signaturePlacements: normalizeGenericSignaturePlacements(docRow.signaturePlacements),
-        party1Name: docRow.party1Name || '', party2Name: docRow.party2Name || '', witness1Name: docRow.witness1Name || '', witness2Name: docRow.witness2Name || '',
-        party1Role: docRow.party1Role || 'คู่สัญญาฝ่ายที่ 1', party2Role: docRow.party2Role || 'คู่สัญญาฝ่ายที่ 2', witness1Role: docRow.witness1Role || 'พยาน 1', witness2Role: docRow.witness2Role || 'พยาน 2',
+        signatureMetaFontSize: docRow.signatureMetaFontSize || 18,
+        signerMeta: {
+            party1: genericSignatureMeta(docRow, 'party1'),
+            party2: genericSignatureMeta(docRow, 'party2'),
+            witness1: genericSignatureMeta(docRow, 'witness1'),
+            witness2: genericSignatureMeta(docRow, 'witness2')
+        },
         status: 'open',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -2280,10 +2248,19 @@ window.importGenericDocSignatures = async (id) => {
     if (!snap.exists()) return toast('ไม่พบข้อมูลลายเซ็น');
     const req = snap.data();
     if (req.status !== 'submitted') return toast('คู่สัญญายังไม่ได้บันทึกลายเซ็น');
+    const signaturePayload = {};
+    ['party1','party2','witness1','witness2'].forEach(k => {
+        signaturePayload[`${k}Name`] = req[`${k}Name`] || '';
+        signaturePayload[`${k}Role`] = req[`${k}Role`] || genericDocSignerLabels()[k] || '';
+        signaturePayload[`${k}Date`] = req[`${k}Date`] || '';
+        signaturePayload[`${k}FontSize`] = Math.max(10, Math.min(72, Number(req[`${k}FontSize`] || req.signatureMetaFontSize || 18) || 18));
+        signaturePayload[`${k}ShowName`] = req[`${k}ShowName`] === true || req[`${k}ShowName`] === 'true';
+        signaturePayload[`${k}ShowRole`] = req[`${k}ShowRole`] === true || req[`${k}ShowRole`] === 'true';
+        signaturePayload[`${k}ShowDate`] = req[`${k}ShowDate`] === true || req[`${k}ShowDate`] === 'true';
+        signaturePayload[`${k}Signature`] = req[`${k}Signature`] || '';
+    });
     await updateRow('genericDocuments', id, {
-        party1Name: req.party1Name || '', party2Name: req.party2Name || '', witness1Name: req.witness1Name || '', witness2Name: req.witness2Name || '',
-        party1Role: req.party1Role || 'คู่สัญญาฝ่ายที่ 1', party2Role: req.party2Role || 'คู่สัญญาฝ่ายที่ 2', witness1Role: req.witness1Role || 'พยาน 1', witness2Role: req.witness2Role || 'พยาน 2', signedDate: today(),
-        party1Signature: req.party1Signature || '', party2Signature: req.party2Signature || '', witness1Signature: req.witness1Signature || '', witness2Signature: req.witness2Signature || '',
+        ...signaturePayload,
         status: 'signed', updatedDate: today()
     });
     await updateDoc(ref, { status: 'imported', importedAt: serverTimestamp(), updatedAt: serverTimestamp() });
@@ -2302,13 +2279,60 @@ async function openGenericDocumentSignPage(token) {
         const req = snap.data();
         if (req.status !== 'open' && req.status !== 'submitted') throw new Error('ลิงก์นี้ถูกปิดแล้ว');
         document.getElementById('gPubSub').textContent = req.title || 'เอกสารทั่วไป';
-        body.innerHTML = `<div style="display:grid;gap:14px"><div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:14px;max-height:52vh;overflow:auto"><div style="width:210mm;max-width:100%;min-height:260px;margin:auto;box-sizing:border-box;padding:16mm 12mm;line-height:1.75;font-size:${Number(req.fontSize || 18) || 18}px;background:#fff;color:#111827">${stripGenericLegacySignatureBlock(req.html || '')}</div></div>${['party1:คู่สัญญาฝ่ายที่ 1','party2:คู่สัญญาฝ่ายที่ 2','witness1:พยาน 1','witness2:พยาน 2'].map(item=>{const [k,label]=item.split(':');return `<div style="border:1px solid #e2e8f0;border-radius:16px;padding:10px;background:#fff"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>${label}</strong><button type="button" data-clear="${k}" style="border:1px solid #cbd5e1;border-radius:999px;background:#fff;padding:7px 10px">ล้าง</button></div><input id="gPub_${k}_name" value="${escapeHtml(req?.[`${k}Name`] || '')}" placeholder="ชื่อ${label}" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #cbd5e1;border-radius:12px"><canvas id="gPubSig_${k}" style="width:100%;height:140px;border:1px dashed #94a3b8;border-radius:14px;background:#fff;touch-action:none"></canvas></div>`}).join('')}<button id="gPubSaveBtn" type="button" style="width:100%;border:0;border-radius:16px;background:#16a34a;color:#fff;padding:14px;font-weight:900;font-size:16px"><i class="bi bi-check-circle"></i> บันทึกลายเซ็น</button></div>`;
+        const signerItems = ['party1:คู่สัญญาฝ่ายที่ 1','party2:คู่สัญญาฝ่ายที่ 2','witness1:พยาน 1','witness2:พยาน 2'];
+        const todayText = formatDate(today());
+        const signerMeta = req.signerMeta || {};
+        body.innerHTML = `<div style="display:grid;gap:14px">
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:14px;max-height:52vh;overflow:auto">
+                <div style="width:210mm;max-width:100%;min-height:260px;margin:auto;box-sizing:border-box;padding:16mm 12mm;line-height:1.75;font-family:'TH Sarabun New','TH Sarabun',Tahoma,sans-serif;font-size:${Number(req.fontSize || 18) || 18}px;background:#fff;color:#111827">${stripGenericLegacySignatureBlock(req.html || '')}</div>
+            </div>
+            ${signerItems.map(item=>{
+                const [k,label]=item.split(':');
+                const meta = signerMeta[k] || {};
+                const fs = Math.max(10, Math.min(72, Number(meta.fontSize || req.signatureMetaFontSize || 18) || 18));
+                const name = meta.name || '';
+                const role = meta.role || label;
+                const date = meta.date || todayText;
+                const showName = meta.showName !== false;
+                const showRole = meta.showRole !== false;
+                const showDate = meta.showDate !== false;
+                return `<div class="public-sign-card" style="border:1px solid #e2e8f0;border-radius:16px;padding:12px;background:#fff">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
+                        <strong>${label}</strong>
+                        <button type="button" data-clear="${k}" style="border:1px solid #cbd5e1;border-radius:999px;background:#fff;padding:7px 10px">ล้าง</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;margin-bottom:8px">
+                        <label for="gPub_${k}_fontSize" style="font-weight:800;color:#475569">Font size</label>
+                        <input id="gPub_${k}_fontSize" type="number" min="10" max="72" step="1" value="${fs}" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:12px">
+                    </div>
+                    <label style="display:flex;gap:8px;align-items:center;font-weight:800;margin:6px 0"><input id="gPub_${k}_showName" type="checkbox" ${showName?'checked':''}> แสดงชื่อ</label>
+                    <input id="gPub_${k}_name" value="${escapeHtml(name)}" placeholder="ชื่อ${label}" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #cbd5e1;border-radius:12px">
+                    <label style="display:flex;gap:8px;align-items:center;font-weight:800;margin:6px 0"><input id="gPub_${k}_showRole" type="checkbox" ${showRole?'checked':''}> แสดงบทบาท</label>
+                    <input id="gPub_${k}_role" value="${escapeHtml(role)}" placeholder="บทบาท" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #cbd5e1;border-radius:12px">
+                    <label style="display:flex;gap:8px;align-items:center;font-weight:800;margin:6px 0"><input id="gPub_${k}_showDate" type="checkbox" ${showDate?'checked':''}> แสดงวันที่</label>
+                    <input id="gPub_${k}_date" value="${escapeHtml(date)}" placeholder="วันที่" style="width:100%;margin-bottom:8px;padding:10px;border:1px solid #cbd5e1;border-radius:12px">
+                    <canvas id="gPubSig_${k}" style="width:100%;height:140px;border:1px dashed #94a3b8;border-radius:14px;background:#fff;touch-action:none"></canvas>
+                </div>`;
+            }).join('')}
+            <button id="gPubSaveBtn" type="button" style="width:100%;border:0;border-radius:16px;background:#16a34a;color:#fff;padding:14px;font-weight:900;font-size:16px"><i class="bi bi-check-circle"></i> บันทึกลายเซ็น</button>
+        </div>`;
         const pads = { party1: makeSignaturePad(document.getElementById('gPubSig_party1')), party2: makeSignaturePad(document.getElementById('gPubSig_party2')), witness1: makeSignaturePad(document.getElementById('gPubSig_witness1')), witness2: makeSignaturePad(document.getElementById('gPubSig_witness2')) };
         body.querySelectorAll('[data-clear]').forEach(btn => btn.onclick = () => pads[btn.dataset.clear]?.clear());
         document.getElementById('gPubSaveBtn').onclick = async () => {
             const btn = document.getElementById('gPubSaveBtn'); btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> กำลังบันทึก...';
             try {
-                await updateDoc(ref, { status:'submitted', party1Name:document.getElementById('gPub_party1_name')?.value||'', party2Name:document.getElementById('gPub_party2_name')?.value||'', witness1Name:document.getElementById('gPub_witness1_name')?.value||'', witness2Name:document.getElementById('gPub_witness2_name')?.value||'', party1Role:'คู่สัญญาฝ่ายที่ 1', party2Role:'คู่สัญญาฝ่ายที่ 2', witness1Role:'พยาน 1', witness2Role:'พยาน 2', party1Signature:pads.party1.data(), party2Signature:pads.party2.data(), witness1Signature:pads.witness1.data(), witness2Signature:pads.witness2.data(), submittedAt:serverTimestamp(), updatedAt:serverTimestamp() });
+                const payload = { status:'submitted', submittedAt:serverTimestamp(), updatedAt:serverTimestamp() };
+                ['party1','party2','witness1','witness2'].forEach(k => {
+                    payload[`${k}Name`] = document.getElementById(`gPub_${k}_name`)?.value || '';
+                    payload[`${k}Role`] = document.getElementById(`gPub_${k}_role`)?.value || '';
+                    payload[`${k}Date`] = document.getElementById(`gPub_${k}_date`)?.value || '';
+                    payload[`${k}FontSize`] = Math.max(10, Math.min(72, Number(document.getElementById(`gPub_${k}_fontSize`)?.value || 18) || 18));
+                    payload[`${k}ShowName`] = !!document.getElementById(`gPub_${k}_showName`)?.checked;
+                    payload[`${k}ShowRole`] = !!document.getElementById(`gPub_${k}_showRole`)?.checked;
+                    payload[`${k}ShowDate`] = !!document.getElementById(`gPub_${k}_showDate`)?.checked;
+                    payload[`${k}Signature`] = pads[k]?.data?.() || '';
+                });
+                await updateDoc(ref, payload);
                 body.innerHTML = `<div style="text-align:center;padding:32px 12px"><i class="bi bi-check-circle" style="font-size:54px;color:#16a34a"></i><h2>บันทึกลายเซ็นเรียบร้อยแล้ว</h2><p style="color:#64748b">ผู้สร้างเอกสารจะเห็นลายเซ็นหลังนำเข้าในระบบ</p></div>`;
             } catch(e) { console.error(e); alert(e?.message || 'บันทึกไม่สำเร็จ'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle"></i> บันทึกลายเซ็น'; }
         };
@@ -2386,12 +2410,12 @@ function genericDocApplyFormat(tag) {
     genericDocFocusEditor(); document.execCommand('formatBlock', false, tag || 'P');
 }
 function genericDocApplyFontFamily(family) {
-    const safeFamily = String(family || 'THSarabunApp').replace(/[\"']/g, '').trim() || 'Sarabun';
+    const safeFamily = String(family || 'Sarabun').replace(/[\"']/g, '').trim() || 'Sarabun';
     if (genericDocTinyMce) { genericDocTinyMce.execCommand('FontName', false, safeFamily); genericDocTinyMce.focus(); return; }
     const editor = genericDocFocusEditor(); if (!editor) return;
     const sel = window.getSelection?.();
     const hasSelection = sel && sel.rangeCount && !sel.getRangeAt(0).collapsed && editor.contains(sel.anchorNode) && editor.contains(sel.focusNode);
-    if (!hasSelection) { editor.style.fontFamily = `'${safeFamily}', 'TH Sarabun New', 'Sarabun', 'Noto Sans Thai', sans-serif`; return; }
+    if (!hasSelection) { editor.style.fontFamily = `'${safeFamily}', 'Noto Sans Thai', sans-serif`; return; }
     document.execCommand('fontName', false, safeFamily);
 }
 function genericDocApplyTextColor(color) {
