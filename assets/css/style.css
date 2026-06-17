@@ -7024,3 +7024,74 @@ body .bottom-nav {
     .ocr-camera-frame{min-height:230px;}
     .ocr-camera-frame video{height:min(54vh,380px);min-height:230px;}
 }
+
+
+/* ===== v9.8.2 OCR camera modal + verified-fill flow ===== */
+body.ocr-camera-open{
+    overflow:hidden!important;
+}
+body.ocr-camera-open main,
+body.ocr-camera-open header.app-header,
+body.ocr-camera-open nav.bottom-nav{
+    filter:blur(6px);
+    pointer-events:none!important;
+    user-select:none!important;
+}
+#ocrCameraPanel.ocr-camera-modal{
+    position:fixed!important;
+    inset:0!important;
+    z-index:99999!important;
+    display:grid!important;
+    grid-template-rows:1fr auto auto!important;
+    gap:12px!important;
+    padding:clamp(12px,3vw,24px)!important;
+    margin:0!important;
+    background:rgba(2,6,23,.72)!important;
+    backdrop-filter:blur(9px)!important;
+    -webkit-backdrop-filter:blur(9px)!important;
+}
+#ocrCameraPanel.ocr-camera-modal.hidden{display:none!important;}
+#ocrCameraPanel.ocr-camera-modal .ocr-camera-frame{
+    width:min(100%,980px)!important;
+    height:min(72vh,680px)!important;
+    margin:auto!important;
+    border-radius:24px!important;
+    box-shadow:0 24px 80px rgba(0,0,0,.45)!important;
+}
+#ocrCameraPanel.ocr-camera-modal .ocr-camera-frame video{
+    height:100%!important;
+    min-height:0!important;
+}
+#ocrCameraPanel.ocr-camera-modal .ocr-camera-actions{
+    width:min(100%,620px)!important;
+    margin:0 auto!important;
+    grid-template-columns:1.2fr .9fr .9fr!important;
+}
+#ocrCameraPanel.ocr-camera-modal .note{
+    color:#e5e7eb!important;
+    text-align:center!important;
+    display:block!important;
+}
+.ocr-result-review-note{
+    margin:8px 0 12px!important;
+    padding:10px 12px!important;
+    border-radius:14px!important;
+    background:rgba(22,163,74,.09)!important;
+    color:#166534!important;
+    font-weight:800!important;
+}
+@media(max-width:640px){
+    #ocrCameraPanel.ocr-camera-modal{
+        padding:10px!important;
+    }
+    #ocrCameraPanel.ocr-camera-modal .ocr-camera-frame{
+        height:min(68vh,520px)!important;
+        border-radius:18px!important;
+    }
+    #ocrCameraPanel.ocr-camera-modal .ocr-camera-actions{
+        grid-template-columns:1fr 1fr!important;
+    }
+    #ocrCameraPanel.ocr-camera-modal #ocrCameraFallbackBtn{
+        grid-column:1 / -1!important;
+    }
+}

@@ -1468,11 +1468,21 @@ async function ocrStartLiveCamera() {
     const video = $('ocrCameraVideo');
     if (!panel || !video) return $('ocrFileCamera')?.click();
 
+    // v9.8.3: move the camera panel to <body> before blurring the page.
+    // If the modal stays inside <main>, CSS filter on main blurs the modal and its buttons too.
+    if (panel.parentElement !== document.body) {
+        document.body.appendChild(panel);
+    }
+
+    pendingOcrFile = null;
     $('ocrPreviewActions')?.classList.add('hidden');
     panel.classList.remove('hidden');
+    panel.classList.add('ocr-camera-modal');
+    document.body.classList.add('ocr-camera-open');
 
     if (!navigator.mediaDevices?.getUserMedia) {
-        toast('เบราว์เซอร์นี้ไม่รองรับกล้องโดยตรง กรุณาเลือกรูปจากเครื่อง');
+        toast('Browser นี้ไม่รองรับกล้องโดยตรง กรุณาเลือกจากเครื่อง');
+        ocrCloseCameraModal();
         $('ocrFileCamera')?.click();
         return;
     }
@@ -1488,10 +1498,11 @@ async function ocrStartLiveCamera() {
             audio: false
         });
         video.srcObject = ocrCameraStream;
-        await video.play();
+        await video.play().catch(() => {});
     } catch (err) {
         console.warn('OCR camera error', err);
-        toast('เปิดกล้องไม่ได้ กรุณาอนุญาตกล้องหรือเลือกรูปจากเครื่อง');
+        toast('เปิดกล้องไม่ได้ กรุณาเลือกรูปจากเครื่อง');
+        ocrCloseCameraModal();
         $('ocrFileCamera')?.click();
     }
 }
@@ -1503,7 +1514,15 @@ function ocrStopLiveCamera(hidePanel = true) {
     }
     const video = $('ocrCameraVideo');
     if (video) video.srcObject = null;
-    if (hidePanel) $('ocrCameraPanel')?.classList.add('hidden');
+    if (hidePanel) {
+        $('ocrCameraPanel')?.classList.add('hidden');
+        $('ocrCameraPanel')?.classList.remove('ocr-camera-modal');
+        document.body.classList.remove('ocr-camera-open');
+    }
+}
+
+function ocrCloseCameraModal() {
+    ocrStopLiveCamera(true);
 }
 
 async function ocrCaptureFromLiveCamera() {
@@ -1546,8 +1565,8 @@ function bindOcrSourceButtons() {
     $('ocrTakePhotoBtn')?.addEventListener('click', ocrStartLiveCamera);
     $('ocrChoosePhotoBtn')?.addEventListener('click', () => $('ocrFileGallery')?.click());
     $('ocrCaptureBtn')?.addEventListener('click', ocrCaptureFromLiveCamera);
-    $('ocrCloseCameraBtn')?.addEventListener('click', () => ocrStopLiveCamera(true));
-    $('ocrCameraFallbackBtn')?.addEventListener('click', () => $('ocrFileGallery')?.click());
+    $('ocrCloseCameraBtn')?.addEventListener('click', ocrCloseCameraModal);
+    $('ocrCameraFallbackBtn')?.addEventListener('click', () => { ocrCloseCameraModal(); $('ocrFileGallery')?.click(); });
     $('ocrRetakeBtn')?.addEventListener('click', ocrStartLiveCamera);
     $('ocrSelectAgainBtn')?.addEventListener('click', () => $('ocrFileGallery')?.click());
     $('ocrUsePhotoBtn')?.addEventListener('click', () => $('runOcrBtn')?.click());
@@ -1562,10 +1581,77 @@ function bindOcrSourceButtons() {
     });
 }
 
+
+function fillManualDebtorFormFromOcr(row) {
+    if (!row) return;
+    if ($('debtorName')) $('debtorName').value = row.name || '';
+    if ($('debtorIdCard')) $('debtorIdCard').value = row.idCard || '';
+    if ($('debtorBirthDate')) $('debtorBirthDate').value = row.birthDate || '';
+    if ($('debtorAddress')) $('debtorAddress').value = row.address || '';
+    if ($('debtorSubDistrict')) $('debtorSubDistrict').value = row.subDistrict || '';
+    if ($('debtorDistrict')) $('debtorDistrict').value = row.district || '';
+    if ($('debtorProvince')) $('debtorProvince').value = row.province || '';
+    if ($('debtorPhone') && !$('debtorPhone').value) $('debtorPhone').value = row.phone || '';
+    if ($('debtorLineId') && !$('debtorLineId').value) $('debtorLineId').value = row.lineId || '';
+}
+
 function ocrDebtorObject() { const addr = $('ocrAddress').value; const parts = parseThaiAddressParts(addr); return { name: fullNameOf({ prefix: $('ocrPrefix').value, firstName: $('ocrFirstName').value, lastName: $('ocrLastName').value }), phone: '', lineId: '', idCard: $('ocrIdCard').value, address: parts.shortAddress || cleanOcrAddressOnly(addr), houseNo: parts.houseNo || '', district: cleanThaiLocationField($('ocrDistrict').value || parts.district || ''), province: cleanThaiLocationField($('ocrProvince').value || parts.province || ''), subDistrict: cleanThaiLocationField($('ocrSubDistrict')?.value || parts.subDistrict || ''), birthDate: $('ocrBirthDate')?.value || '', source: 'ocr' } }
-$('runOcrBtn').onclick = async () => { const file = getOcrSelectedFile(); if (!file) return toast('กรุณาถ่ายรูปหรือเลือกรูปบัตรก่อน'); if (!OCR_FUNCTION_URL) return toast('ยังไม่ได้ตั้งค่า OCR URL'); try { toast('กำลังอ่าน OCR...'); const imageBase64 = await compressImageToBase64(file), token = await getAuthToken(); const res = await fetch(OCR_FUNCTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ imageBase64 }) }); const data = await res.json(); if (!res.ok) throw new Error(data.error || 'OCR failed'); const parsed = parseOcrResult(data); fillOcrFields(parsed); pendingOcrDebtor = ocrDebtorObject(); $('confirmText').textContent = `ชื่อ: ${pendingOcrDebtor.name}\nเลขบัตร: ${maskId(pendingOcrDebtor.idCard)}\nตำบล/แขวง: ${pendingOcrDebtor.subDistrict || '-'}\nเขต/อำเภอ: ${pendingOcrDebtor.district || '-'}\nจังหวัด: ${pendingOcrDebtor.province || '-'}`; $('confirmModal').classList.remove('hidden'); toast('อ่าน OCR สำเร็จ') } catch (e) { console.error(e); toast('OCR ไม่สำเร็จ: ' + e.message) } };
-$('confirmCreateDebtorBtn').onclick = async () => { if (!pendingOcrDebtor) pendingOcrDebtor = ocrDebtorObject(); if (!pendingOcrDebtor.name) return toast('ไม่มีชื่อลูกหนี้'); if (isDuplicateIdCard(pendingOcrDebtor.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', pendingOcrDebtor); $('confirmModal').classList.add('hidden'); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() };
-$('cancelCreateDebtorBtn').onclick = () => $('confirmModal').classList.add('hidden'); $('autoCreateDebtorBtn').onclick = async () => { const row = ocrDebtorObject(); if (!row.name) return toast('ไม่มีข้อมูล OCR'); if (isDuplicateIdCard(row.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว'); await add('debtors', row); toast('เพิ่มลูกหนี้จาก OCR แล้ว'); $('confirmModal')?.classList.add('hidden'); hideCustomerForm(); switchTab('customers'); render() }; $('useOcrToDebtorBtn').onclick = () => { const row = ocrDebtorObject(); $('debtorName').value = row.name; $('debtorIdCard').value = row.idCard; if ($('debtorBirthDate')) $('debtorBirthDate').value = row.birthDate || ''; $('debtorAddress').value = row.address; if ($('debtorSubDistrict')) $('debtorSubDistrict').value = row.subDistrict || ''; $('debtorDistrict').value = row.district; $('debtorProvince').value = row.province; showCustomerForm('manual'); switchTab('customers'); toast('นำข้อมูล OCR ไปกรอกฟอร์มแล้ว') };
+$('runOcrBtn').onclick = async () => {
+    const file = getOcrSelectedFile();
+    if (!file) return toast('กรุณาถ่ายรูปหรือเลือกรูปบัตรก่อน');
+    if (!OCR_FUNCTION_URL) return toast('ยังไม่ได้ตั้งค่า OCR URL');
+    try {
+        toast('กำลังอ่าน OCR...');
+        const imageBase64 = await compressImageToBase64(file), token = await getAuthToken();
+        const res = await fetch(OCR_FUNCTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify({ imageBase64 })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'OCR failed');
+        const parsed = parseOcrResult(data);
+        fillOcrFields(parsed);
+        pendingOcrDebtor = ocrDebtorObject();
+        fillManualDebtorFormFromOcr(pendingOcrDebtor);
+        $('confirmModal')?.classList.add('hidden');
+        showCustomerForm('manual');
+        toast('อ่าน OCR สำเร็จ และนำข้อมูลไปกรอกฟอร์มแล้ว กรุณาตรวจสอบก่อนบันทึก');
+    } catch (e) {
+        console.error(e);
+        toast('OCR ไม่สำเร็จ: ' + e.message)
+    }
+};
+if ($('confirmCreateDebtorBtn')) $('confirmCreateDebtorBtn').onclick = async () => {
+    if (!pendingOcrDebtor) pendingOcrDebtor = ocrDebtorObject();
+    if (!pendingOcrDebtor.name) return toast('ไม่มีชื่อลูกหนี้');
+    if (isDuplicateIdCard(pendingOcrDebtor.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว');
+    await add('debtors', pendingOcrDebtor);
+    $('confirmModal')?.classList.add('hidden');
+    toast('เพิ่มลูกหนี้จาก OCR แล้ว');
+    hideCustomerForm();
+    switchTab('customers');
+    render();
+};
+if ($('cancelCreateDebtorBtn')) $('cancelCreateDebtorBtn').onclick = () => $('confirmModal')?.classList.add('hidden');
+if ($('autoCreateDebtorBtn')) $('autoCreateDebtorBtn').onclick = async () => {
+    const row = ocrDebtorObject();
+    if (!row.name) return toast('ไม่มีข้อมูล OCR');
+    if (isDuplicateIdCard(row.idCard)) return toast('เลขบัตรประชาชนนี้มีอยู่แล้ว');
+    await add('debtors', row);
+    toast('เพิ่มลูกหนี้จาก OCR แล้ว');
+    $('confirmModal')?.classList.add('hidden');
+    hideCustomerForm();
+    switchTab('customers');
+    render();
+};
+if ($('useOcrToDebtorBtn')) $('useOcrToDebtorBtn').onclick = () => {
+    const row = ocrDebtorObject();
+    fillManualDebtorFormFromOcr(row);
+    showCustomerForm('manual');
+    switchTab('customers');
+    toast('นำข้อมูล OCR ไปกรอกฟอร์มแล้ว กรุณาตรวจสอบก่อนบันทึก');
+};
 function bindDropzones() { [['dropzone', 'documentFile', 'dropzoneText'], ['ocrDropzone', 'ocrFile', 'ocrFileName']].forEach(([dzId, fileId, textId]) => { const dz = $(dzId), file = $(fileId), text = $(textId); if (!dz || !file) return; const show = () => { if (file.files[0]) { if (text) text.textContent = fileId === 'documentFile' ? `เลือกแล้ว ${file.files.length} ไฟล์` : file.files[0].name; if (fileId === 'ocrFile') renderOcrPreviewFromFile(file.files[0]) } }; file.addEventListener('change', show);['dragenter', 'dragover'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.add('dragover') }));['dragleave', 'drop'].forEach(evt => dz.addEventListener(evt, e => { e.preventDefault(); dz.classList.remove('dragover') })); dz.addEventListener('drop', e => { if (e.dataTransfer.files.length) { file.files = e.dataTransfer.files; show() } }) }) }
 function sanitizeDecimalInput(value) {
     let v = String(value || '').replace(/,/g, '').replace(/[^\d.]/g, '');
