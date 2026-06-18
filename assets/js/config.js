@@ -1,3 +1,5 @@
+import './generic-a4-unified.js';
+
 export const APP_INFO = {
     version: '9.8.6',
     authorized: 'นายณัฐชนน ศรีเปล่ง',
