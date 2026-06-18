@@ -2308,22 +2308,58 @@ function buildGenericSignHtml(doc) {
     </div>`;
 }
 
+
+function buildGenericSignatureDesignerPreview(docRow = {}, placement = {}, labels = genericDocSignerLabels()) {
+    const key = placement.key || 'party1';
+    const sig = genericSignatureImage(docRow, key);
+    const meta = genericSignatureMeta(docRow, key);
+    const lines = [];
+    if (meta.showName && meta.name) lines.push(meta.name);
+    if (meta.showRole && meta.role) lines.push(meta.role);
+    if (meta.showDate && meta.date) lines.push(meta.date);
+    const label = labels[key] || placement.label || key;
+    return `
+        <div class="generic-sign-designer-real-preview" style="--signature-meta-size:${meta.fontSize}px">
+            ${sig
+                ? `<img class="generic-sign-designer-real-img" src="${sig}" alt="signature">`
+                : `<div class="generic-sign-designer-empty-img"><i class="bi bi-pen"></i><span>${escapeHtml(label)}</span></div>`}
+            ${lines.length ? `<div class="generic-sign-designer-real-meta">${lines.map(v => `<div>${escapeHtml(v)}</div>`).join('')}</div>` : ''}
+        </div>
+        <div class="generic-sign-designer-coord-badge">X:${Number(placement.x || 0).toFixed(1)} Y:${Number(placement.y || 0).toFixed(1)}</div>
+    `;
+}
+
 window.openGenericSignatureDesigner = async (id) => {
     const docRow = (latestData?.genericDocuments || []).find(x => x.id === id);
     if (!docRow) return toast('ไม่พบเอกสาร');
     const placements = normalizeGenericSignaturePlacements(docRow.signaturePlacements);
     const labels = genericDocSignerLabels();
-    const paperHtml = `<div id="genericSignatureDesignerPaper" class="generic-sign-designer-paper">
-        <div class="generic-sign-designer-content" style="font-size:${Number(docRow.fontSize || 18) || 18}px;line-height:1.65">${stripGenericLegacySignatureBlock(docRow.html || '')}</div>
-        <div class="generic-sign-designer-layer">${placements.map(p => `<div class="generic-sign-designer-box signature-image-only-designer" data-key="${escapeHtml(p.key)}" style="left:${p.x}%;top:${p.y}%;width:${p.width}%;height:${p.height}%">
-            <span class="generic-sign-designer-icon"><i class="bi bi-pen"></i></span>
-            <strong>${escapeHtml(labels[p.key] || p.label || p.key)}</strong>
-        </div>`).join('')}</div>
+    const paperHtml = `<div class="generic-sign-designer-stage">
+        <div class="generic-sign-ruler top"><span>0</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span></div>
+        <div class="generic-sign-ruler left"><span>0</span><span>100</span><span>200</span><span>300</span><span>400</span><span>500</span><span>600</span><span>700</span><span>800</span><span>900</span><span>1000</span></div>
+        <div id="genericSignatureDesignerPaper" class="generic-sign-designer-paper generic-sign-designer-grid">
+            <div class="generic-sign-designer-content" style="font-size:${Number(docRow.fontSize || 18) || 18}px;line-height:1.65">${stripGenericLegacySignatureBlock(docRow.html || '')}</div>
+            <div class="generic-sign-designer-layer">${placements.map(p => `<div class="generic-sign-designer-box signature-image-only-designer generic-sign-designer-real-box" data-key="${escapeHtml(p.key)}" style="left:${p.x}%;top:${p.y}%;width:${p.width}%;height:${p.height}%">
+                ${buildGenericSignatureDesignerPreview(docRow, p, labels)}
+            </div>`).join('')}</div>
+        </div>
     </div>`;
     const result = await Swal.fire({
         title: 'จัดตำแหน่งลายเซ็น',
-        html: `<div class="generic-sign-designer-wrap">${paperHtml}</div><p class="note" style="margin-top:10px">ลากกล่องตำแหน่งลายเซ็นไปวางบนกระดาษ A4 แล้วกดบันทึก — ตอนแสดงเอกสารจริงจะแสดงเฉพาะรูปลายเซ็น ไม่มีข้อความหรือเส้นประ</p>`,
-        width: 'min(96vw, 980px)',
+        html: `<div class="generic-sign-designer-toolbar">
+                <div class="generic-sign-selected-info" id="genericSignSelectedInfo">เลือกกล่องลายเซ็นเพื่อดูพิกัด</div>
+                <div class="generic-sign-nudge-panel">
+                    <span>Step</span>
+                    <input id="genericSignNudgeStep" class="input" type="number" min="0.1" step="0.5" value="1">
+                    <button type="button" class="secondary" id="genericSignNudgeUp" title="ขึ้น"><i class="bi bi-arrow-up"></i></button>
+                    <button type="button" class="secondary" id="genericSignNudgeLeft" title="ซ้าย"><i class="bi bi-arrow-left"></i></button>
+                    <button type="button" class="secondary" id="genericSignNudgeDown" title="ลง"><i class="bi bi-arrow-down"></i></button>
+                    <button type="button" class="secondary" id="genericSignNudgeRight" title="ขวา"><i class="bi bi-arrow-right"></i></button>
+                </div>
+            </div>
+            <div class="generic-sign-designer-wrap">${paperHtml}</div>
+            <p class="note" style="margin-top:10px">ลากกล่องลายเซ็นบนกระดาษ A4 หรือใช้ปุ่มลูกศรจูนตำแหน่ง — ตัวอย่างจะแสดงรูปลายเซ็น + ชื่อ/บทบาท/วันที่ตามที่เลือกไว้จริง</p>`,
+        width: 'min(98vw, 1120px)',
         showCancelButton: true,
         confirmButtonText: '<i class="bi bi-check-circle"></i> บันทึกตำแหน่ง',
         cancelButtonText: '<i class="bi bi-x-circle"></i> ยกเลิก',
@@ -2338,10 +2374,56 @@ window.openGenericSignatureDesigner = async (id) => {
 
 function initGenericSignatureDesignerDrag() {
     const paper = document.getElementById('genericSignatureDesignerPaper');
+    const info = document.getElementById('genericSignSelectedInfo');
     if (!paper) return;
+    let selectedBox = null;
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+    const getStep = () => Math.max(0.1, Number(document.getElementById('genericSignNudgeStep')?.value || 1) || 1);
+    const updateBadge = (box) => {
+        if (!box) return;
+        const x = parseFloat(box.style.left || '0') || 0;
+        const y = parseFloat(box.style.top || '0') || 0;
+        const w = parseFloat(box.style.width || '0') || 0;
+        const h = parseFloat(box.style.height || '0') || 0;
+        const badge = box.querySelector('.generic-sign-designer-coord-badge');
+        if (badge) badge.textContent = `X:${x.toFixed(1)} Y:${y.toFixed(1)}`;
+        const key = box.dataset.key || '';
+        const labels = genericDocSignerLabels();
+        if (info) info.textContent = `${labels[key] || key}  |  X:${x.toFixed(1)}%  Y:${y.toFixed(1)}%  W:${w.toFixed(1)}%  H:${h.toFixed(1)}%`;
+    };
+    const selectBox = (box) => {
+        paper.querySelectorAll('.generic-sign-designer-box').forEach(b => b.classList.remove('is-selected'));
+        selectedBox = box;
+        if (box) {
+            box.classList.add('is-selected');
+            updateBadge(box);
+        }
+    };
+    const nudge = (dx, dy) => {
+        if (!selectedBox) {
+            const first = paper.querySelector('.generic-sign-designer-box');
+            if (first) selectBox(first);
+        }
+        if (!selectedBox) return;
+        const step = getStep();
+        const w = parseFloat(selectedBox.style.width || '30') || 30;
+        const h = parseFloat(selectedBox.style.height || '10') || 10;
+        const x = parseFloat(selectedBox.style.left || '0') || 0;
+        const y = parseFloat(selectedBox.style.top || '0') || 0;
+        selectedBox.style.left = `${clamp(x + dx * step, 0, 100 - w)}%`;
+        selectedBox.style.top = `${clamp(y + dy * step, 0, 100 - h)}%`;
+        updateBadge(selectedBox);
+    };
+    document.getElementById('genericSignNudgeUp')?.addEventListener('click', () => nudge(0, -1));
+    document.getElementById('genericSignNudgeDown')?.addEventListener('click', () => nudge(0, 1));
+    document.getElementById('genericSignNudgeLeft')?.addEventListener('click', () => nudge(-1, 0));
+    document.getElementById('genericSignNudgeRight')?.addEventListener('click', () => nudge(1, 0));
     paper.querySelectorAll('.generic-sign-designer-box').forEach(box => {
+        box.addEventListener('click', ev => { ev.stopPropagation(); selectBox(box); });
+        updateBadge(box);
         box.onpointerdown = ev => {
             ev.preventDefault();
+            selectBox(box);
             box.setPointerCapture?.(ev.pointerId);
             const rect = paper.getBoundingClientRect();
             const startX = ev.clientX;
@@ -2353,8 +2435,9 @@ function initGenericSignatureDesignerDrag() {
                 const dy = ((e.clientY - startY) / rect.height) * 100;
                 const w = parseFloat(box.style.width || '30');
                 const h = parseFloat(box.style.height || '10');
-                box.style.left = `${Math.max(0, Math.min(100 - w, startLeft + dx))}%`;
-                box.style.top = `${Math.max(0, Math.min(100 - h, startTop + dy))}%`;
+                box.style.left = `${clamp(startLeft + dx, 0, 100 - w)}%`;
+                box.style.top = `${clamp(startTop + dy, 0, 100 - h)}%`;
+                updateBadge(box);
             };
             const onUp = () => {
                 window.removeEventListener('pointermove', onMove);
@@ -2364,7 +2447,9 @@ function initGenericSignatureDesignerDrag() {
             window.addEventListener('pointerup', onUp, { once: true });
         };
     });
+    selectBox(paper.querySelector('.generic-sign-designer-box'));
 }
+
 
 function collectGenericSignaturePlacements() {
     const paper = document.getElementById('genericSignatureDesignerPaper');

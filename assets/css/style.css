@@ -7175,3 +7175,196 @@ body.ocr-camera-open nav.bottom-nav{
 @media(max-width:420px){
     .ocr-landscape-actions{grid-template-columns:1fr;}
 }
+
+/* ===== v9.8.6 Generic Signature Designer: ruler/grid/coords/nudge + real preview ===== */
+.generic-sign-designer-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin:0 0 10px;
+    padding:8px 10px;
+    border:1px solid rgba(148,163,184,.35);
+    border-radius:16px;
+    background:rgba(248,250,252,.96);
+}
+.generic-sign-selected-info{
+    font-size:13px;
+    font-weight:900;
+    color:#166534;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.generic-sign-nudge-panel{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:6px;
+    flex:0 0 auto;
+}
+.generic-sign-nudge-panel span{
+    font-size:12px;
+    font-weight:900;
+    color:#64748b;
+}
+.generic-sign-nudge-panel input{
+    width:56px!important;
+    height:34px!important;
+    text-align:center!important;
+    padding:0 4px!important;
+    font-weight:900!important;
+}
+.generic-sign-nudge-panel button{
+    width:34px!important;
+    min-width:34px!important;
+    height:34px!important;
+    min-height:34px!important;
+    padding:0!important;
+    border-radius:50%!important;
+    display:grid!important;
+    place-items:center!important;
+}
+.generic-sign-designer-stage{
+    position:relative;
+    display:inline-block;
+    padding:28px 0 0 28px;
+}
+.generic-sign-ruler{
+    position:absolute;
+    color:#64748b;
+    font-size:10px;
+    font-weight:900;
+    pointer-events:none;
+    user-select:none;
+    z-index:20;
+}
+.generic-sign-ruler.top{
+    top:3px;
+    left:28px;
+    right:0;
+    height:22px;
+    display:flex;
+    justify-content:space-between;
+    border-bottom:1px solid rgba(100,116,139,.45);
+}
+.generic-sign-ruler.left{
+    top:28px;
+    left:3px;
+    bottom:0;
+    width:22px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-right:1px solid rgba(100,116,139,.45);
+    padding-right:3px;
+}
+.generic-sign-designer-grid{
+    background-color:#fff!important;
+    background-image:
+        linear-gradient(rgba(22,163,74,.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(22,163,74,.07) 1px, transparent 1px),
+        linear-gradient(rgba(22,163,74,.16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(22,163,74,.16) 1px, transparent 1px)!important;
+    background-size:10px 10px,10px 10px,50px 50px,50px 50px!important;
+    background-position:0 0,0 0,0 0,0 0!important;
+}
+.generic-sign-designer-real-box{
+    justify-content:center!important;
+    align-items:center!important;
+    overflow:visible!important;
+    padding:4px!important;
+    border:2px dashed #16a34a!important;
+    background:rgba(240,253,244,.64)!important;
+}
+.generic-sign-designer-real-box.is-selected{
+    border-color:#f59e0b!important;
+    background:rgba(255,251,235,.72)!important;
+    box-shadow:0 0 0 3px rgba(245,158,11,.18), 0 8px 22px rgba(22,101,52,.18)!important;
+}
+.generic-sign-designer-real-preview{
+    width:100%;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    pointer-events:none;
+    overflow:visible;
+}
+.generic-sign-designer-real-img{
+    width:100%;
+    max-width:100%;
+    max-height:68%;
+    object-fit:contain;
+    display:block;
+    flex:1 1 auto;
+}
+.generic-sign-designer-empty-img{
+    width:100%;
+    height:100%;
+    min-height:34px;
+    display:grid;
+    place-items:center;
+    color:#166534;
+    font-weight:900;
+    font-size:12px;
+    line-height:1.2;
+    text-align:center;
+}
+.generic-sign-designer-empty-img i{
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:#16a34a;
+    color:#fff;
+    margin-bottom:2px;
+}
+.generic-sign-designer-real-meta{
+    width:100%;
+    flex:0 0 auto;
+    font-family:'TH Sarabun New','TH Sarabun',Tahoma,sans-serif!important;
+    font-size:var(--signature-meta-size,18px)!important;
+    line-height:1.05!important;
+    text-align:center;
+    color:#111827;
+    white-space:nowrap;
+    overflow:visible;
+    text-shadow:0 1px 0 rgba(255,255,255,.55);
+}
+.generic-sign-designer-real-meta div{margin:0;padding:0;}
+.generic-sign-designer-coord-badge{
+    position:absolute;
+    left:50%;
+    bottom:-22px;
+    transform:translateX(-50%);
+    padding:3px 7px;
+    border-radius:999px;
+    background:#0f172a;
+    color:#fff;
+    font-size:10px;
+    line-height:1;
+    font-weight:900;
+    white-space:nowrap;
+    pointer-events:none;
+    box-shadow:0 6px 16px rgba(15,23,42,.22);
+}
+@media(max-width:720px){
+    .generic-sign-designer-toolbar{
+        align-items:stretch;
+        flex-direction:column;
+        gap:8px;
+    }
+    .generic-sign-selected-info{
+        white-space:normal;
+        line-height:1.35;
+    }
+    .generic-sign-nudge-panel{
+        justify-content:center;
+        flex-wrap:nowrap;
+    }
+}
