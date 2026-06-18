@@ -7095,3 +7095,62 @@ body.ocr-camera-open nav.bottom-nav{
         grid-column:1 / -1!important;
     }
 }
+
+
+/* ===== v9.8.4 OCR landscape-only capture helper ===== */
+.ocr-landscape-hint{
+    display:none;
+    position:absolute;
+    inset:0;
+    z-index:100002;
+    padding:18px;
+    place-items:center;
+    background:rgba(2,6,23,.82);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+}
+.ocr-landscape-hint.hidden{display:none!important;}
+.ocr-landscape-card{
+    width:min(92vw,420px);
+    border-radius:24px;
+    background:#ffffff;
+    color:#0f172a;
+    padding:22px 18px;
+    text-align:center;
+    box-shadow:0 24px 80px rgba(0,0,0,.38);
+}
+.ocr-landscape-card i.bi-phone-landscape{
+    font-size:46px;
+    color:#16a34a;
+    display:block;
+    margin-bottom:8px;
+}
+.ocr-landscape-card h3{
+    margin:4px 0 8px;
+    font-size:20px;
+    font-weight:900;
+}
+.ocr-landscape-card p{
+    margin:0 0 14px;
+    color:#475569;
+    font-size:14px;
+    line-height:1.55;
+}
+.ocr-landscape-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+}
+.ocr-landscape-actions button{
+    min-height:44px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+}
+@media(max-width:820px) and (orientation:portrait){
+    #ocrCameraPanel.ocr-camera-modal .ocr-landscape-hint{display:grid;}
+}
+@media(max-width:420px){
+    .ocr-landscape-actions{grid-template-columns:1fr;}
+}

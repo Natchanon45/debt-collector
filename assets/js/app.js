@@ -1438,6 +1438,47 @@ function fillOcrFields(o) { $('ocrPrefix').value = o.prefix || ''; $('ocrFirstNa
 let pendingOcrFile = null;
 let ocrCameraStream = null;
 
+function isOcrMobileViewport() {
+    return window.matchMedia?.('(max-width: 820px)').matches || navigator.maxTouchPoints > 0;
+}
+
+function isOcrPortraitViewport() {
+    return window.innerHeight > window.innerWidth;
+}
+
+function ocrEnsureLandscapeHint(panel) {
+    if (!panel) return;
+    if ($('ocrLandscapeHint')) return;
+    const hint = document.createElement('div');
+    hint.id = 'ocrLandscapeHint';
+    hint.className = 'ocr-landscape-hint';
+    hint.innerHTML = `
+        <div class="ocr-landscape-card">
+            <i class="bi bi-phone-landscape"></i>
+            <h3>กรุณาหมุนโทรศัพท์เป็นแนวนอน</h3>
+            <p>วางบัตรประชาชนให้ตรงกรอบก่อนกดถ่ายภาพ เพื่อให้ OCR อ่านข้อมูลได้แม่นยำขึ้น</p>
+            <div class="ocr-landscape-actions">
+                <button id="ocrLandscapeReadyBtn" class="primary" type="button"><i class="bi bi-check-circle"></i> ฉันหมุนแล้ว</button>
+                <button id="ocrLandscapeCloseBtn" class="secondary" type="button"><i class="bi bi-x-circle"></i> ปิดกล้อง</button>
+            </div>
+        </div>
+    `;
+    panel.appendChild(hint);
+    $('ocrLandscapeReadyBtn')?.addEventListener('click', () => {
+        if (isOcrMobileViewport() && isOcrPortraitViewport()) return toast('กรุณาหมุนโทรศัพท์เป็นแนวนอนก่อน');
+        hint.classList.add('hidden');
+    });
+    $('ocrLandscapeCloseBtn')?.addEventListener('click', ocrCloseCameraModal);
+}
+
+async function ocrTryLockLandscape() {
+    try {
+        if (isOcrMobileViewport() && screen.orientation?.lock) {
+            await screen.orientation.lock('landscape').catch(() => {});
+        }
+    } catch (_) {}
+}
+
 function getOcrSelectedFile() {
     return pendingOcrFile || $('ocrFileCamera')?.files?.[0] || $('ocrFileGallery')?.files?.[0] || $('ocrFile')?.files?.[0] || null;
 }
@@ -1473,6 +1514,8 @@ async function ocrStartLiveCamera() {
     if (panel.parentElement !== document.body) {
         document.body.appendChild(panel);
     }
+    ocrEnsureLandscapeHint(panel);
+    await ocrTryLockLandscape();
 
     pendingOcrFile = null;
     $('ocrPreviewActions')?.classList.add('hidden');
@@ -1518,6 +1561,7 @@ function ocrStopLiveCamera(hidePanel = true) {
         $('ocrCameraPanel')?.classList.add('hidden');
         $('ocrCameraPanel')?.classList.remove('ocr-camera-modal');
         document.body.classList.remove('ocr-camera-open');
+        try { screen.orientation?.unlock?.(); } catch (_) {}
     }
 }
 
@@ -1526,6 +1570,10 @@ function ocrCloseCameraModal() {
 }
 
 async function ocrCaptureFromLiveCamera() {
+    if (isOcrMobileViewport() && isOcrPortraitViewport()) {
+        toast('กรุณาหมุนโทรศัพท์เป็นแนวนอนก่อนถ่ายภาพ');
+        return;
+    }
     const video = $('ocrCameraVideo');
     if (!video || !video.videoWidth || !video.videoHeight) {
         toast('ยังไม่พบภาพจากกล้อง');
