@@ -6310,12 +6310,33 @@ body.signature-drawing {
 .generic-doc-toolbar-phase3 .input,
 .generic-doc-toolbar-phase3 select.input {
     min-height: 30px !important;
+    min-width: 110px !important;
     height: 30px !important;
-    border-radius: 8px !important;
-    padding: 0 8px !important;
+    /* border-radius: 8px !important; */
+    /* padding: 0 8px !important; */
     font-size: 12px !important;
     box-shadow: none !important;
 }
+
+
+#genericDocFormatSelect{
+    width: 100px !important;
+    min-width: 100px !important;
+}
+
+#genericDocFontFamilySelect{
+    width: 110px !important;
+    min-width: 110px !important;
+}
+
+#genericDocBaseFontSize {
+    width: 45px !important;
+    min-width: 45px !important;
+    padding: 0 4px !important;
+    text-align: center !important;
+    font-weight: 800 !important;
+}
+
 
 .generic-format-select {
     width: 92px !important;
