@@ -1,4 +1,5 @@
 import './generic-a4-unified.js';
+import './generic-a4-coordinate-fix.js';
 
 export const APP_INFO = {
     version: '9.9.4',
