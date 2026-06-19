@@ -10,3 +10,18 @@
 #gPubSaveBtn{position:sticky!important;bottom:10px!important;z-index:25!important;border-radius:999px!important;box-shadow:0 10px 24px rgba(22,163,74,.22)!important;}
 @media(min-width:861px){#gPubBody>div{display:grid!important;grid-template-columns:minmax(0,1fr) 300px!important;gap:12px!important;align-items:start!important;}#gPubBody>div>div:first-child{grid-column:1!important;grid-row:1 / span 5!important;position:sticky!important;top:76px!important;height:78vh!important;max-height:none!important;padding:10px!important;border-radius:16px!important;background:#e5e7eb!important;overflow:auto!important;}.public-sign-card{grid-column:2!important;}#gPubSaveBtn{grid-column:1 / -1!important;}}
 @media(max-width:860px){#gPubBody>div>div:first-child{height:58vh!important;}.public-sign-card canvas{height:190px!important;}}
+
+/* Preview modal: PC must scroll inside the preview, not lock at the modal. */
+#documentPreviewModal .preview-box{max-height:calc(100vh - 28px)!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;}
+#documentPreviewModal .preview-body{flex:1 1 auto!important;min-height:0!important;max-height:calc(100vh - 160px)!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;overscroll-behavior:contain!important;padding:16px!important;background:#f8fafc!important;}
+#documentPreviewModal .preview-body .generic-doc-view-body{height:auto!important;max-height:none!important;overflow:visible!important;background:#e5e7eb!important;padding:16px!important;border-radius:18px!important;}
+#documentPreviewModal .preview-body .generic-doc-view-paper,
+#documentPreviewModal .preview-body .generic-a4-page{margin:0 auto 18px!important;}
+#documentPreviewModal .preview-body .generic-doc-view-paper:before,
+#documentPreviewModal .preview-body .generic-a4-page:before,
+#documentPreviewModal .preview-body .generic-a4-content:before,
+#documentPreviewModal .preview-body .generic-a4-html:before,
+#documentPreviewModal .preview-body .generic-public-a4-page:before{content:none!important;display:none!important;border:0!important;outline:0!important;}
+#documentPreviewModal .preview-body .generic-a4-content,
+#documentPreviewModal .preview-body .generic-a4-html{outline:0!important;border:0!important;}
+#documentPreviewModal #previewDownloadBtn{flex:0 0 auto!important;margin-top:10px!important;}
