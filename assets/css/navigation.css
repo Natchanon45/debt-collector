@@ -1,3 +1,4 @@
+@import url('generic-sign.css');
 /* v8.0.0 Bottom navigation: icon + text only, no button-card styling */
 :root{
     --nav-green:#16a34a;
