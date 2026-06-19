@@ -1,5 +1,5 @@
-// v10.0.0 Generic Document Unified Engine bridge
-// Loaded from config.js. This keeps one A4 contract across editor, preview,
+// v10.0.1 Generic Document Unified Engine bridge
+// Loaded from config.js. Keeps one A4 contract across editor, preview,
 // signature designer, public signing and PDF export while the legacy app code
 // is gradually migrated.
 (function () {
@@ -25,6 +25,21 @@
         return String(value || '').replace(/[&<>"]/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[ch]));
     }
 
+    function isDateText(value) {
+        const text = String(value || '').trim();
+        return /^\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}$/.test(text) || /\d{4}-\d{1,2}-\d{1,2}/.test(text);
+    }
+
+    function classifyMetaLines(lines) {
+        const result = { name: '', role: '', date: '' };
+        const clean = (Array.isArray(lines) ? lines : []).map(x => String(x || '').trim()).filter(Boolean);
+        result.date = clean.find(isDateText) || '';
+        const nonDate = clean.filter(x => x !== result.date);
+        result.name = nonDate[0] || '';
+        result.role = nonDate[1] || '';
+        return result;
+    }
+
     const css = `
 :root{
     --generic-a4-width:${A4.widthPx}px;
@@ -48,8 +63,11 @@
 #genericDocEditor.generic-doc-editor-fallback,.generic-a4-content,.generic-sign-designer-content,.generic-public-a4-page{
     padding:var(--generic-a4-pad-top) var(--generic-a4-pad-right) var(--generic-a4-pad-bottom) var(--generic-a4-pad-left)!important;
 }
-#genericDocEditor.generic-doc-editor-fallback:before,.generic-doc-view-paper:before,.generic-a4-page:before,.generic-sign-designer-paper:before,.generic-public-a4-page:before{
+#genericDocEditor.generic-doc-editor-fallback:before,.generic-sign-designer-paper:before{
     content:'';position:absolute;left:var(--generic-a4-pad-left);right:var(--generic-a4-pad-right);top:var(--generic-a4-pad-top);bottom:var(--generic-a4-pad-bottom);border:1.5px dashed rgba(22,163,74,.45);border-radius:4px;pointer-events:none;z-index:9;
+}
+.generic-doc-view-paper:before,.generic-a4-page:before,.generic-public-a4-page:before{
+    content:none!important;display:none!important;border:0!important;
 }
 .generic-sign-designer-layer,.generic-sign-layer,.generic-signature-layer{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;pointer-events:none;z-index:5!important;}
 .generic-sign-designer-box,.generic-sign-item,.generic-signature-slot,.gdu-part{position:absolute!important;box-sizing:border-box!important;}
@@ -102,19 +120,20 @@ body *{box-sizing:border-box;} table{max-width:100%;}
         if (!slot || slot.classList.contains('gdu-split-done')) return;
         const img = slot.querySelector(':scope > img');
         if (!img || !img.getAttribute('src')) return;
-        const lines = Array.from(slot.querySelectorAll('.generic-signature-meta div')).map(x => x.textContent.trim()).filter(Boolean);
+        const meta = classifyMetaLines(Array.from(slot.querySelectorAll('.generic-signature-meta div')).map(x => x.textContent));
         slot.classList.add('gdu-split-done');
         const sig = document.createElement('div');
         sig.className = 'gdu-part gdu-part-signature';
         sig.style.cssText = 'left:0;top:0;width:100%;height:56%;';
         sig.innerHTML = `<img src="${escapeAttr(img.src)}" alt="signature">`;
         slot.appendChild(sig);
-        ['name','role','date'].forEach((type, i) => {
-            if (!lines[i]) return;
+        const positions = { name:58, role:72, date:86 };
+        ['name','role','date'].forEach(type => {
+            if (!meta[type]) return;
             const part = document.createElement('div');
             part.className = `gdu-part gdu-part-text gdu-part-${type}`;
-            part.textContent = lines[i];
-            part.style.cssText = `left:0;top:${58 + i * 14}%;width:100%;height:13%;font-size:clamp(10px,var(--signature-meta-size,14px),28px);`;
+            part.textContent = meta[type];
+            part.style.cssText = `left:0;top:${positions[type]}%;width:100%;height:13%;font-size:clamp(10px,var(--signature-meta-size,14px),28px);`;
             slot.appendChild(part);
         });
     }
@@ -124,7 +143,7 @@ body *{box-sizing:border-box;} table{max-width:100%;}
         box.classList.add('gdu-ready');
         const preview = box.querySelector('.generic-sign-designer-real-preview');
         const img = preview?.querySelector('img');
-        const metaLines = Array.from(preview?.querySelectorAll('.generic-sign-designer-real-meta div') || []).map(x => x.textContent.trim()).filter(Boolean);
+        const meta = classifyMetaLines(Array.from(preview?.querySelectorAll('.generic-sign-designer-real-meta div') || []).map(x => x.textContent));
         const empty = preview?.querySelector('.generic-sign-designer-empty-img span')?.textContent || box.dataset.key || '';
         const make = (type, text, cssText) => {
             const p = document.createElement('div');
@@ -142,9 +161,9 @@ body *{box-sizing:border-box;} table{max-width:100%;}
             box.appendChild(p);
         };
         make('signature', '', 'left:0;top:0;width:100%;height:55%;');
-        make('name', metaLines[0] || 'ชื่อ', 'left:0;top:58%;width:100%;height:13%;');
-        make('role', metaLines[1] || 'บทบาท', 'left:0;top:72%;width:100%;height:13%;');
-        make('date', metaLines[2] || 'วันที่', 'left:0;top:86%;width:100%;height:13%;');
+        if (meta.name) make('name', meta.name, 'left:0;top:58%;width:100%;height:13%;');
+        if (meta.role) make('role', meta.role, 'left:0;top:72%;width:100%;height:13%;');
+        if (meta.date) make('date', meta.date, 'left:0;top:86%;width:100%;height:13%;');
     }
 
     function wirePartDrag(part) {
@@ -317,7 +336,7 @@ body *{box-sizing:border-box;} table{max-width:100%;}
     function boot() {
         installStyle(); normalizeA4Surfaces(document); injectTinyMceA4(); compactPublicSignControls(document); installDesignerTools(); patchWindowFunctions();
     }
-    window.GenericDocumentUnifiedEngine = { A4, normalizeA4Surfaces, splitSignatureSlot, enhanceDesignerBox };
+    window.GenericDocumentUnifiedEngine = { A4, normalizeA4Surfaces, splitSignatureSlot, enhanceDesignerBox, classifyMetaLines };
     const observer = new MutationObserver(() => boot());
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => { boot(); observer.observe(document.documentElement, { childList: true, subtree: true }); setInterval(boot, 800); });
