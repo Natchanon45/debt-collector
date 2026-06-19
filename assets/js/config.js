@@ -1,13 +1,13 @@
 import './generic-a4-unified.js';
 
 export const APP_INFO = {
-    version: '10.0',
+    version: '10.1',
     authorized: 'นายณัฐชนน ศรีเปล่ง',
     year: new Date().getFullYear()
 };
 
 export const APP_VERSION = APP_INFO.version;
-export const LS = 'debt_collector_phase3_v10_0';
+export const LS = 'debt_collector_phase3_v10_1';
 
 export const blank = {
     debtors: [],
