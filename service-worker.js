@@ -1,6 +1,25 @@
-const APP_VERSION = '9.8.6';
-const CACHE_NAME = 'debt-collector-v9.8.6';
-const ASSETS = ['./', './index.html', './manifest.json', './assets/css/style.css', './assets/css/navigation.css', './assets/css/followup.css', './assets/css/ui-hotfix.css', './assets/js/app.js', './assets/js/config.js', './assets/js/utils.js', './assets/js/calculate.js', './assets/js/theme.js', './assets/js/firebase-config.js', './assets/icons/icon-192.png', './assets/icons/icon-512.png', './assets/img/loan-contract-template-a4.png'];
+const APP_VERSION = '10.0';
+const CACHE_NAME = 'debt-collector-v10.0';
+const ASSETS = [
+    './',
+    './index.html',
+    './manifest.json',
+    './assets/css/style.css',
+    './assets/css/navigation.css',
+    './assets/css/followup.css',
+    './assets/css/generic-sign.css',
+    './assets/css/ui-hotfix.css',
+    './assets/js/app.js',
+    './assets/js/config.js',
+    './assets/js/utils.js',
+    './assets/js/calculate.js',
+    './assets/js/theme.js',
+    './assets/js/firebase-config.js',
+    './assets/js/generic-a4-unified.js',
+    './assets/icons/icon-192.png',
+    './assets/icons/icon-512.png',
+    './assets/img/loan-contract-template-a4.png'
+];
 
 const isHttp = url => url.protocol === 'http:' || url.protocol === 'https:';
 const isSameOrigin = url => url.origin === self.location.origin;
@@ -29,10 +48,8 @@ self.addEventListener('fetch', e => {
     const req = e.request;
     const url = new URL(req.url);
 
-    // Do not touch chrome-extension:, data:, blob:, Firebase Storage download URLs, or any unsupported schemes.
     if (!isHttp(url) || isFirebaseStorage(url)) return;
 
-    // External CDN requests are network-only. This prevents cache.put errors on opaque/unsupported responses.
     if (!isSameOrigin(url)) {
         e.respondWith(fetch(req));
         return;
