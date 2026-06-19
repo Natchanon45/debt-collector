@@ -26,7 +26,6 @@
 }
 @media(max-width:420px){.quick-followup-row{grid-template-columns:1fr;}}
 
-/* Hotfix: keep all signature undo/redo/clear buttons identical circles. */
 html body .signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-clear-sig],
 html body .signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-undo-sig],
 html body .signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-redo-sig],
@@ -77,3 +76,15 @@ html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-too
         flex-basis:32px!important;
     }
 }
+
+:root{--gdoc-a4-w:210mm;--gdoc-a4-h:297mm;--gdoc-margin-top:18mm;--gdoc-margin-right:16mm;--gdoc-margin-bottom:18mm;--gdoc-margin-left:16mm;--gdoc-line-height:1.45;}
+#genericDocEditor.generic-doc-editor-fallback,.generic-a4-page,.generic-a4-content,.generic-sign-designer-paper{width:var(--gdoc-a4-w)!important;height:var(--gdoc-a4-h)!important;min-width:var(--gdoc-a4-w)!important;min-height:var(--gdoc-a4-h)!important;max-width:var(--gdoc-a4-w)!important;max-height:var(--gdoc-a4-h)!important;box-sizing:border-box!important;position:relative!important;overflow:hidden!important;background:#fff!important;color:#111827!important;font-family:'Sarabun','Noto Sans Thai',sans-serif!important;line-height:var(--gdoc-line-height)!important;}
+#genericDocEditor.generic-doc-editor-fallback{padding:var(--gdoc-margin-top) var(--gdoc-margin-right) var(--gdoc-margin-bottom) var(--gdoc-margin-left)!important;overflow-wrap:break-word!important;word-break:break-word!important;white-space:normal!important;}
+#genericDocEditor.generic-doc-editor-fallback:before,.generic-a4-content:before,.generic-sign-designer-paper:before{content:'';position:absolute;inset:var(--gdoc-margin-top) var(--gdoc-margin-right) var(--gdoc-margin-bottom) var(--gdoc-margin-left);border:1.5px dashed rgba(22,163,74,.5);border-radius:4px;pointer-events:none;z-index:3;}
+.generic-a4-html,.generic-sign-designer-content{position:relative!important;z-index:1!important;width:100%!important;height:100%!important;box-sizing:border-box!important;padding:var(--gdoc-margin-top) var(--gdoc-margin-right) var(--gdoc-margin-bottom) var(--gdoc-margin-left)!important;overflow:hidden!important;overflow-wrap:break-word!important;word-break:break-word!important;line-height:var(--gdoc-line-height)!important;}
+.generic-signature-layer,.generic-sign-designer-layer{position:absolute!important;inset:0!important;z-index:2!important;width:100%!important;height:100%!important;pointer-events:none!important;}
+.generic-signature-slot,.generic-sign-designer-box{position:absolute!important;box-sizing:border-box!important;}
+.generic-signature-slot img,.generic-sign-designer-real-img{width:100%!important;max-width:100%!important;height:auto!important;max-height:58%!important;object-fit:contain!important;display:block!important;margin:0 auto!important;}
+.generic-signature-meta,.generic-sign-designer-real-meta{line-height:1.08!important;margin-top:1px!important;}
+.generic-doc-view-body,#genericDocPdfSource{width:var(--gdoc-a4-w)!important;min-width:var(--gdoc-a4-w)!important;margin:0 auto!important;}
+@media(max-width:760px){.preview-body .generic-doc-view-body{transform:scale(.46);transform-origin:top center;height:136.62mm!important;margin-bottom:8px!important;}}
