@@ -1,5 +1,5 @@
-const APP_VERSION = '10.0';
-const CACHE_NAME = 'debt-collector-v10.0';
+const APP_VERSION = '10.1';
+const CACHE_NAME = 'debt-collector-v10.1';
 const ASSETS = [
     './',
     './index.html',
