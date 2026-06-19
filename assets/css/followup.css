@@ -26,15 +26,14 @@
 }
 @media(max-width:420px){.quick-followup-row{grid-template-columns:1fr;}}
 
-/* Hotfix: keep signature undo/redo/clear buttons identical circles.
-   This must be highly specific because the generic document bootstrap injects
-   broad button rules at runtime. */
+/* Hotfix: keep all signature undo/redo/clear buttons identical circles. */
 html body .signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-clear-sig],
 html body .signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-undo-sig],
 html body .signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-redo-sig],
 html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-clear-sig],
 html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-undo-sig],
-html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-redo-sig]{
+html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-redo-sig],
+html body .public-sign-card button[data-clear]{
     width:34px!important;
     height:34px!important;
     min-width:34px!important;
@@ -49,6 +48,7 @@ html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-too
     aspect-ratio:1/1!important;
     flex:0 0 34px!important;
     line-height:1!important;
+    overflow:hidden!important;
 }
 html body .signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-clear-sig] i,
 html body .signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-undo-sig] i,
@@ -66,7 +66,8 @@ html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-too
     html body .signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-redo-sig],
     html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-clear-sig],
     html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-undo-sig],
-    html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-redo-sig]{
+    html body .profile-signature-box .sig-actions-row.sig-smart-tools button.sig-tool-btn[data-redo-sig],
+    html body .public-sign-card button[data-clear]{
         width:32px!important;
         height:32px!important;
         min-width:32px!important;
