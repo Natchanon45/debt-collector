@@ -32,7 +32,15 @@
 #tab-generic-docs #genericDocAttachedTools,
 #tab-generic-docs .generic-doc-attached-tools{max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x!important;scrollbar-width:auto!important;}
 #tab-generic-docs .generic-doc-attached-tools .generic-doc-toolbar{min-width:max-content!important;overflow-x:visible!important;overflow-y:hidden!important;flex-wrap:nowrap!important;}
-#tab-generic-docs .generic-doc-editor-shell{height:calc(100vh - 238px)!important;max-height:calc(100vh - 238px)!important;min-height:420px!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;overscroll-behavior:contain!important;}
-#tab-generic-docs .generic-doc-editor-page-wrap{min-width:max-content!important;min-height:max-content!important;padding-bottom:80px!important;}
+#tab-generic-docs .generic-doc-editor-shell{height:calc(100vh - 238px)!important;max-height:calc(100vh - 238px)!important;min-height:420px!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;overscroll-behavior:contain!important;display:block!important;padding:12px!important;}
+#tab-generic-docs .generic-doc-editor-page-wrap{min-width:max-content!important;min-height:max-content!important;padding:8px 8px 80px!important;}
 #tab-generic-docs #genericDocEditor.generic-doc-editor-fallback{flex:0 0 auto!important;}
 @media(max-width:760px){#tab-generic-docs .generic-doc-editor-shell{height:calc(100vh - 250px)!important;max-height:calc(100vh - 250px)!important;min-height:360px!important;}}
+
+/* Rulers were too visually heavy: hide them and keep only the printable safe area. */
+#tab-generic-docs .generic-doc-ruler-top,
+#tab-generic-docs .generic-doc-ruler-left,
+#tab-generic-docs .generic-doc-ruler-corner,
+#tab-generic-docs .generic-sign-ruler{display:none!important;}
+#tab-generic-docs .generic-doc-editor-shell{grid-template-columns:1fr!important;grid-template-rows:auto!important;background:#eef2f7!important;}
+#tab-generic-docs .generic-doc-editor-page-wrap{grid-column:1!important;grid-row:1!important;}
