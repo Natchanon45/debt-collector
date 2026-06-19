@@ -25,3 +25,14 @@
 #documentPreviewModal .preview-body .generic-a4-content,
 #documentPreviewModal .preview-body .generic-a4-html{outline:0!important;border:0!important;}
 #documentPreviewModal #previewDownloadBtn{flex:0 0 auto!important;margin-top:10px!important;}
+
+/* Create/Edit generic document: keep document and tools scrollable on desktop. */
+#tab-generic-docs{min-height:0!important;overflow:visible!important;}
+#tab-generic-docs #genericDocFormCard{max-height:none!important;overflow:visible!important;}
+#tab-generic-docs #genericDocAttachedTools,
+#tab-generic-docs .generic-doc-attached-tools{max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x!important;scrollbar-width:auto!important;}
+#tab-generic-docs .generic-doc-attached-tools .generic-doc-toolbar{min-width:max-content!important;overflow-x:visible!important;overflow-y:hidden!important;flex-wrap:nowrap!important;}
+#tab-generic-docs .generic-doc-editor-shell{height:calc(100vh - 238px)!important;max-height:calc(100vh - 238px)!important;min-height:420px!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;overscroll-behavior:contain!important;}
+#tab-generic-docs .generic-doc-editor-page-wrap{min-width:max-content!important;min-height:max-content!important;padding-bottom:80px!important;}
+#tab-generic-docs #genericDocEditor.generic-doc-editor-fallback{flex:0 0 auto!important;}
+@media(max-width:760px){#tab-generic-docs .generic-doc-editor-shell{height:calc(100vh - 250px)!important;max-height:calc(100vh - 250px)!important;min-height:360px!important;}}
